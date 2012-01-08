@@ -22,15 +22,18 @@ class CanvasContext
 			el.init()
 
 		@canvas.addEventListener 'mousewheel', @changeZoom
-		@zoom_prev = 1
-		@zoom = 1
-		console.log @.findBestZoom()
-
-		@x_origin = @canvas.width/2 
+		@zoom = @.findBestZoom()
+		@zoom_prev = @zoom
+		center = @.avgCenterOfAllElements()
+	
+		for el in @elements
+			el.translateTo(center)
+		
+		@x_origin = @canvas.width/2
 		@y_origin = @canvas.height/2
 		@.clear()
 		@canvas.addEventListener 'dblclick', @translateOrigin
-
+		
 		@.drawAll()
 	
 	findBestZoom: =>
@@ -42,7 +45,7 @@ class CanvasContext
 					max_x = Math.abs(a.x)
 				if Math.abs(a.y) > max_y
 					max_y = Math.abs(a.y)
-		@zoom = if max_x > max_y then @canvas.width/max_x else @canvas.width/max_y
+		if max_x > max_y then @canvas.width/(2*max_x) else @canvas.width/(2*max_y)
 	
 	drawGridLines: =>
 		"""
@@ -80,6 +83,7 @@ class CanvasContext
 	clear: => 
 		@canvas.width = @canvas.width
 		@context.translate @x_origin, @y_origin
+		@.drawGridLines()
 	
 	mousedown: (e) =>
 		@mouse_x_prev = e.x
@@ -134,7 +138,7 @@ class CanvasContext
 		htmlInfo = (index, oldhtml) =>
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
-			#"#{oldhtml}<br><br>#{el_info}"
+			"<a href=\"javascript:window.ctx.changeAllDrawMethods('points');\">Canvas</a><br><br>#{el_info}"
 		$("#ctx-info").html htmlInfo
 	
 	avgCenterOfAllElements: =>
@@ -142,11 +146,10 @@ class CanvasContext
 		total_atoms = 0
 		for el in @elements
 			elAvg = el.avgCenter()
-			avgs[0] += elAvg[0]
-			avgs[1] += elAvg[1]
-			avgs[2] += elAvg[2]
+			ela = el.atoms.length
+			avgs[0] += elAvg[0]*ela
+			avgs[1] += elAvg[1]*ela
+			avgs[2] += elAvg[2]*ela
 			total_atoms += el.atoms.length
 		(a/total_atoms for a in avgs)
-
-
 

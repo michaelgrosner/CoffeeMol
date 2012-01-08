@@ -1,3 +1,4 @@
+# To set up for debugging: 
 # python -m SimpleHTTPServer & coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
 
 if typeof String.prototype.startswith != 'function'
@@ -22,6 +23,8 @@ atom_colors =
 	'O':  [255, 76,  76]
 	'N':  [51,  51, 255]
 	'P':  [255, 128,  0]
+
+supported_draw_methods = ["both", "lines", "points"]
 
 arrayToRGB = (a) -> 
 	if a.length != 3
@@ -61,14 +64,18 @@ pdbAtomToDict = (a_str) ->
 	y: parseFloat a_str.substring 38, 45
 	z: parseFloat a_str.substring 46, 53
 
+randomInt = (maxInt) ->
+	Math.floor(Math.random()*maxInt)
+
 randomRGB = ->
-	rr = -> Math.floor(Math.random()*255)
-	j = [rr(), rr(), rr()]
-	console.log j
-	return j
+	rr = -> randomInt 255
+	[rr(), rr(), rr()]
+
+randomDrawMethod = ->
+	supported_draw_methods[randomInt 3]
 
 defaultInfo = ->
-	drawMethod: "lines"
+	drawMethod: randomDrawMethod()
 	drawColor: randomRGB()
 
 loadPDBAsStructure = (filepath, cc, info = null) ->
@@ -112,6 +119,7 @@ $("#add-new-structure .submit").live 'click', addNewStructure
 
 ctx = new CanvasContext "mainCanvas"
 
+"""
 # the filepath argument can also use a http address (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
 structuresToLoad =
 	"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
@@ -129,10 +137,9 @@ structuresToLoad =
 
 """
 structuresToLoad = 
-	"PDBs/half1_1.pdb":
+	"PDBs/2L9I.pdb":
 		drawMethod: "lines"
 		#drawColor: [47, 254, 254]
-"""
 
 for filepath, info of structuresToLoad
 	loadPDBAsStructure filepath, ctx, info

@@ -9,7 +9,7 @@ class Element
 			@cc = @parent.cc
 
 		@info = {}
-	
+
 	writeContextInfo: =>
 		if @.constructor.name != "Residue"
 			# THIS WILL BREAK IE COMPAT.
@@ -31,6 +31,7 @@ class Element
 	
 	propogateInfo: (info) ->
 		@info = info
+		@info.drawColor = if @info.drawColor? then @info.drawColor else randomRGB()
 		#if not @info.drawColor?
 		#	@info.drawColor = randomRGB()
 		for c in @children
@@ -57,22 +58,33 @@ class Element
 			@.drawPoints()
 
 	drawPaths: => 
+		isBonded = (a1, a2) ->
+			if a1.parent.typeName() != a2.parent.typeName()
+				false
+			else if atomAtomDistance(a1, a2) < 3 and a1.parent.isProtein()
+				true
+			else if atomAtomDistance(a1, a2) < 10 and a1.parent.isDNA()
+				true
+			else
+				false
+
 		x = @cc.context
-		@info.drawColor = if @info.drawColor? then @info.drawColor else randomRGB()
 
 		for i in [2..@atoms.length-1]
-			x.beginPath()
-			a2 = @atoms[i]
-			a1 = @atoms[i-1]
-			if atomAtomDistance(a1, a2) < 10
-				x.moveTo(a1.x, a1.y)
-				x.lineTo(a2.x, a2.y)
-			x.strokeStyle = arrayToRGB (c + a1.z for c in @info.drawColor)
-			#x.lineJoin = "round"
-			#x.lineCap = "round"
-			x.lineWidth = (3*a1.z + 200)/200
-			x.closePath()
-			x.stroke()
+			for j in [i+1..i+5] when j < @atoms.length-1
+				x.beginPath()
+				a2 = @atoms[i]
+				a1 = @atoms[j]
+				if isBonded a1, a2 
+					x.moveTo(a1.x, a1.y)
+					x.lineTo(a2.x, a2.y)
+				x.strokeStyle = arrayToRGB (c + a1.z for c in @info.drawColor)
+				#x.lineJoin = "round"
+				#x.lineCap = "round"
+				lw = (3*a1.z + 200)/200
+				x.lineWidth = if lw > 0 then lw else lw
+				x.closePath()
+				x.stroke()
 
 	drawPoints: =>
 		@atoms.sort sortByZ
@@ -98,4 +110,11 @@ class Element
 			avgs[1] += a.y
 			avgs[2] += a.z
 		(a/@atoms.length for a in avgs)
+	
+	translateTo: (center) =>
+		for a in @atoms
+			a.x -= center[0]
+			a.y -= center[1]
+			a.z -= center[2]
+
 	

@@ -39,4 +39,3 @@ class Atom extends Element
 		
 	asArray: => [@x, @y, @z]
 
-
