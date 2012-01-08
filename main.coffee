@@ -1,3 +1,5 @@
+# python -m SimpleHTTPServer & coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
+
 if typeof String.prototype.startswith != 'function'
 	String.prototype.startswith = (str) ->
 		@.slice(0, str.length) == str
