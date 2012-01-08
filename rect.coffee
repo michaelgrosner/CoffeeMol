@@ -141,15 +141,21 @@ atomAtomDistance = (a1, a2) ->
 		Math.pow(a1.y-a2.y, 2) +
 		Math.pow(a1.z-a2.z, 2)
 	)
-	
-class PDBObject
+
+
+
+class Chain
+	constructor: (@atoms, @chain_id, @cc) ->
+		@cc.addElement @
+
+class Structure 
 	constructor: (@filepath, @cc) ->
 		@atoms = []
 		@get_pdb()
 		@cc.addElement @
 
 	to_string: =>
-		"<PDBObject #{@filepath} with #{@atoms.length} atoms>"
+		"<Structure #{@filepath} with #{@atoms.length} atoms>"
 
 	get_pdb: (async = true) =>
 		$.ajax
@@ -212,14 +218,13 @@ class PDBObject
 		return avgs
 
 ctx = new CanvasContext "mainCanvas"
-#cap = new PDBObject "1CGP.pdb", ctx
-#fis = new PDBObject "3IV5.pdb", ctx
+#cap = new Structure "1CGP.pdb", ctx
+#fis = new Structure "3IV5.pdb", ctx
 
-dna = new PDBObject "PDBs/A1_open_2HU_78bp_1/out-1-16.pdb", ctx
-half1 = new PDBObject "PDBs/A1_open_2HU_78bp_1/half1_0.pdb", ctx
-half2 = new PDBObject "PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb", ctx
-proteins = new PDBObject "PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb", ctx
-
+dna = new Structure "PDBs/A1_open_2HU_78bp_1/out-1-16.pdb", ctx
+half1 = new Structure "PDBs/A1_open_2HU_78bp_1/half1_0.pdb", ctx
+half2 = new Structure "PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb", ctx
+proteins = new Structure "PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb", ctx
 
 #ctx.drawAll()
 
