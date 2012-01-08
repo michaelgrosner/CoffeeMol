@@ -4,5 +4,3 @@ class Chain extends Element
 	
 	toString: ->
 		"<Chain #{@name} with #{@children.length} residues>"
-
-
