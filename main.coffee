@@ -120,7 +120,6 @@ $("#add-new-structure .submit").live 'click', addNewStructure
 
 ctx = new CanvasContext "mainCanvas"
 
-"""
 # the filepath argument can also use a http address (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
 structuresToLoad =
 	"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
@@ -138,10 +137,11 @@ structuresToLoad =
 
 """
 structuresToLoad = 
-	"PDBs/2L9I.pdb":
+	"PDBs/3IV5.pdb":
 		drawMethod: "lines"
 		#drawColor: [47, 254, 254]
 
+"""
 for filepath, info of structuresToLoad
 	loadPDBAsStructure filepath, ctx, info
 

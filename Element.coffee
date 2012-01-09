@@ -3,23 +3,24 @@ class Element
 		@children = []
 		if parent? 
 			@parent.addChild @
+
 		if cc?
 			@cc = cc
 		else
 			@cc = @parent.cc
 
 		@info = {}
-		@selector = ""
+		@selector = null
 	
 	constructorName: =>
 		@.constructor.name
 
 	writeContextInfo: =>
-		if @constructo rName() != "Residue"
+		if @constructorName() != "Residue"
 			# THIS WILL BREAK IE COMPAT.
 			child_type_name = @children[0].constructorName()
 			x = "#{@constructorName()}: #{@name} with #{@children.length}\
-				#{child_type_name}s"
+				#{child_type_name}s | #{@selector.str}"
 			p = (c.writeContextInfo() for c in @children)
 			return "#{x}<br>#{p.join "" }"
 
@@ -59,6 +60,8 @@ class Element
 			@drawPoints()
 
 	drawPaths: => 
+		#@atoms.sort sortByZ
+
 		isBonded = (a1, a2) ->
 			if a1.parent.typeName() != a2.parent.typeName()
 				return false

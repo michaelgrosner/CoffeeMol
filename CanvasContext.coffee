@@ -25,7 +25,28 @@ class CanvasContext
 		@canvas.addEventListener 'dblclick', @translateOrigin
 
 		@restoreToOriginal()
-		
+		@assignSelectors()
+	
+	assignSelectors: =>
+		# Fix this!
+		ne = 0
+		for el in @elements
+			el.selector = new Selector [ne]
+			nc = 0
+			for c in el.children
+				c.selector = new Selector [ne, nc]
+				nr = 0
+				for r in c.children
+					r.selector = new Selector [ne, nc, nr]
+					na = 0
+					for a in r.children
+						a.selector = new Selector [ne, nc, nr, na]
+						na += 1
+					nr += 1
+				nc += 1
+			ne += 1
+
+
 	findBestZoom: =>
 		max_x = 0
 		max_y = 0
@@ -38,14 +59,6 @@ class CanvasContext
 		if max_x > max_y then @canvas.width/(2*max_x) else @canvas.width/(2*max_y)
 	
 	drawGridLines: =>
-		"""
-		for x in [0.5..@canvas.width] by 10
-			@context.moveTo x, 0
-			@context.lineTo x, @canvas.height
-		for y in [0.5..@canvas.height] by 10
-			@context.moveTo 0, y
-			@context.lineTo @canvas.width, y
-		"""
 		@context.moveTo 0, -@canvas.height
 		@context.lineTo 0, @canvas.height
 
@@ -144,14 +157,40 @@ class CanvasContext
 			avgs[2] += elAvg[2]*ela
 			total_atoms += el.atoms.length
 		(a/total_atoms for a in avgs)
+	
+	handleSelectorArg: (s) =>
+		if typeof s == "string"
+			s = new Selector s
+		return s
 
 	childFromSelector: (selector) =>
-		selArray = (parseInt x for x in selector.split "/")
+		#selArray = (parseInt x for x in selector.split "/")
+
+		# If it's a string, make sure to convert it to a selector object
+		selector = @handleSelectorArg selector
 
 		c = @
-		for i in selArray
+		for i in selector.array
 			if c.elements?
 				c = c.elements[i]
 			else
 				c = c.children[i]
 		return c
+	
+	changeInfoFromSelector: (selector, info_key, info_value) =>
+		selector = @handleSelectorArg selector
+
+		try
+			c = @childFromSelector(selector)
+		catch error
+			alert "Child from selector #{selector.str} does not exist"
+
+		c_info = c.info
+		try
+			c_info[info_key] = info_value
+		catch error
+			alert "Error: #{error} with #{info_key} to #{info_value}"
+
+		c.propogateInfo c_info
+		@clear()
+		@drawAll()
