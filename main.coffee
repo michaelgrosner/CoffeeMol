@@ -3,11 +3,11 @@
 
 if typeof String.prototype.startswith != 'function'
 	String.prototype.startswith = (str) ->
-		@.slice(0, str.length) == str
+		@slice(0, str.length) == str
 
 if typeof String.prototype.endswith != 'function'
 	String.prototype.endswith = (str) ->
-		@.slice(-str.length) == str
+		@slice(-str.length) == str
 
 if typeof Array.prototype.dot != 'function'
 	Array.prototype.dot = (v) ->
@@ -49,6 +49,7 @@ atomAtomDistance = (a1, a2) ->
 	)
 
 pdbAtomToDict = (a_str) ->
+	# TODO: `DA` != `A` currently. I'm not sure if `RA` exists.
 	formatResiName = (r) ->
 		r
 		#if r.startswith "D" and r.substr 1, 2 in nuc_acids 
@@ -148,5 +149,6 @@ ctx.init()
 
 ctx.writeContextInfo()
 
+# Attach ctx instance to window to use it in the HTML
 window.ctx = ctx
 window.loadPDBAsStructure = loadPDBAsStructure

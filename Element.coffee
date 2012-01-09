@@ -9,22 +9,21 @@ class Element
 			@cc = @parent.cc
 
 		@info = {}
+	
+	constructorName: =>
+		@.constructor.name
 
 	writeContextInfo: =>
-		if @.constructor.name != "Residue"
+		if @constructorName() != "Residue"
 			# THIS WILL BREAK IE COMPAT.
-			child_type_name = @children[0].constructor.name
-			x = "#{@.constructor.name}: #{@name} with #{@children.length}\
+			child_type_name = @children[0].constructorName()
+			x = "#{@constructorName()}: #{@name} with #{@children.length}\
 				#{child_type_name}s"
 			p = (c.writeContextInfo() for c in @children)
 			return "#{x}<br>#{p.join "" }"
 
 	init: ->
-		@atoms = @.getOfType(Atom)
-
-		# Push back the CanvasContext bounding box
-		#for a in @atoms
-
+		@atoms = @getOfType Atom
 		
 	addChild: (child) ->
 		@children.push child
@@ -32,8 +31,6 @@ class Element
 	propogateInfo: (info) ->
 		@info = info
 		@info.drawColor = if @info.drawColor? then @info.drawColor else randomRGB()
-		#if not @info.drawColor?
-		#	@info.drawColor = randomRGB()
 		for c in @children
 			c.propogateInfo info
 
@@ -49,21 +46,28 @@ class Element
 		return ret
 
 	draw: =>
+		if @info.drawMethod not in supported_draw_methods
+			c = supported_draw_methods.join ", "
+			alert "drawMethod #{@info.drawMethod} not supported! Choose: #{c}"
 		if @info.drawMethod == "lines"
-			@.drawPaths()
+			@drawPaths()
 		else if @info.drawMethod == "points"
-			@.drawPoints()
+			@drawPoints()
 		else if @info.drawMethod == "both"
-			@.drawPaths()
-			@.drawPoints()
+			@drawPaths()
+			@drawPoints()
 
 	drawPaths: => 
 		isBonded = (a1, a2) ->
 			if a1.parent.typeName() != a2.parent.typeName()
-				false
-			else if atomAtomDistance(a1, a2) < 3 and a1.parent.isProtein()
+				return false
+
+			# Precompute distance
+			aad = atomAtomDistance(a1, a2)
+			
+			if aad < 3 and a1.parent.isProtein()
 				true
-			else if atomAtomDistance(a1, a2) < 10 and a1.parent.isDNA()
+			else if aad < 10 and a1.parent.isDNA()
 				true
 			else
 				false

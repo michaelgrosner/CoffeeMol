@@ -22,20 +22,10 @@ class CanvasContext
 			el.init()
 
 		@canvas.addEventListener 'mousewheel', @changeZoom
-		@zoom = @.findBestZoom()
-		@zoom_prev = @zoom
-		center = @.avgCenterOfAllElements()
-	
-		for el in @elements
-			el.translateTo(center)
-		
-		@x_origin = @canvas.width/2
-		@y_origin = @canvas.height/2
-		@.clear()
 		@canvas.addEventListener 'dblclick', @translateOrigin
+
+		@restoreToOriginal()
 		
-		@.drawAll()
-	
 	findBestZoom: =>
 		max_x = 0
 		max_y = 0
@@ -72,18 +62,18 @@ class CanvasContext
 		@context.scale @zoom, @zoom
 		for el in @elements
 			el.draw()
-		#@.drawGridLines()
+		#@drawGridLines()
 	
 	changeAllDrawMethods: (new_method) =>
-		@.clear()
+		@clear()
 		for el in @elements
 			el.info.drawMethod = new_method
-		@.drawAll()
+		@drawAll()
 
 	clear: => 
 		@canvas.width = @canvas.width
 		@context.translate @x_origin, @y_origin
-		@.drawGridLines()
+		@drawGridLines()
 	
 	mousedown: (e) =>
 		@mouse_x_prev = e.x
@@ -96,9 +86,9 @@ class CanvasContext
 			@zoom = @zoom_prev - e.wheelDelta/100
 		else
 			@zoom = @zoom_prev - e
-		@.clear()
+		@clear()
 		if @zoom > 0
-			@.drawAll()
+			@drawAll()
 			@zoom_prev = @zoom
 
 	mouseup: (e) =>
@@ -108,30 +98,32 @@ class CanvasContext
 		dx = @mouse_x_prev - e.x
 		dy = @mouse_y_prev - e.y
 
-		@.clear()
+		@clear()
 		for el in @elements
 			el.rotateAboutX degToRad dy/2
 			el.rotateAboutY degToRad -dx/2
-		@.drawAll()	
+		@drawAll()	
 		
 		@mouse_x_prev = e.x
 		@mouse_y_prev = e.y
 	
 	restoreToOriginal: =>
-		@x_origin = @canvas.width/2
-		@y_origin = @canvas.width/2
-		@.clear()
-		@zoom = 1
-		@zoom_prev = 1
+		@zoom = @findBestZoom()
+		@zoom_prev = @zoom
+		center = @avgCenterOfAllElements()
 		for el in @elements
 			el.restoreToOriginal()
-		@.drawAll()
+			el.translateTo(center)
+		@x_origin = @canvas.width/2
+		@y_origin = @canvas.width/2
+		@clear()
+		@drawAll()
 
 	translateOrigin: (e) =>
 		@x_origin = e.x
 		@y_origin = e.y
-		@.clear()
-		@.drawAll()
+		@clear()
+		@drawAll()
 
 	writeContextInfo: =>
 		# See http://api.jquery.com/html/
