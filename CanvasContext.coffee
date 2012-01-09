@@ -9,6 +9,9 @@ class CanvasContext
 			console.log error
 
 	init: =>
+		@canvas.width = window.innerWidth/1.5
+		$("#ctx-container").css "width", window.innerWidth - @canvas.width - 35
+		@canvas.height = window.innerHeight - 70
 		@background_color = [255, 255, 255]
 	
 		@canvas.addEventListener 'mousedown', @mousedown
@@ -28,7 +31,7 @@ class CanvasContext
 		@assignSelectors()
 	
 	assignSelectors: =>
-		# Fix this!
+		#TODO: Fix this!
 		ne = 0
 		for el in @elements
 			el.selector = new Selector [ne]
@@ -45,6 +48,7 @@ class CanvasContext
 					nr += 1
 				nc += 1
 			ne += 1
+		null
 
 
 	findBestZoom: =>
@@ -75,6 +79,7 @@ class CanvasContext
 		@context.scale @zoom, @zoom
 		for el in @elements
 			el.draw()
+		null
 		#@drawGridLines()
 	
 	changeAllDrawMethods: (new_method) =>
@@ -128,7 +133,7 @@ class CanvasContext
 			el.restoreToOriginal()
 			el.translateTo(center)
 		@x_origin = @canvas.width/2
-		@y_origin = @canvas.width/2
+		@y_origin = @canvas.height/2
 		@clear()
 		@drawAll()
 
@@ -143,7 +148,7 @@ class CanvasContext
 		htmlInfo = (index, oldhtml) =>
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
-			"<a href=\"javascript:window.ctx.changeAllDrawMethods('points');\">Canvas</a><br><br>#{el_info}"
+			#"<a href=\"javascript:window.ctx.changeAllDrawMethods('points');\">Canvas</a><br><br>#{el_info}"
 		$("#ctx-info").html htmlInfo
 	
 	avgCenterOfAllElements: =>
@@ -177,20 +182,31 @@ class CanvasContext
 				c = c.children[i]
 		return c
 	
-	changeInfoFromSelector: (selector, info_key, info_value) =>
-		selector = @handleSelectorArg selector
+	changeInfoFromSelectors: (selectors, info_key, info_value) =>
+		# `selectors` can be a single String which will map to a single Selector
+		# or a single Selector, or an array of those two types.
+		# TODO: This will not change drawMethods for anything other than top level
+		# elements (Structure)
+		if not selectors instanceof Array or typeof selectors == 'string'
+			selectors = [selectors]
 
-		try
-			c = @childFromSelector(selector)
-		catch error
-			alert "Child from selector #{selector.str} does not exist"
+		for selector in selectors
+	
+			selector = @handleSelectorArg selector
+	
+			try
+				c = @childFromSelector(selector)
+			catch error
+				alert "Child from selector #{selector.str} does not exist"
+	
+			c_info = c.info
+			try
+				c_info[info_key] = info_value.toLowerCase()
+			catch error
+				alert "Error: #{error} with #{info_key} to #{info_value}"
+	
+			c.propogateInfo c_info
+			@clear()
+			@drawAll()
 
-		c_info = c.info
-		try
-			c_info[info_key] = info_value
-		catch error
-			alert "Error: #{error} with #{info_key} to #{info_value}"
-
-		c.propogateInfo c_info
-		@clear()
-		@drawAll()
+			null

@@ -18,9 +18,13 @@ class Element
 	writeContextInfo: =>
 		if @constructorName() != "Residue"
 			# THIS WILL BREAK IE COMPAT.
+			
+			link = "javascript:window.ctx.changeInfoFromSelectors('#{@selector.str}', 'drawMethod', 'points');"
+			change_to_points = "<a href=\"#{link}\">Points</a>"
+
 			child_type_name = @children[0].constructorName()
 			x = "#{@constructorName()}: #{@name} with #{@children.length}\
-				#{child_type_name}s | #{@selector.str}"
+				#{child_type_name}s | #{@selector.str} | #{change_to_points}"
 			p = (c.writeContextInfo() for c in @children)
 			return "#{x}<br>#{p.join "" }"
 
@@ -35,6 +39,7 @@ class Element
 		@info.drawColor = if @info.drawColor? then @info.drawColor else randomRGB()
 		for c in @children
 			c.propogateInfo info
+		null
 
 	getOfType: (type) ->
 		ret = []
@@ -93,23 +98,32 @@ class Element
 				x.lineWidth = if lw > 0 then lw else lw
 				x.closePath()
 				x.stroke()
+		null
 
 	drawPoints: =>
 		@atoms.sort sortByZ
 		for a in @atoms
 			a.drawPoint(color = @info.drawColor)
+		null
+
+	applyToAllAtoms: (method, arg = null) =>
+		for a in @atoms
+			a.method arg
 
 	rotateAboutY: (theta) =>
 		for a in @atoms
 			a.rotateAboutY theta
+		null
 	
 	rotateAboutX: (theta) =>
 		for a in @atoms
 			a.rotateAboutX theta
+		null
 	
 	restoreToOriginal: =>
 		for a in @atoms
 			a.restoreToOriginal()
+		null
 	
 	avgCenter: =>
 		avgs = [0.0, 0.0, 0.0]
@@ -124,4 +138,4 @@ class Element
 			a.x -= center[0]
 			a.y -= center[1]
 			a.z -= center[2]
-
+		null

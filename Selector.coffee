@@ -14,6 +14,7 @@ class Selector
 
 		#@validate()
 	
+	#TODO: Implement some sort of string validation
 	#validate: =>
 	#	1
 
