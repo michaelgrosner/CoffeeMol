@@ -9,12 +9,13 @@ class Element
 			@cc = @parent.cc
 
 		@info = {}
+		@selector = ""
 	
 	constructorName: =>
 		@.constructor.name
 
 	writeContextInfo: =>
-		if @constructorName() != "Residue"
+		if @constructo rName() != "Residue"
 			# THIS WILL BREAK IE COMPAT.
 			child_type_name = @children[0].constructorName()
 			x = "#{@constructorName()}: #{@name} with #{@children.length}\
@@ -121,4 +122,3 @@ class Element
 			a.y -= center[1]
 			a.z -= center[2]
 
-	

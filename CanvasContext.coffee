@@ -145,3 +145,13 @@ class CanvasContext
 			total_atoms += el.atoms.length
 		(a/total_atoms for a in avgs)
 
+	childFromSelector: (selector) =>
+		selArray = (parseInt x for x in selector.split "/")
+
+		c = @
+		for i in selArray
+			if c.elements?
+				c = c.elements[i]
+			else
+				c = c.children[i]
+		return c
