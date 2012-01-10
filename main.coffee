@@ -80,10 +80,11 @@ atomAtomDistance = (a1, a2) ->
 pdbAtomToDict = (a_str) ->
 	# TODO: `DA` != `A` currently. I'm not sure if `RA` exists.
 	formatResiName = (r) ->
-		if r.startswith "D" and r.substr 1, 2 in nuc_acids 
-			r.substr 1, 2 
-		else 
-			r
+		r
+		#	if r.startswith "D" and r.substr 1, 2 in nuc_acids 
+		#		r.substr 1, 2 
+		#else 
+		#	r
 	atom_name: $.trim a_str.substring 13, 16 
 	resi_name: formatResiName $.trim a_str.substring 17, 20
 	chain_id:  $.trim a_str.substring 21, 22
@@ -137,6 +138,7 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 		type: "GET"
 		url: filepath
 		success: parse
+	null
 
 addNewStructure = (e) ->
 	filepath = $("#add-new-structure .text").val()
@@ -156,13 +158,12 @@ ctx = new CanvasContext "mainCanvas"
 if $("#debug-env").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
-	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "lines"
 			drawColor: [47, 254, 254]
 		"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
-			drawMethod: "lines"
+			drawMethod: "points"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
 			drawMethod: "lines"
@@ -177,6 +178,7 @@ if $("#debug-env").length > 0
 			drawMethod: "lines"
 			#drawColor: [47, 254, 254]
 
+	"""
 	loadFromDict structuresToLoad
 	
 	ctx.init()

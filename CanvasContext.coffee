@@ -156,7 +156,6 @@ class CanvasContext
 		htmlInfo = (index, oldhtml) =>
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
-			#"<a href=\"javascript:window.ctx.changeAllDrawMethods('points');\">Canvas</a><br><br>#{el_info}"
 		$("#ctx-info").html htmlInfo
 	
 	avgCenterOfAllElements: =>

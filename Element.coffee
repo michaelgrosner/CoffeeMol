@@ -19,7 +19,7 @@ class Element
 
 	writeContextInfo: =>
 		shortenName = (n) ->
-			if n.length > 20 then n.substr 0, 20+"..." else n
+			n#if n.length > 20 then n.substr 0, 20+"..." else n
 
 		genIFSLink  = (selector_str, key, val, pretty) ->
 			link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
@@ -77,10 +77,10 @@ class Element
 		if @info.drawMethod not in supported_draw_methods
 			c = supported_draw_methods.join ", "
 			alert "drawMethod #{@info.drawMethod} not supported! Choose: #{c}"
-		@drawPaths()
+		@drawLines()
 		@drawPoints()
 
-	drawPaths: => 
+	drawLines: => 
 		@bonds.sort sortBondsByZ
 		for b in @bonds when b.a1.drawMethod != 'points'
 			@cc.context.beginPath()
@@ -90,7 +90,7 @@ class Element
 			#@cc.context.lineJoin = "round"
 			@cc.context.lineCap = "round"
 			#lw = (3*b.a1.z + 200)/200
-			@cc.context.lineWidth = 2/@zoom#if lw > 0 then lw else lw
+			@cc.context.lineWidth = 2/@cc.zoom#if lw > 0 then lw else lw
 			@cc.context.closePath()
 			@cc.context.stroke()
 			#b.a2.drawPoint()
@@ -101,10 +101,6 @@ class Element
 		for a in @atoms when a.info.drawMethod != "lines"
 			a.drawPoint()
 		null
-
-	applyToAllAtoms: (method, arg = null) =>
-		for a in @atoms
-			a.method arg
 
 	rotateAboutY: (theta) =>
 		for a in @atoms

@@ -7,8 +7,11 @@ class Atom extends Element
 		"<Atom: #{@name} [#{@x}, #{@y}, #{@z}]>"
 
 	drawPoint: () =>
-		color = if @info.drawColor? and @info.drawMethod == "points" then @info.drawColor else atom_colors[@name]
-		
+		if (@info.drawColor? and @info.drawMethod == "points")
+			color = atom_colors[@name]
+		else
+			color = @info.drawColor
+
 		@cc.context.beginPath()
 		zz  = 3/@cc.zoom#(3*@z+300)/300
 		zz2 = 1.5/@cc.zoom#(3*@z+300)/600
