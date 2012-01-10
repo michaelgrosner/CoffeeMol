@@ -35,6 +35,7 @@ class CanvasContext
 		@canvas.addEventListener 'mousewheel', @changeZoom
 		@canvas.addEventListener 'dblclick', @translateOrigin
 
+		@findBonds()
 		@restoreToOriginal()
 		@assignSelectors()
 	
@@ -88,7 +89,6 @@ class CanvasContext
 		for el in @elements
 			el.draw()
 		null
-		#@drawGridLines()
 	
 	changeAllDrawMethods: (new_method) =>
 		@clear()
@@ -213,9 +213,18 @@ class CanvasContext
 			catch error
 				alert "Error: #{error} with #{info_key} to #{info_value}"
 	
-			c.propogateInfo c_info
-			console.log c.toString()
+			c.propogateInfo c_info, true
 			@clear()
 			@drawAll()
-
 			null
+	
+	findBonds: =>
+		for el in @elements
+			for i in [2..el.atoms.length-1]
+				for j in [i+1..i+5] when j < el.atoms.length-1
+					a1 = el.atoms[i]
+					a2 = el.atoms[j]
+
+					if isBonded a1, a2
+						el.bonds.push new Bond a1, a2
+		null

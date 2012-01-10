@@ -6,12 +6,12 @@ class Atom extends Element
 	toString: =>
 		"<Atom: #{@name} [#{@x}, #{@y}, #{@z}]>"
 
-	drawPoint: (color = null) =>
-		if not color?
-			color = atom_colors[@name] #arrayToRGB [100, 100, 0]
+	drawPoint: () =>
+		color = if @info.drawColor? and @info.drawMethod == "points" then @info.drawColor else atom_colors[@name]
+		
 		@cc.context.beginPath()
-		zz  = (3*@z+300)/300
-		zz2 = (3*@z+300)/600
+		zz  = 3/@cc.zoom#(3*@z+300)/300
+		zz2 = 1.5/@cc.zoom#(3*@z+300)/600
 		if zz < 0
 			zz = 0
 			zz2 = 0
@@ -38,4 +38,10 @@ class Atom extends Element
 		@z = @original_position[2]
 		
 	asArray: => [@x, @y, @z]
+
+sortBondsByZ = (b1, b2) ->
+	b1.a2.z - b2.a2.z
+
+class Bond
+	constructor: (@a1, @a2) ->
 

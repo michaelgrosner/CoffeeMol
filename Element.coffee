@@ -11,6 +11,7 @@ class Element
 
 		@info = {}
 		@selector = null
+		@bonds = []
 	
 	constructorName: =>
 		# THIS WILL BREAK IE COMPAT.
@@ -20,16 +21,24 @@ class Element
 		shortenName = (n) ->
 			if n.length > 20 then n.substr 0, 20+"..." else n
 
+		genIFSLink  = (selector_str, key, val, pretty) ->
+			link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
+						'#{key}', '#{val}');"
+			"<a href=\"#{link}\">#{pretty}</a>"
+
+
 		if @constructorName() != "Residue"
-			link = "javascript:window.ctx.changeInfoFromSelectors('#{@selector.str}', \
-						'drawMethod', 'points');"
-			change_to_points = "<a href=\"#{link}\">Points</a>"
 
 			plural = if @children.length == 1 then '' else 's'
 
+			pointsLink = genIFSLink @selector.str, "drawMethod", "points", "P"
+			linesLink  = genIFSLink @selector.str, "drawMethod", "lines", "L"
+			bothLink   = genIFSLink @selector.str, "drawMethod", "both", "B"
+
 			child_type_name = @children[0].constructorName()
 			x = "#{@constructorName()}: #{shortenName @name} with #{@children.length}\
-				#{child_type_name}#{plural} | #{@selector.str} | #{change_to_points}"
+				#{child_type_name}#{plural} | #{pointsLink} | \
+				#{linesLink} | #{bothLink}"
 			p = (c.writeContextInfo() for c in @children)
 			return "#{x}<br>#{p.join "" }"
 
@@ -39,7 +48,7 @@ class Element
 	addChild: (child) ->
 		@children.push child
 	
-	propogateInfo: (info) ->
+	propogateInfo: (info, debug = false) ->
 		@info = info
 
 		if @info.drawColor?
@@ -49,6 +58,8 @@ class Element
 
 		for c in @children
 			c.propogateInfo info
+			if debug
+				console.log c.toString()
 		null
 
 	getOfType: (type) ->
@@ -66,58 +77,29 @@ class Element
 		if @info.drawMethod not in supported_draw_methods
 			c = supported_draw_methods.join ", "
 			alert "drawMethod #{@info.drawMethod} not supported! Choose: #{c}"
-		if @info.drawMethod == "lines"
-			@drawPaths()
-		else if @info.drawMethod == "points"
-			@drawPoints()
-		else if @info.drawMethod == "both"
-			@drawPaths()
-			@drawPoints()
+		@drawPaths()
+		@drawPoints()
 
 	drawPaths: => 
-		#@atoms.sort sortByZ
-
-		isBonded = (a1, a2) ->
-			if a1.parent.typeName() != a2.parent.typeName()
-				return false
-
-			# Precompute distance
-			aad = atomAtomDistance(a1, a2)
-			
-			if aad < 3 and a1.parent.isProtein()
-				true
-			else if aad < 10 and a1.parent.isDNA()
-				true
-			else
-				false
-
-		x = @cc.context
-
-		for i in [2..@atoms.length-1]
-			for j in [i+1..i+5] when j < @atoms.length-1
-				a2 = @atoms[i]
-				a1 = @atoms[j]
-
-				if a1.info.drawMethod == "points"
-					continue
-
-				if isBonded a1, a2 
-					x.beginPath()
-					x.moveTo(a1.x, a1.y)
-					x.lineTo(a2.x, a2.y)
-					x.strokeStyle = arrayToRGB (c + a1.z for c in @info.drawColor)
-					#x.lineJoin = "round"
-					#x.lineCap = "round"
-					lw = (3*a1.z + 200)/200
-					x.lineWidth = if lw > 0 then lw else lw
-					x.closePath()
-					x.stroke()
+		@bonds.sort sortBondsByZ
+		for b in @bonds when b.a1.drawMethod != 'points'
+			@cc.context.beginPath()
+			@cc.context.moveTo(b.a1.x, b.a1.y)
+			@cc.context.lineTo(b.a2.x, b.a2.y)
+			@cc.context.strokeStyle = arrayToRGB (c + b.a1.z for c in b.a1.info.drawColor)
+			#@cc.context.lineJoin = "round"
+			@cc.context.lineCap = "round"
+			#lw = (3*b.a1.z + 200)/200
+			@cc.context.lineWidth = 2/@zoom#if lw > 0 then lw else lw
+			@cc.context.closePath()
+			@cc.context.stroke()
+			#b.a2.drawPoint()
 		null
 
 	drawPoints: =>
 		@atoms.sort sortByZ
 		for a in @atoms when a.info.drawMethod != "lines"
-			a.drawPoint(color = @info.drawColor)
+			a.drawPoint()
 		null
 
 	applyToAllAtoms: (method, arg = null) =>

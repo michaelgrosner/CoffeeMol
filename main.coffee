@@ -50,6 +50,21 @@ arrayToRGB = (a) ->
 	a = (fixer x for x in a)
 	"rgb(#{a[0]}, #{a[1]}, #{a[2]})"
 
+isBonded = (a1, a2) ->
+	if a1.parent.typeName() != a2.parent.typeName()
+		return false
+
+	# Precompute distance
+	aad = atomAtomDistance(a1, a2)
+	
+	if aad < 3 and a1.parent.isProtein()
+		true
+	else if aad < 10 and a1.parent.isDNA()
+		true
+	else
+		false
+
+
 degToRad = (deg) -> deg*Math.PI/180
 radToDeg = (rad) -> rad*180/Math.PI
 
@@ -65,11 +80,10 @@ atomAtomDistance = (a1, a2) ->
 pdbAtomToDict = (a_str) ->
 	# TODO: `DA` != `A` currently. I'm not sure if `RA` exists.
 	formatResiName = (r) ->
-		r
-		#if r.startswith "D" and r.substr 1, 2 in nuc_acids 
-		#	return r.substr 1, 2 
-		#else 
-		#	return r
+		if r.startswith "D" and r.substr 1, 2 in nuc_acids 
+			r.substr 1, 2 
+		else 
+			r
 	atom_name: $.trim a_str.substring 13, 16 
 	resi_name: formatResiName $.trim a_str.substring 17, 20
 	chain_id:  $.trim a_str.substring 21, 22
