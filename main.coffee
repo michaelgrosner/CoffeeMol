@@ -53,6 +53,11 @@ hexToRGBArray = (h) ->
 	(parseInt t, 16 for t in temp)
 
 arrayToRGB = (a) -> 
+	if not a?
+		a = randomRGB()
+		if DEBUG
+			alert "No color defined for #{a.toString()}. Using a random color"
+	
 	# RGB must be an array of length 3
 	if a.length != 3
 		alert "Array To RGB must be of length 3, it is length #{a.length}: #{a}"

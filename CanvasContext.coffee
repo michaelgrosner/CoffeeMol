@@ -80,6 +80,16 @@ class CanvasContext
 	drawAll: (DEBUG = false) =>
 		@time_start = new Date
 		@context.scale @zoom, @zoom
+
+		# When drawing by lines, sort elements in order of depth of overall Z
+		# This should be smarter, and bonds should be moved to a CanvasContext
+		# so they can sorted that way
+		sortByAvgZ = (e1, e2) ->
+			c1 = e1.avgCenter()
+			c2 = e2.avgCenter()
+			c1[2] - c2[2]
+
+		@elements.sort sortByAvgZ
 		for el in @elements
 			el.draw()
 		fps = 1000/(new Date - @time_start)

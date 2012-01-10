@@ -7,7 +7,7 @@ class Atom extends Element
 		"<Atom: #{@name} [#{@x}, #{@y}, #{@z}]>"
 
 	drawPoint: () =>
-		if (@info.drawColor? and @info.drawMethod == "points")
+		if not @info.drawColor? and @info.drawMethod == "points"
 			color = atom_colors[@name]
 		else
 			color = @info.drawColor
