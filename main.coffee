@@ -11,15 +11,21 @@ if typeof String.prototype.endswith != 'function'
 	String.prototype.endswith = (str) ->
 		@slice(-str.length) == str
 
+if typeof Array.prototype.norm != 'function'
+	Array.prototype.norm = ->
+		Math.sqrt @.dot @
+
+summation = (v) ->
+	r = 0
+	for x in v
+		r += x
+	r
+
 if typeof Array.prototype.dot != 'function'
 	Array.prototype.dot = (v) ->
 		if v.length != @.length
 			alert "Lengths for dot product must be equal"
-		prod = (v[i]*@[i] for i in [0..v.length-1])
-		s = 0
-		for x in prod
-			s += prod
-		s
+		summation (v[i]*@[i] for i in [0..v.length-1])
 
 nuc_acids = ["A",  "C",  "G",   "T",
 			 "DA", "DC", "DG", "DT",
@@ -185,7 +191,7 @@ delay = (ms, f) ->
 	setInterval f, ms
 
 # If we are in the debug environment
-if $("#debug-env").length > 0
+if $("#debug-info").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
 	structuresToLoad =

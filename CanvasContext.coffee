@@ -16,14 +16,13 @@ class CanvasContext
 
 	init: =>
 		# Won't work outside of the debug environment
-		if $("#debug-env").length > 0
+		if $("#debug-info").length > 0
 			@canvas.width = window.innerWidth/1.5
 			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 35
 			@canvas.height = window.innerHeight - 70
 		@background_color = [255, 255, 255]
 	
 		@canvas.addEventListener 'mousedown', @mousedown
-		@canvas.addEventListener 'mouseup', @mouseup
 		@mouse_x_prev = 0
 		@mouse_y_prev = 0
 
@@ -33,11 +32,22 @@ class CanvasContext
 			el.init()
 
 		@canvas.addEventListener 'mousewheel', @changeZoom
-		@canvas.addEventListener 'dblclick', @translateOrigin
+		@canvas.addEventListener 'dblclick',   @translateOrigin
+
+		#@canvas.addEventListener 'click', @rotateToClick
 
 		@findBonds()
 		@restoreToOriginal()
 		@assignSelectors()
+	
+	rotateToClick: (e) =>
+		# Doesn't fully work yet, not enabled
+		click_v  = [e.offsetX, e.offsetY]
+		center_v = [@x_origin, @y_origin]
+		console.log "click and center", click_v, center_v
+		theta = click_v.dot(center_v)/(click_v.norm()*center_v.norm())
+		@context.rotate Math.acos theta
+		@drawAll()
 	
 	assignSelectors: =>
 		#TODO: Fix this!
@@ -78,6 +88,8 @@ class CanvasContext
 		@elements.push el
 
 	drawAll: (DEBUG = false) =>
+		@drawGridLines()
+
 		@time_start = new Date
 		@context.scale @zoom, @zoom
 
@@ -105,13 +117,13 @@ class CanvasContext
 	clear: => 
 		@canvas.width = @canvas.width
 		@context.translate @x_origin, @y_origin
-		@drawGridLines()
 	
 	mousedown: (e) =>
 		@mouse_x_prev = e.x
 		@mouse_y_prev = e.y
 		@canvas.addEventListener 'mousemove', @mousemove
-		@canvas.addEventListener 'mouseout', @mouseup
+		@canvas.addEventListener 'mouseout',  @mouseup
+		@canvas.addEventListener 'mouseup',   @mouseup
 	
 	changeZoom: (e) =>
 		if e instanceof WheelEvent
@@ -132,8 +144,8 @@ class CanvasContext
 
 		@clear()
 		for el in @elements
-			el.rotateAboutX degToRad dy/2
-			el.rotateAboutY degToRad -dx/2
+			el.rotateAboutX degToRad dy
+			el.rotateAboutY degToRad -dx
 		@drawAll()	
 		
 		@mouse_x_prev = e.x

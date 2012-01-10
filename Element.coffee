@@ -84,20 +84,20 @@ class Element
 
 			# This is to give a slight outline to each line
 			@cc.context.beginPath()
-			@cc.context.moveTo(b.a1.x, b.a1.y)
-			@cc.context.lineTo(b.a2.x, b.a2.y)
+			@cc.context.moveTo b.a1.x, b.a1.y
+			@cc.context.lineTo b.a2.x, b.a2.y
 			@cc.context.strokeStyle = arrayToRGB [10,10,10] 
-			@cc.context.lineCap = "round"
+		#	@cc.context.lineCap = "round"
 			@cc.context.lineWidth = .1+2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
 			
 			# The actual bond
 			@cc.context.beginPath()
-			@cc.context.moveTo(b.a1.x, b.a1.y)
-			@cc.context.lineTo(b.a2.x, b.a2.y)
+			@cc.context.moveTo b.a1.x, b.a1.y
+			@cc.context.lineTo b.a2.x, b.a2.y
 			@cc.context.strokeStyle = arrayToRGB (c + b.a1.z for c in b.a1.info.drawColor)
-			@cc.context.lineCap = "round"
+		#	@cc.context.lineCap = "round"
 			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
