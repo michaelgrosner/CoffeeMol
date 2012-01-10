@@ -8,10 +8,18 @@ class CanvasContext
 		catch error
 			console.log error
 
+		noselect =
+			 "user-select": "none"
+			 "-moz-user-select": "none"
+			 "-webkit-user-select": "none"
+		$(@canvas).css noselect
+
 	init: =>
-		@canvas.width = window.innerWidth/1.5
-		$("#ctx-container").css "width", window.innerWidth - @canvas.width - 35
-		@canvas.height = window.innerHeight - 70
+		# Won't work outside of the debug environment
+		if $("#debug-env").length > 0
+			@canvas.width = window.innerWidth/1.5
+			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 35
+			@canvas.height = window.innerHeight - 70
 		@background_color = [255, 255, 255]
 	
 		@canvas.addEventListener 'mousedown', @mousedown
@@ -138,8 +146,8 @@ class CanvasContext
 		@drawAll()
 
 	translateOrigin: (e) =>
-		@x_origin = e.x
-		@y_origin = e.y
+		@x_origin = e.offsetX
+		@y_origin = e.offsetY
 		@clear()
 		@drawAll()
 
@@ -206,6 +214,7 @@ class CanvasContext
 				alert "Error: #{error} with #{info_key} to #{info_value}"
 	
 			c.propogateInfo c_info
+			console.log c.toString()
 			@clear()
 			@drawAll()
 

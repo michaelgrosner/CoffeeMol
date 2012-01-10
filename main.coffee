@@ -1,5 +1,5 @@
 # To set up for debugging: 
-# python -m SimpleHTTPServer & coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
+# python -m SimpleHTTPServer & coffee -wclj CoffeeMol.coffee Selector.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
 
 if typeof String.prototype.startswith != 'function'
 	String.prototype.startswith = (str) ->
@@ -26,9 +26,23 @@ atom_colors =
 
 supported_draw_methods = ["both", "lines", "points"]
 
+hexToRGBArray = (h) ->
+	if h instanceof Array
+		return h
+
+	# Some flavors of hex...
+	if h.startswith "0x"
+		h = h.substring 2
+
+	temp = (h.substring i, i+2 for i in [0..4] by 2)
+	(parseInt t, 16 for t in temp)
+
 arrayToRGB = (a) -> 
+	# RGB must be an array of length 3
 	if a.length != 3
-		alert "Array To RGB must be of length 3"
+		alert "Array To RGB must be of length 3, it is length #{a.length}: #{a}"
+
+	# Make sure our colors are within 0 to 255 and are integers
 	fixer = (c) ->
 		c = if c > 255 then c = 255 else c
 		c = if c < 0   then c = 0   else c
@@ -116,39 +130,45 @@ addNewStructure = (e) ->
 	ctx.init()
 	ctx.writeContextInfo()
 
+loadFromDict = (structuresToLoad) ->
+	for filepath, info of structuresToLoad
+		loadPDBAsStructure filepath, ctx, info
+
 $("#add-new-structure .submit").live 'click', addNewStructure
 
 ctx = new CanvasContext "mainCanvas"
 
-# the filepath argument can also use a http address (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
-structuresToLoad =
-	"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
-		drawMethod: "lines"
-		drawColor: [47, 254, 254]
-	"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
-		drawMethod: "lines"
-		drawColor: [254, 0, 254]
-	"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
-		drawMethod: "lines"
-		drawColor: [254, 0, 254]
-	"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
-		drawMethod: "lines"
-		drawColor: [251, 251, 1]
+# If we are in the debug environment
+if $("#debug-env").length > 0
+	# the filepath argument can also use a http address 
+	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
+	"""
+	structuresToLoad =
+		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
+			drawMethod: "lines"
+			drawColor: [47, 254, 254]
+		"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
+			drawMethod: "lines"
+			drawColor: [254, 0, 254]
+		"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
+			drawMethod: "lines"
+			drawColor: [254, 0, 254]
+		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
+			drawMethod: "lines"
+			drawColor: [251, 251, 1]
+	"""
+	
+	structuresToLoad = 
+		"PDBs/3IV5.pdb":
+			drawMethod: "lines"
+			#drawColor: [47, 254, 254]
 
-"""
-structuresToLoad = 
-	"PDBs/3IV5.pdb":
-		drawMethod: "lines"
-		#drawColor: [47, 254, 254]
-
-"""
-for filepath, info of structuresToLoad
-	loadPDBAsStructure filepath, ctx, info
-
-ctx.init()
-
-ctx.writeContextInfo()
+	loadFromDict structuresToLoad
+	
+	ctx.init()
+	
+	ctx.writeContextInfo()
 
 # Attach ctx instance to window to use it in the HTML
 window.ctx = ctx
-window.loadPDBAsStructure = loadPDBAsStructure
+window.loadFromDict = loadFromDict

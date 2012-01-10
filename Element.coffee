@@ -13,18 +13,23 @@ class Element
 		@selector = null
 	
 	constructorName: =>
+		# THIS WILL BREAK IE COMPAT.
 		@.constructor.name
 
 	writeContextInfo: =>
+		shortenName = (n) ->
+			if n.length > 20 then n.substr 0, 20+"..." else n
+
 		if @constructorName() != "Residue"
-			# THIS WILL BREAK IE COMPAT.
-			
-			link = "javascript:window.ctx.changeInfoFromSelectors('#{@selector.str}', 'drawMethod', 'points');"
+			link = "javascript:window.ctx.changeInfoFromSelectors('#{@selector.str}', \
+						'drawMethod', 'points');"
 			change_to_points = "<a href=\"#{link}\">Points</a>"
 
+			plural = if @children.length == 1 then '' else 's'
+
 			child_type_name = @children[0].constructorName()
-			x = "#{@constructorName()}: #{@name} with #{@children.length}\
-				#{child_type_name}s | #{@selector.str} | #{change_to_points}"
+			x = "#{@constructorName()}: #{shortenName @name} with #{@children.length}\
+				#{child_type_name}#{plural} | #{@selector.str} | #{change_to_points}"
 			p = (c.writeContextInfo() for c in @children)
 			return "#{x}<br>#{p.join "" }"
 
@@ -36,7 +41,12 @@ class Element
 	
 	propogateInfo: (info) ->
 		@info = info
-		@info.drawColor = if @info.drawColor? then @info.drawColor else randomRGB()
+
+		if @info.drawColor?
+			@info.drawColor = hexToRGBArray @info.drawColor 
+		else
+			@info.drawColor = randomRGB()
+
 		for c in @children
 			c.propogateInfo info
 		null
@@ -85,24 +95,28 @@ class Element
 
 		for i in [2..@atoms.length-1]
 			for j in [i+1..i+5] when j < @atoms.length-1
-				x.beginPath()
 				a2 = @atoms[i]
 				a1 = @atoms[j]
+
+				if a1.info.drawMethod == "points"
+					continue
+
 				if isBonded a1, a2 
+					x.beginPath()
 					x.moveTo(a1.x, a1.y)
 					x.lineTo(a2.x, a2.y)
-				x.strokeStyle = arrayToRGB (c + a1.z for c in @info.drawColor)
-				#x.lineJoin = "round"
-				#x.lineCap = "round"
-				lw = (3*a1.z + 200)/200
-				x.lineWidth = if lw > 0 then lw else lw
-				x.closePath()
-				x.stroke()
+					x.strokeStyle = arrayToRGB (c + a1.z for c in @info.drawColor)
+					#x.lineJoin = "round"
+					#x.lineCap = "round"
+					lw = (3*a1.z + 200)/200
+					x.lineWidth = if lw > 0 then lw else lw
+					x.closePath()
+					x.stroke()
 		null
 
 	drawPoints: =>
 		@atoms.sort sortByZ
-		for a in @atoms
+		for a in @atoms when a.info.drawMethod != "lines"
 			a.drawPoint(color = @info.drawColor)
 		null
 

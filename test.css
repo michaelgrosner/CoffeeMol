@@ -1,5 +1,5 @@
 body {font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px;}
-#mainCanvas {border: 1px solid black; float: left; user-select: none; -moz-user-select: none; -webkit-user-select: none;}
+#mainCanvas {border: 1px solid black; float: left;}
 #reset {position: absolute; bottom: 10px;}
 #title {font-size: 24px; font-family: "Georgia", serif; font-weight: 100; color: #14756E}
 #ctx-container {float: left; margin-left: 10px; width: 400px; font-size: 10px; overflow-x: scroll}
