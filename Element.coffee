@@ -105,27 +105,23 @@ class Element
 
 	drawPoints: =>
 		@atoms.sort sortByZ
-		for a in @atoms when a.info.drawMethod != "lines"
-			a.drawPoint()
+		a.drawPoint() for a in @atoms when a.info.drawMethod != "lines"
 		null
 
 	rotateAboutY: (theta) =>
-		cos = Math.cos(theta)
-		sin = Math.sin(theta)
-		for a in @atoms
-			a.rotateAboutY sin, cos
+		cos = Math.cos theta
+		sin = Math.sin theta
+		a.rotateAboutY sin, cos for a in @atoms
 		null
 	
 	rotateAboutX: (theta) =>
-		cos = Math.cos(theta)
-		sin = Math.sin(theta)
-		for a in @atoms
-			a.rotateAboutX sin, cos
+		cos = Math.cos theta
+		sin = Math.sin theta
+		a.rotateAboutX sin, cos for a in @atoms
 		null
 	
 	restoreToOriginal: =>
-		for a in @atoms
-			a.restoreToOriginal()
+		a.restoreToOriginal() for a in @atoms
 		null
 	
 	avgCenter: =>

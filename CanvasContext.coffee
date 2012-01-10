@@ -221,5 +221,6 @@ class CanvasContext
 					a2 = el.atoms[j]
 
 					if isBonded a1, a2
-						el.bonds.push new Bond a1, a2
+						b = new Bond a1, a2
+						el.bonds.push b
 		null
