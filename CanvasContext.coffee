@@ -41,22 +41,15 @@ class CanvasContext
 	
 	assignSelectors: =>
 		#TODO: Fix this!
-		ne = 0
-		for el in @elements
+		# Also, remember the order of for ... in arguments is reversed comapred to Python!
+		for el, ne in @elements
 			el.selector = new Selector [ne]
-			nc = 0
-			for c in el.children
+			for c, nc in el.children
 				c.selector = new Selector [ne, nc]
-				nr = 0
-				for r in c.children
+				for r, nr in c.children
 					r.selector = new Selector [ne, nc, nr]
-					na = 0
-					for a in r.children
+					for a, na in r.children
 						a.selector = new Selector [ne, nc, nr, na]
-						na += 1
-					nr += 1
-				nc += 1
-			ne += 1
 		null
 
 
@@ -84,10 +77,13 @@ class CanvasContext
 	addElement: (el) ->
 		@elements.push el
 
-	drawAll: () => 
+	drawAll: (DEBUG = false) =>
+		@time_start = new Date
 		@context.scale @zoom, @zoom
 		for el in @elements
 			el.draw()
+		fps = 1000/(new Date - @time_start)
+		$("#debug-info").html("FPS: #{fps.toFixed 2}")
 		null
 	
 	changeAllDrawMethods: (new_method) =>

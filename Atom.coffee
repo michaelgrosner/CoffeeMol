@@ -27,13 +27,13 @@ class Atom extends Element
 		@cc.context.fillStyle = grad #arrayToRGB color
 		@cc.context.fill()
 
-	rotateAboutY: (theta) =>
-		@x = @x*Math.cos(theta)  + @z*Math.sin(theta)
-		@z = -@x*Math.sin(theta) + @z*Math.cos(theta)
+	rotateAboutY: (sin, cos) =>
+		@x = @x*cos  + @z*sin
+		@z = -@x*sin + @z*cos
 	
-	rotateAboutX: (theta) =>
-		@y = @y*Math.cos(theta) - @z*Math.sin(theta)
-		@z = @y*Math.sin(theta) + @z*Math.cos(theta)
+	rotateAboutX: (sin, cos) =>
+		@y = @y*cos - @z*sin
+		@z = @y*sin + @z*cos
 	
 	restoreToOriginal: =>
 		@x = @original_position[0]

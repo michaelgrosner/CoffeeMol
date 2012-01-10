@@ -47,7 +47,9 @@ class Element
 		@children.push child
 	
 	propogateInfo: (info) ->
-		@info = info
+
+		# Object deep-copy. See http://stackoverflow.com/a/122704/178073
+		@info = $.extend(true, {}, info)
 
 		if @info.drawColor?
 			@info.drawColor = hexToRGBArray @info.drawColor 
@@ -79,21 +81,24 @@ class Element
 	drawLines: => 
 		@bonds.sort sortBondsByZ
 		for b in @bonds when b.a1.drawMethod != 'points'
+
+			# This is to give a slight outline to each line
 			@cc.context.beginPath()
 			@cc.context.moveTo(b.a1.x, b.a1.y)
 			@cc.context.lineTo(b.a2.x, b.a2.y)
 			@cc.context.strokeStyle = arrayToRGB [10,10,10] 
 			@cc.context.lineCap = "round"
-			@cc.context.lineWidth = .1+2/@cc.zoom#if lw > 0 then lw else lw
+			@cc.context.lineWidth = .1+2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
 			
+			# The actual bond
 			@cc.context.beginPath()
 			@cc.context.moveTo(b.a1.x, b.a1.y)
 			@cc.context.lineTo(b.a2.x, b.a2.y)
-			@cc.context.strokeStyle = arrayToRGB b.a1.info.drawColor #(c + b.a1.z for c in b.a1.info.drawColor)
+			@cc.context.strokeStyle = arrayToRGB (c + b.a1.z for c in b.a1.info.drawColor)
 			@cc.context.lineCap = "round"
-			@cc.context.lineWidth = 2/@cc.zoom#if lw > 0 then lw else lw
+			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
 		null
@@ -105,13 +110,17 @@ class Element
 		null
 
 	rotateAboutY: (theta) =>
+		cos = Math.cos(theta)
+		sin = Math.sin(theta)
 		for a in @atoms
-			a.rotateAboutY theta
+			a.rotateAboutY sin, cos
 		null
 	
 	rotateAboutX: (theta) =>
+		cos = Math.cos(theta)
+		sin = Math.sin(theta)
 		for a in @atoms
-			a.rotateAboutX theta
+			a.rotateAboutX sin, cos
 		null
 	
 	restoreToOriginal: =>

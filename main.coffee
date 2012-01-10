@@ -1,6 +1,8 @@
 # To set up for debugging: 
 # python -m SimpleHTTPServer & coffee -wclj CoffeeMol.coffee Selector.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
 
+DEBUG = true
+
 if typeof String.prototype.startswith != 'function'
 	String.prototype.startswith = (str) ->
 		@slice(0, str.length) == str
@@ -13,7 +15,11 @@ if typeof Array.prototype.dot != 'function'
 	Array.prototype.dot = (v) ->
 		if v.length != @.length
 			alert "Lengths for dot product must be equal"
-		(v[i]*@[i] for i in [0..v.length-1])
+		prod = (v[i]*@[i] for i in [0..v.length-1])
+		s = 0
+		for x in prod
+			s += prod
+		s
 
 nuc_acids = ["A",  "C",  "G",   "T",
 			 "DA", "DC", "DG", "DT",
@@ -25,6 +31,13 @@ atom_colors =
 	'O':  [255, 76,  76]
 	'N':  [51,  51, 255]
 	'P':  [255, 128,  0]
+
+# See http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
+#average_bond_lengths =
+#	["C", "C"]: 1.54
+#	["N", "N"]: 1.45
+#	["O", "O"]: 1.21
+#	["C", "N"]: 1.47
 
 supported_draw_methods = ["both", "lines", "points"]
 
@@ -58,13 +71,16 @@ isBonded = (a1, a2) ->
 
 	# Precompute distance
 	aad = atomAtomDistance(a1, a2)
+
+	if aad < 2.5
+		true
 	
-	if aad < 3 and a1.parent.isProtein()
-		true
-	else if aad < 10 and a1.parent.isDNA()
-		true
-	else
-		false
+	#if aad < 3 and a1.parent.isProtein()
+	#	true
+	#else if aad < 3 and a1.parent.isDNA()
+	#	true
+	#else
+	#	false
 
 
 degToRad = (deg) -> deg*Math.PI/180
@@ -80,12 +96,18 @@ atomAtomDistance = (a1, a2) ->
 	)
 
 pdbAtomToDict = (a_str) ->
-	# TODO: `DA` != `A` currently. I'm not sure if `RA` exists.
-	atom_name: $.trim a_str.substring 13, 16 
-	resi_name: $.trim a_str.substring 17, 20
-	chain_id:  $.trim a_str.substring 21, 22
-	resi_id: parseInt a_str.substring 23, 26
+	# Sometimes PDBs use `DA` instead of `A` for nucleotides
+	handleResiName = (r) ->
+		if r in nuc_acids[4..nuc_acids.length] then r.substr(1, 2) else r
 	
+	# We only need the elemental symbol
+	handleAtomName = (a) ->
+		a.substr 0, 1
+
+	atom_name: handleAtomName $.trim a_str.substring 13, 16 
+	resi_name: handleResiName $.trim a_str.substring 17, 20
+	chain_id:  $.trim a_str.substring 21, 22
+	resi_id:   parseInt a_str.substring 23, 26
 	x: parseFloat a_str.substring 31, 38
 	y: parseFloat a_str.substring 38, 45
 	z: parseFloat a_str.substring 46, 53
@@ -98,13 +120,20 @@ randomRGB = ->
 	[rr(), rr(), rr()]
 
 randomDrawMethod = ->
-	supported_draw_methods[randomInt 3]
+	supported_draw_methods[randomInt supported_draw_methods.length]
 
 defaultInfo = ->
 	drawMethod: randomDrawMethod()
 	drawColor: randomRGB()
 
 loadPDBAsStructure = (filepath, cc, info = null) ->
+	parse_DEBUG = (data) ->
+		x = filepath
+		for a_str in data.split '\n' when a_str.startswith "ATOM"
+			d = pdbAtomToDict a_str
+			x += ", " + d.chain_id
+		console.log x
+
 	parse = (data) ->
 		s = new Structure null, filepath, cc
 		
@@ -116,9 +145,9 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 			if not resi_id_prev? or d.resi_id != resi_id_prev
 				r = new Residue c, d.resi_name, d.resi_id
 
-			if (d.atom_name == "P" and r.isDNA()) \
-					or (d.atom_name in ["N", "O", "CA"] and r.isProtein())
-				a = new Atom r, d.atom_name, d.x, d.y, d.z
+			#if (d.atom_name == "P" and r.isDNA()) \
+			#		or (d.atom_name in ["N", "O", "CA"] and r.isProtein())
+			a = new Atom r, d.atom_name, d.x, d.y, d.z
 			
 			chain_id_prev = d.chain_id
 			resi_id_prev = d.resi_id
@@ -147,11 +176,13 @@ $("#add-new-structure .submit").live 'click', addNewStructure
 
 ctx = new CanvasContext "mainCanvas"
 
+delay = (ms, f) -> 
+	setInterval f, ms
+
 # If we are in the debug environment
 if $("#debug-env").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
-	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "lines"
@@ -166,11 +197,11 @@ if $("#debug-env").length > 0
 			drawMethod: "lines"
 			drawColor: [251, 251, 1]
 	"""
-	
-	structuresToLoad = 
-		"PDBs/3IV5.pdb":
+	structuresToLoad =
+		"PDBs/2L9I.pdb":
 			drawMethod: "lines"
-			#drawColor: [47, 254, 254]
+			drawColor: [47, 254, 254]
+	"""
 
 	loadFromDict structuresToLoad
 	
