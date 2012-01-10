@@ -212,7 +212,7 @@ class CanvasContext
 			catch error
 				alert "Error: #{error} with #{info_key} to #{info_value}"
 	
-			c.propogateInfo c_info, true
+			c.propogateInfo c_info
 			@clear()
 			@drawAll()
 			null

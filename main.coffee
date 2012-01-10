@@ -15,7 +15,9 @@ if typeof Array.prototype.dot != 'function'
 			alert "Lengths for dot product must be equal"
 		(v[i]*@[i] for i in [0..v.length-1])
 
-nuc_acids = ["A", "C", "G", "T"]
+nuc_acids = ["A",  "C",  "G",   "T",
+			 "DA", "DC", "DG", "DT",
+			 "RA", "RC", "RG", "RT"]
 
 # Using http://www.pymolwiki.org/index.php/Color_Values
 atom_colors =
@@ -79,14 +81,8 @@ atomAtomDistance = (a1, a2) ->
 
 pdbAtomToDict = (a_str) ->
 	# TODO: `DA` != `A` currently. I'm not sure if `RA` exists.
-	formatResiName = (r) ->
-		r
-		#	if r.startswith "D" and r.substr 1, 2 in nuc_acids 
-		#		r.substr 1, 2 
-		#else 
-		#	r
 	atom_name: $.trim a_str.substring 13, 16 
-	resi_name: formatResiName $.trim a_str.substring 17, 20
+	resi_name: $.trim a_str.substring 17, 20
 	chain_id:  $.trim a_str.substring 21, 22
 	resi_id: parseInt a_str.substring 23, 26
 	
@@ -112,19 +108,16 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 	parse = (data) ->
 		s = new Structure null, filepath, cc
 		
-		parsedPDB = (pdbAtomToDict a_str for a_str in data.split '\n' \
-							when a_str.startswith "ATOM")
-
-		for d in parsedPDB
+		for a_str in data.split '\n' when a_str.startswith "ATOM"
+			d = pdbAtomToDict a_str
 			if not chain_id_prev? or d.chain_id != chain_id_prev
 				c = new Chain s, d.chain_id
 
 			if not resi_id_prev? or d.resi_id != resi_id_prev
 				r = new Residue c, d.resi_name, d.resi_id
 
-			if (d.atom_name == "P" and d.resi_name in nuc_acids) \
-					or (d.atom_name in ["N", "O", "CA"] and \
-						d.resi_name not in nuc_acids)
+			if (d.atom_name == "P" and r.isDNA()) \
+					or (d.atom_name in ["N", "O", "CA"] and r.isProtein())
 				a = new Atom r, d.atom_name, d.x, d.y, d.z
 			
 			chain_id_prev = d.chain_id
@@ -158,12 +151,13 @@ ctx = new CanvasContext "mainCanvas"
 if $("#debug-env").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
+	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "lines"
 			drawColor: [47, 254, 254]
 		"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
-			drawMethod: "points"
+			drawMethod: "lines"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
 			drawMethod: "lines"
@@ -178,7 +172,6 @@ if $("#debug-env").length > 0
 			drawMethod: "lines"
 			#drawColor: [47, 254, 254]
 
-	"""
 	loadFromDict structuresToLoad
 	
 	ctx.init()

@@ -1,13 +1,11 @@
 class Element
 	constructor: (@parent, @name, cc = null) ->
 		@children = []
+
 		if parent? 
 			@parent.addChild @
 
-		if cc?
-			@cc = cc
-		else
-			@cc = @parent.cc
+		@cc = if cc? then cc else @parent.cc
 
 		@info = {}
 		@selector = null
@@ -19,7 +17,7 @@ class Element
 
 	writeContextInfo: =>
 		shortenName = (n) ->
-			n#if n.length > 20 then n.substr 0, 20+"..." else n
+			if n.length > 20 then n.substr(0,17)+"..." else n
 
 		genIFSLink  = (selector_str, key, val, pretty) ->
 			link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
@@ -48,7 +46,7 @@ class Element
 	addChild: (child) ->
 		@children.push child
 	
-	propogateInfo: (info, debug = false) ->
+	propogateInfo: (info) ->
 		@info = info
 
 		if @info.drawColor?
@@ -58,8 +56,6 @@ class Element
 
 		for c in @children
 			c.propogateInfo info
-			if debug
-				console.log c.toString()
 		null
 
 	getOfType: (type) ->
@@ -86,14 +82,20 @@ class Element
 			@cc.context.beginPath()
 			@cc.context.moveTo(b.a1.x, b.a1.y)
 			@cc.context.lineTo(b.a2.x, b.a2.y)
-			@cc.context.strokeStyle = arrayToRGB (c + b.a1.z for c in b.a1.info.drawColor)
-			#@cc.context.lineJoin = "round"
+			@cc.context.strokeStyle = arrayToRGB [10,10,10] 
 			@cc.context.lineCap = "round"
-			#lw = (3*b.a1.z + 200)/200
+			@cc.context.lineWidth = .1+2/@cc.zoom#if lw > 0 then lw else lw
+			@cc.context.closePath()
+			@cc.context.stroke()
+			
+			@cc.context.beginPath()
+			@cc.context.moveTo(b.a1.x, b.a1.y)
+			@cc.context.lineTo(b.a2.x, b.a2.y)
+			@cc.context.strokeStyle = arrayToRGB b.a1.info.drawColor #(c + b.a1.z for c in b.a1.info.drawColor)
+			@cc.context.lineCap = "round"
 			@cc.context.lineWidth = 2/@cc.zoom#if lw > 0 then lw else lw
 			@cc.context.closePath()
 			@cc.context.stroke()
-			#b.a2.drawPoint()
 		null
 
 	drawPoints: =>
