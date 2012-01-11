@@ -80,7 +80,7 @@ class Element
 
 	drawLines: => 
 		@bonds.sort sortBondsByZ
-		for b in @bonds when b.a1.drawMethod != 'points'
+		for b in @bonds when b.a1.info.drawMethod != 'points'
 
 			# This is to give a slight outline to each line
 			@cc.context.beginPath()
@@ -96,7 +96,12 @@ class Element
 			@cc.context.beginPath()
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y
-			@cc.context.strokeStyle = arrayToRGB (c + b.a1.z for c in b.a1.info.drawColor)
+			if b.a1.info.drawMethod == 'lines'
+				color = (c + b.a1.z for c in b.a1.info.drawColor)
+				@cc.context.strokeStyle = arrayToRGB color
+			else
+				color = (140 + b.a1.z for c in b.a1.info.drawColor)
+				@cc.context.strokeStyle = arrayToRGB color
 		#	@cc.context.lineCap = "round"
 			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()

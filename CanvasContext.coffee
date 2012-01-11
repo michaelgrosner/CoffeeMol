@@ -90,7 +90,6 @@ class CanvasContext
 	drawAll: (DEBUG = false) =>
 		@drawGridLines()
 
-		@time_start = new Date
 		@context.scale @zoom, @zoom
 
 		# When drawing by lines, sort elements in order of depth of overall Z
@@ -104,8 +103,6 @@ class CanvasContext
 		@elements.sort sortByAvgZ
 		for el in @elements
 			el.draw()
-		fps = 1000/(new Date - @time_start)
-		$("#debug-info").html("FPS: #{fps.toFixed 2}")
 		null
 	
 	changeAllDrawMethods: (new_method) =>
@@ -139,17 +136,39 @@ class CanvasContext
 		@canvas.removeEventListener 'mousemove', @mousemove
 	
 	mousemove: (e) =>
-		dx = @mouse_x_prev - e.x
-		dy = @mouse_y_prev - e.y
+		# TODO: Large mouse movements will squish and distort the molecule (perhaps
+		# JS can't keep up with large motions? Numerical error? Coding error???)
+		# Limit to some tolerance level `tol`. I assume it's probably highly dependent
+		# on CPU/Browser/GPU(?) etc.
+		tol = 2
+		boundMouseMotion = (dz) ->
+			if dz > tol
+				tol
+			else if dz < -1*tol
+				-1*tol
+			else
+				dz
+		
+		dx = boundMouseMotion @mouse_x_prev - e.x
+		dy = boundMouseMotion @mouse_y_prev - e.y
+		ds = Math.sqrt(dx*dx + dy*dy)
+
+		@time_start = new Date
 
 		@clear()
 		for el in @elements
 			el.rotateAboutX degToRad dy
 			el.rotateAboutY degToRad -dx
-		@drawAll()	
+		@drawAll()
+
+		fps = 1000/(new Date - @time_start)
+		$("#debug-info").html("FPS: #{fps.toFixed 2}, ds: #{ds.toFixed 2},\
+				dx: #{dx.toFixed 2}, dy: #{dy.toFixed 2}")
 		
 		@mouse_x_prev = e.x
 		@mouse_y_prev = e.y
+
+		console.log @elements[0].bonds[@elements[0].bonds.length-1].toString()
 	
 	restoreToOriginal: =>
 		@zoom = @findBestZoom()
@@ -246,3 +265,4 @@ class CanvasContext
 						b = new Bond a1, a2
 						el.bonds.push b
 		null
+

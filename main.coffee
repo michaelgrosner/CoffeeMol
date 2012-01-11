@@ -33,10 +33,12 @@ nuc_acids = ["A",  "C",  "G",   "T",
 
 # Using http://www.pymolwiki.org/index.php/Color_Values
 atom_colors =
-	'CA': [51,  255, 51]
-	'O':  [255, 76,  76]
-	'N':  [51,  51, 255]
-	'P':  [255, 128,  0]
+	'C': [51,  255,  51]
+	'O': [255, 76,   76]
+	'N': [51,  51,  255]
+	'P': [255, 128,   0]
+	'H': [229, 229, 229]
+	'S': [229, 198,  64]
 
 # See http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
 #average_bond_lengths =
@@ -83,7 +85,7 @@ isBonded = (a1, a2) ->
 	# Precompute distance
 	aad = atomAtomDistance(a1, a2)
 
-	if aad < 2.5
+	if aad < 2
 		true
 	
 	#if aad < 3 and a1.parent.isProtein()
@@ -159,6 +161,14 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 			#if (d.atom_name == "P" and r.isDNA()) \
 			#		or (d.atom_name in ["N", "O", "CA"] and r.isProtein())
 			a = new Atom r, d.atom_name, d.x, d.y, d.z
+
+			f = false
+			for k, v of atom_colors
+				if a.name == k
+					f = true
+					break
+			if not f
+				console.log a.name
 			
 			chain_id_prev = d.chain_id
 			resi_id_prev = d.resi_id
@@ -194,6 +204,7 @@ delay = (ms, f) ->
 if $("#debug-info").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
+	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "lines"
@@ -209,10 +220,9 @@ if $("#debug-info").length > 0
 			drawColor: [251, 251, 1]
 	"""
 	structuresToLoad =
-		"PDBs/2L9I.pdb":
-			drawMethod: "lines"
-			drawColor: [47, 254, 254]
-	"""
+		"http://www.rcsb.org/pdb/files/1MBO.pdb":
+			drawMethod: "both"
+			#drawColor: [47, 254, 254]
 
 	loadFromDict structuresToLoad
 	

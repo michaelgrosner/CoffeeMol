@@ -4,7 +4,7 @@ class Atom extends Element
 		@original_position = [@x, @y, @z]
 
 	toString: =>
-		"<Atom: #{@name} [#{@x}, #{@y}, #{@z}]>"
+		"<Atom: #{@name} [#{@x.toFixed 2}, #{@y.toFixed 2}, #{@z.toFixed 2}]>"
 
 	drawPoint: () =>
 		if not @info.drawColor? and @info.drawMethod == "points"
@@ -47,4 +47,10 @@ sortBondsByZ = (b1, b2) ->
 
 class Bond
 	constructor: (@a1, @a2) ->
+		@computeLength()
 
+	toString: =>
+		"<Bond of Length: #{@computeLength().toFixed 3} between #{@a1.toString()} and #{@a2.toString()}>"
+
+	computeLength: =>
+		@length = atomAtomDistance @a1, @a2
