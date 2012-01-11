@@ -202,6 +202,7 @@ delay = (ms, f) ->
 
 # If we are in the debug environment
 if $("#debug-info").length > 0
+	console.log "ok, ok"
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
 	"""
