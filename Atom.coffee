@@ -38,11 +38,11 @@ class Atom extends Element
 
 	atomInfo: (index, oldhtml) =>
 		s = @selector
+		parents = [@]
 		for i in [1..10]
 			s = s.up()
-			if not s?
-				break
-		encodeHTML @toString()
+			if not s? then break else parents.push @cc.childFromSelector s
+		(encodeHTML p.toString() for p in parents).join "<br>"
 
 sortBondsByZ = (b1, b2) ->
 	b1.a2.z - b2.a2.z
