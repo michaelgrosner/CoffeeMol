@@ -21,4 +21,7 @@ c.init();
 
 ### Compilation:
 
-coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
+```bash
+coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee \
+        Chain.coffee Residue.coffee Atom.coffee main.coffee
+```
