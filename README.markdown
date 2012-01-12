@@ -1,7 +1,7 @@
 CoffeeMol
 =========
 
-An embeddable CoffeeScript Molecular Visualizer for HTML5 Browsers.
+An embeddable JavaScript Molecular Visualizer for HTML5 Browsers written in CoffeeScript and jQuery.
 
 ### To embed into an existing webpage
 * Compile
