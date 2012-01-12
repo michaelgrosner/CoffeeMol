@@ -5,7 +5,12 @@ An embeddable CoffeeScript Molecular Visualizer for HTML5 Browsers.
 
 ### To embed into webpage
 1. Compile (instructions below *but do not include main.coffee*)
-3. Create a `<canvas>` element reachable by a class or ID
+3. Create a `<canvas>` element reachable by a class or ID, for example,
+
+```html
+<canvas height="300" width="300" id="mainCanvas">Canvas Load Failed</canvas>
+```
+
 2. Include the following JavaScript:
 
 ```js
