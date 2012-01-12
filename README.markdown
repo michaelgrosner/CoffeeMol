@@ -7,14 +7,14 @@ An embeddable CoffeeScript Molecular Visualizer for HTML5 Browsers.
 * Compile
 
 ```bash
-coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee \
+$ coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee \
         Chain.coffee Residue.coffee Atom.coffee
 ```
 
-* Create a `<canvas>` element reachable by a class or ID, for example,
+* Create a `<canvas>` element with id `coffeemolCanvas`,
 
 ```html
-<canvas height="300" width="300" id="mainCanvas">Canvas Load Failed</canvas>
+<canvas height="300" width="300" id="coffeemolCanvas">Canvas Load Failed</canvas>
 ```
 
 * Include the following JavaScript:

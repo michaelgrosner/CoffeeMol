@@ -213,7 +213,7 @@ loadFromDict = (structuresToLoad) ->
 
 $("#add-new-structure .submit").live 'click', addNewStructure
 
-ctx = new CanvasContext "#mainCanvas"
+ctx = new CanvasContext "#coffeemolCanvas"
 
 delay = (ms, f) -> 
 	setInterval f, ms
