@@ -222,7 +222,6 @@ delay = (ms, f) ->
 if $("#debug-info").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
-	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "points"
@@ -241,6 +240,7 @@ if $("#debug-info").length > 0
 		"http://www.rcsb.org/pdb/files/1MBO.pdb":
 			drawMethod: "both"
 			#drawColor: [47, 254, 254]
+	"""
 
 	loadFromDict structuresToLoad
 	
