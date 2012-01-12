@@ -4,14 +4,20 @@ CoffeeMol
 An embeddable CoffeeScript Molecular Visualizer for HTML5 Browsers.
 
 ### To embed into an existing webpage
-1. Compile (instructions below *but do not include main.coffee*)
-2. Create a `<canvas>` element reachable by a class or ID, for example,
+* Compile
+
+```bash
+coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee \
+        Chain.coffee Residue.coffee Atom.coffee
+```
+
+* Create a `<canvas>` element reachable by a class or ID, for example,
 
 ```html
 <canvas height="300" width="300" id="mainCanvas">Canvas Load Failed</canvas>
 ```
 
-3. Include the following JavaScript:
+* Include the following JavaScript:
 
 ```js
 // Change this dictionary to suit your PDB needs
@@ -32,11 +38,4 @@ window.loadFromDict(structures);
 
 // Once everything is loaded, run it
 c.init();
-```
-
-### Compilation:
-
-```bash
-coffee -wclj CoffeeMol.coffee CanvasContext.coffee Element.coffee Structure.coffee \
-        Chain.coffee Residue.coffee Atom.coffee main.coffee
 ```
