@@ -8,9 +8,9 @@ An embeddable CoffeeScript Molecular Visualizer for HTML5 Browsers.
 2. Create a `<canvas>` element reachable by a class or ID
 3. Include the following JavaScript:
     structures = {
-    	"http://www.rcsb.org/pdb/files/1MBO.pdb":    // URL to a well-behaved PDB file
-    		drawMethod: "both",						 // Use 'lines', 'points', or 'both'
-    		color: [255, 0, 0]						 // RGB color (optional)
+        "http://www.rcsb.org/pdb/files/1MBO.pdb":    // URL to a well-behaved PDB file
+            drawMethod: "both",						 // Use 'lines', 'points', or 'both'
+            color: [255, 0, 0]						 // RGB color (optional)
     }
     ctx = window.ctx;
     window.loadFromDict(structures)
