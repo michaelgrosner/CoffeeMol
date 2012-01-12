@@ -56,6 +56,11 @@ class Element
 		else
 			@info.drawColor = randomRGB()
 
+		if @info.borderColor?
+			@info.borderColor = hexToRGBArray @info.borderColor
+		else
+			@info.borderColor = [0, 0, 0]
+
 		for c in @children
 			c.propogateInfo info
 		null
@@ -87,7 +92,6 @@ class Element
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y
 			@cc.context.strokeStyle = arrayToRGB [10,10,10] 
-		#	@cc.context.lineCap = "round"
 			@cc.context.lineWidth = .1+2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
@@ -102,7 +106,6 @@ class Element
 			else
 				color = (140 + b.a1.z for c in b.a1.info.drawColor)
 				@cc.context.strokeStyle = arrayToRGB color
-		#	@cc.context.lineCap = "round"
 			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()

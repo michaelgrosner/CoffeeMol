@@ -12,18 +12,22 @@ class Selector
 			@str = s
 			@array = @str.split selector_delimiter
 
-		#@validate()
-	
-	#TODO: Implement some sort of string validation
-	#validate: =>
-	#	1
-
-	horizontalNext: =>
+	right: =>
 		aNext = @array
 		aNext[aNext.length-1] = aNext[aNext.length-1] + 1
 		new Selector aNext.join selector_delimiter
+	
+	left: =>
+		aNext = @array
+		aNext[aNext.length-1] = aNext[aNext.length-1] - 1
+		new Selector aNext.join selector_delimiter
 
-	verticalNext: =>
+	down: =>
 		aNext = @array
 		aNext.push 0
 		new Selector aNext.join selector_delimiter
+
+	up: =>
+		aNext = @array[0..@array.length-2]
+		n = new Selector aNext.join selector_delimiter
+		if n.str == @.str then null else n 

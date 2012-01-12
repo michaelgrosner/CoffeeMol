@@ -1,6 +1,8 @@
 # To set up for debugging: 
 # python -m SimpleHTTPServer & coffee -wclj CoffeeMol.coffee Selector.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee Residue.coffee Atom.coffee main.coffee
 
+# In pixels
+ATOM_SIZE = 3
 DEBUG = true
 
 if typeof String.prototype.startswith != 'function'
@@ -20,6 +22,14 @@ summation = (v) ->
 	for x in v
 		r += x
 	r
+
+encodeHTML = (s) ->
+	s.replace("<", "&lt;").replace(">", "&gt;")
+
+timeIt = (fn) ->
+	t_start = new Date
+	fn()
+	(new Date) - t_start
 
 if typeof Array.prototype.dot != 'function'
 	Array.prototype.dot = (v) ->
@@ -61,6 +71,13 @@ hexToRGBArray = (h) ->
 	(parseInt t, 16 for t in temp)
 
 arrayToRGB = (a) -> 
+	if typeof a == 'string'
+		if a.startswith "#" and a.length == 7
+			console.log "hex"
+			return a
+		else
+			alert "Improperly formatted string -> color. Must be of the form #XXXXXX"
+
 	if not a?
 		a = randomRGB()
 		if DEBUG
@@ -96,8 +113,8 @@ isBonded = (a1, a2) ->
 	#	false
 
 
-degToRad = (deg) -> deg*Math.PI/180
-radToDeg = (rad) -> rad*180/Math.PI
+degToRad = (deg) -> deg*0.0174532925
+radToDeg = (rad) -> rad*57.2957795
 
 sortByZ = (a1, a2) -> a1.z - a2.z
 
@@ -138,6 +155,7 @@ randomDrawMethod = ->
 defaultInfo = ->
 	drawMethod: randomDrawMethod()
 	drawColor: randomRGB()
+	borderColor: [0, 0, 0]
 
 loadPDBAsStructure = (filepath, cc, info = null) ->
 	parse_DEBUG = (data) ->
@@ -177,7 +195,7 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 		s.propogateInfo info
 
 	$.ajax
-		async: false 
+		async: false
 		type: "GET"
 		url: filepath
 		success: parse
@@ -195,29 +213,28 @@ loadFromDict = (structuresToLoad) ->
 
 $("#add-new-structure .submit").live 'click', addNewStructure
 
-ctx = new CanvasContext "mainCanvas"
+ctx = new CanvasContext "#mainCanvas"
 
 delay = (ms, f) -> 
 	setInterval f, ms
 
 # If we are in the debug environment
 if $("#debug-info").length > 0
-	console.log "ok, ok"
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
 	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
-			drawMethod: "lines"
+			drawMethod: "points"
 			drawColor: [47, 254, 254]
 		"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
-			drawMethod: "lines"
+			drawMethod: "points"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
-			drawMethod: "lines"
+			drawMethod: "points"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
-			drawMethod: "lines"
+			drawMethod: "points"
 			drawColor: [251, 251, 1]
 	"""
 	structuresToLoad =

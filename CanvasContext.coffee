@@ -3,7 +3,8 @@ class CanvasContext
 		@elements = []
 	
 		try	
-			@canvas  = document.getElementById @canvas_tag
+			# Use jQuery to get the canvas
+			@canvas  = $(@canvas_tag)[0]
 			@context = @canvas.getContext '2d'
 		catch error
 			console.log error
@@ -13,16 +14,59 @@ class CanvasContext
 			 "-moz-user-select": "none"
 			 "-webkit-user-select": "none"
 		$(@canvas).css noselect
+	
+	determinePointGrid: =>
+		@grid = {}
+		for w in [-@x_origin..@canvas.width-@x_origin]
+			@grid[w] = {}
+			for h in [-@y_origin..@canvas.height-@y_origin]
+				@grid[w][h] = null
+
+		for el in @elements
+			for a in el.atoms
+				w = parseInt a.x
+				h = parseInt a.y
+				dx = parseInt ATOM_SIZE/@zoom
+				for i in [-1*dx..dx]
+					for j in [-1*dx..dx]
+						try
+							if not @grid[w+i][h+j]? or a.z > @grid[w+i][h+j].z
+								@grid[w+i][h+j] = a
+						catch error
+							console.log error, w, h
+		null
+
+	showAtomInfo: (e) =>
+		if @a_highlighted_prev?
+			@a_highlighted_prev.info.drawColor = @a_highlighted_prev.info.prevDrawColor
+			@a_highlighted_prev.info.borderColor = @a_highlighted_prev.info.prevBorderColor
+			@a_highlighted_prev.drawPoint()
+
+		xx = parseInt (e.offsetX - @x_origin)/@zoom
+		yy = parseInt (e.offsetY - @y_origin)/@zoom
+		if @grid[xx]? and @grid[xx][yy]?
+			a = @grid[xx][yy]
+
+			a.info.prevDrawColor = a.info.drawColor
+			a.info.prevBorderColor = a.info.prevBorderColor
+			a.info.drawColor = [0,255,0]
+			a.info.borderColor = [0,0,255]
+			a.drawPoint()
+
+			@a_highlighted_prev = a
+
+			$("#atom-info").html a.atomInfo()
+		null
 
 	init: =>
 		# Won't work outside of the debug environment
 		if $("#debug-info").length > 0
 			@canvas.width = window.innerWidth/1.5
-			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 35
+			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 45
 			@canvas.height = window.innerHeight - 70
+			@canvas.addEventListener 'mousemove',  @showAtomInfo
 		@background_color = [255, 255, 255]
 	
-		@canvas.addEventListener 'mousedown', @mousedown
 		@mouse_x_prev = 0
 		@mouse_y_prev = 0
 
@@ -31,14 +75,15 @@ class CanvasContext
 		for el in @elements
 			el.init()
 
+		@canvas.addEventListener 'mousedown',  @mousedown
 		@canvas.addEventListener 'mousewheel', @changeZoom
 		@canvas.addEventListener 'dblclick',   @translateOrigin
-
 		#@canvas.addEventListener 'click', @rotateToClick
 
 		@findBonds()
 		@restoreToOriginal()
 		@assignSelectors()
+		@determinePointGrid()
 	
 	rotateToClick: (e) =>
 		# Doesn't fully work yet, not enabled
@@ -112,19 +157,22 @@ class CanvasContext
 		@drawAll()
 
 	clear: => 
+		#@context.setTransform 1, 0, 0, 1, 0, 0
+		#@context.clearRect 0, 0, @canvas.width, @canvas.height
 		@canvas.width = @canvas.width
 		@context.translate @x_origin, @y_origin
 	
 	mousedown: (e) =>
 		@mouse_x_prev = e.x
 		@mouse_y_prev = e.y
+		@canvas.removeEventListener 'mousemove', @showAtomInfo
 		@canvas.addEventListener 'mousemove', @mousemove
 		@canvas.addEventListener 'mouseout',  @mouseup
 		@canvas.addEventListener 'mouseup',   @mouseup
 	
 	changeZoom: (e) =>
 		if e instanceof WheelEvent
-			@zoom = @zoom_prev - e.wheelDelta/100
+			@zoom = @zoom_prev - e.wheelDelta/50
 		else
 			@zoom = @zoom_prev - e
 		@clear()
@@ -134,6 +182,8 @@ class CanvasContext
 
 	mouseup: (e) =>
 		@canvas.removeEventListener 'mousemove', @mousemove
+		@canvas.addEventListener 'mousemove',  @showAtomInfo
+		@determinePointGrid()
 	
 	mousemove: (e) =>
 		# TODO: Large mouse movements will squish and distort the molecule (perhaps
@@ -168,7 +218,7 @@ class CanvasContext
 		@mouse_x_prev = e.x
 		@mouse_y_prev = e.y
 
-		console.log @elements[0].bonds[@elements[0].bonds.length-1].toString()
+		#console.log @elements[0].bonds[@elements[0].bonds.length-1].toString()
 	
 	restoreToOriginal: =>
 		@zoom = @findBestZoom()

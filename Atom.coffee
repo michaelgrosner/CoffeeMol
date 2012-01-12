@@ -13,18 +13,12 @@ class Atom extends Element
 			color = @info.drawColor
 
 		@cc.context.beginPath()
-		zz  = 3/@cc.zoom#(3*@z+300)/300
-		zz2 = 1.5/@cc.zoom#(3*@z+300)/600
-		if zz < 0
-			zz = 0
-			zz2 = 0
+		zz  = ATOM_SIZE/@cc.zoom
 		@cc.context.arc @x, @y, zz, 0, 2*Math.PI, false
-		
-		grad = @cc.context.createRadialGradient @x, @y, zz, @x, @y, zz2
-		grad.addColorStop 1, arrayToRGB color
-		grad.addColorStop 0, arrayToRGB [10,10,10] #@cc.background_color
-
-		@cc.context.fillStyle = grad #arrayToRGB color
+		@cc.context.lineWidth = 1/@cc.zoom
+		@cc.context.strokeStyle = @info.borderColor
+		@cc.context.fillStyle = arrayToRGB (c + @z for c in @info.drawColor)
+		@cc.context.stroke()
 		@cc.context.fill()
 
 	rotateAboutY: (sin, cos) =>
@@ -34,13 +28,21 @@ class Atom extends Element
 	rotateAboutX: (sin, cos) =>
 		@y = @y*cos - @z*sin
 		@z = @y*sin + @z*cos
-	
+
 	restoreToOriginal: =>
 		@x = @original_position[0]
 		@y = @original_position[1]
 		@z = @original_position[2]
 		
 	asArray: => [@x, @y, @z]
+
+	atomInfo: (index, oldhtml) =>
+		s = @selector
+		for i in [1..10]
+			s = s.up()
+			if not s?
+				break
+		encodeHTML @toString()
 
 sortBondsByZ = (b1, b2) ->
 	b1.a2.z - b2.a2.z
