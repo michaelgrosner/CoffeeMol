@@ -4,5 +4,12 @@ class Structure extends Element
 		cc.addElement @
 
 	toString: =>
-		"<Structure #{@name} with #{@children.length} chains>"
+		n = if @title? then @title else @name
+		"<Structure #{n} with #{@children.length} chains>"
 	
+	attachTitle: (str) =>
+		str = str.replace "TITLE ", ""
+		if not @title?
+			@title = str
+		else
+			@title += str[2..str.length]

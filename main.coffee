@@ -168,7 +168,13 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 	parse = (data) ->
 		s = new Structure null, filepath, cc
 		
-		for a_str in data.split '\n' when a_str.startswith "ATOM"
+		for a_str in data.split '\n'
+			if a_str.startswith "TITLE"
+				s.attachTitle a_str
+			
+			if not a_str.startswith "ATOM"
+				continue
+
 			d = pdbAtomToDict a_str
 			if not chain_id_prev? or d.chain_id != chain_id_prev
 				c = new Chain s, d.chain_id
@@ -222,6 +228,7 @@ delay = (ms, f) ->
 if $("#debug-info").length > 0
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
+	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "points"
@@ -240,7 +247,6 @@ if $("#debug-info").length > 0
 		"http://www.rcsb.org/pdb/files/1MBO.pdb":
 			drawMethod: "both"
 			#drawColor: [47, 254, 254]
-	"""
 
 	loadFromDict structuresToLoad
 	
