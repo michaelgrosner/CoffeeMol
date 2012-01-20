@@ -17,20 +17,6 @@ if typeof Array.prototype.norm != 'function'
 	Array.prototype.norm = ->
 		Math.sqrt @.dot @
 
-summation = (v) ->
-	r = 0
-	for x in v
-		r += x
-	r
-
-encodeHTML = (s) ->
-	s.replace("<", "&lt;").replace(">", "&gt;")
-
-timeIt = (fn) ->
-	t_start = new Date
-	fn()
-	(new Date) - t_start
-
 if typeof Array.prototype.dot != 'function'
 	Array.prototype.dot = (v) ->
 		if v.length != @.length
@@ -51,13 +37,28 @@ atom_colors =
 	'S': [229, 198,  64]
 
 # See http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
+# Currently, just use < 2
 #average_bond_lengths =
 #	["C", "C"]: 1.54
 #	["N", "N"]: 1.45
 #	["O", "O"]: 1.21
 #	["C", "N"]: 1.47
 
-supported_draw_methods = ["both", "lines", "points"]
+supported_draw_methods = ["both", "lines", "points", "cartoon"]
+
+summation = (v) ->
+	r = 0
+	for x in v
+		r += x
+	r
+
+encodeHTML = (s) ->
+	s.replace("<", "&lt;").replace(">", "&gt;")
+
+timeIt = (fn) ->
+	t_start = new Date
+	fn()
+	(new Date) - t_start
 
 hexToRGBArray = (h) ->
 	if h instanceof Array
@@ -95,6 +96,7 @@ arrayToRGB = (a) ->
 	a = (fixer x for x in a)
 	"rgb(#{a[0]}, #{a[1]}, #{a[2]})"
 
+# Algorithm to determine whether or not two atoms should be bonded
 isBonded = (a1, a2) ->
 	if a1.parent.typeName() != a2.parent.typeName()
 		return false
@@ -102,21 +104,33 @@ isBonded = (a1, a2) ->
 	# Precompute distance
 	aad = atomAtomDistance(a1, a2)
 
-	if aad < 2
-		true
-	
-	#if aad < 3 and a1.parent.isProtein()
-	#	true
-	#else if aad < 3 and a1.parent.isDNA()
-	#	true
-	#else
-	#	false
+	# Cartoon method shall only draw bonds between protein-protein C-alphas and 
+	# along the DNA Phosphate backbone
+	if a1.info.drawMethod == 'cartoon'
+		if aad < 5 and a1.parent.isProtein() \
+				and a1.original_atom_name == "CA" \
+				and a2.original_atom_name == "CA"
+			return true
+		else if aad < 10 and a1.parent.isDNA() \
+				and a1.original_atom_name == "P" \
+				and a2.original_atom_name == "P"
+			return true
+		else
+			return false
+	else
+		if aad < 2
+			return true
+		else
+			return false
 
+degToRad = (deg) ->
+	deg*0.0174532925
 
-degToRad = (deg) -> deg*0.0174532925
-radToDeg = (rad) -> rad*57.2957795
+radToDeg = (rad) ->
+	rad*57.2957795
 
-sortByZ = (a1, a2) -> a1.z - a2.z
+sortByZ = (a1, a2) ->
+	a1.z - a2.z
 
 atomAtomDistance = (a1, a2) -> 
 	Math.sqrt( 
@@ -133,8 +147,9 @@ pdbAtomToDict = (a_str) ->
 	# We only need the elemental symbol
 	handleAtomName = (a) ->
 		a.substr 0, 1
-
-	atom_name: handleAtomName $.trim a_str.substring 13, 16 
+	
+	original_atom_name: $.trim a_str.substring 13, 16
+	atom_name: handleAtomName $.trim a_str.substring 13, 16
 	resi_name: handleResiName $.trim a_str.substring 17, 20
 	chain_id:  $.trim a_str.substring 21, 22
 	resi_id:   parseInt a_str.substring 23, 26
@@ -156,6 +171,19 @@ defaultInfo = ->
 	drawMethod: randomDrawMethod()
 	drawColor: randomRGB()
 	borderColor: [0, 0, 0]
+
+genIFSLink  = (selector_str, key, val, pretty) ->
+	link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
+			'#{key}', '#{val}');"
+	"<a href=\"#{link}\">#{pretty}</a>"
+
+mousePosition = (e) ->
+	if not e.offsetX? or not e.offsetY?
+		x: e.layerX - $(e.target).position().left
+		y: e.layerY - $(e.target).position().top
+	else
+		x: e.offsetX
+		y: e.offsetY
 
 loadPDBAsStructure = (filepath, cc, info = null) ->
 	parse_DEBUG = (data) ->
@@ -184,15 +212,7 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 
 			#if (d.atom_name == "P" and r.isDNA()) \
 			#		or (d.atom_name in ["N", "O", "CA"] and r.isProtein())
-			a = new Atom r, d.atom_name, d.x, d.y, d.z
-
-			f = false
-			for k, v of atom_colors
-				if a.name == k
-					f = true
-					break
-			if not f
-				console.log a.name
+			a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
 			
 			chain_id_prev = d.chain_id
 			resi_id_prev = d.resi_id
@@ -226,27 +246,30 @@ delay = (ms, f) ->
 
 # If we are in the debug environment
 if $("#debug-info").length > 0
+	
+	$("#help-area").live("click", -> $(this).css("display", "none"))
+
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
-	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
-			drawMethod: "points"
+			drawMethod: "cartoon"
 			drawColor: [47, 254, 254]
 		"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
-			drawMethod: "points"
+			drawMethod: "cartoon"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
-			drawMethod: "points"
+			drawMethod: "cartoon"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
-			drawMethod: "points"
+			drawMethod: "cartoon"
 			drawColor: [251, 251, 1]
 	"""
 	structuresToLoad =
-		"http://www.rcsb.org/pdb/files/1MBO.pdb":
+		"PDBs/1CGP.pdb":
 			drawMethod: "both"
 			#drawColor: [47, 254, 254]
+	"""
 
 	loadFromDict structuresToLoad
 	

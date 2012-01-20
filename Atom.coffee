@@ -1,5 +1,5 @@
 class Atom extends Element
-	constructor: (parent, name, @x, @y, @z) ->
+	constructor: (parent, name, @x, @y, @z, @original_atom_name) ->
 		super(parent, name)
 		@original_position = [@x, @y, @z]
 
@@ -7,7 +7,7 @@ class Atom extends Element
 		"<Atom: #{@name} [#{@x.toFixed 2}, #{@y.toFixed 2}, #{@z.toFixed 2}]>"
 
 	drawPoint: () =>
-		if not @info.drawColor? and @info.drawMethod == "points"
+		if not @info.drawColor? #and @info.drawMethod == "points"
 			color = atom_colors[@name]
 		else
 			color = @info.drawColor
@@ -17,7 +17,7 @@ class Atom extends Element
 		@cc.context.arc @x, @y, zz, 0, 2*Math.PI, false
 		@cc.context.lineWidth = 1/@cc.zoom
 		@cc.context.strokeStyle = @info.borderColor
-		@cc.context.fillStyle = arrayToRGB (c + @z for c in @info.drawColor)
+		@cc.context.fillStyle = arrayToRGB (c + @z for c in color)#@info.drawColor)
 		@cc.context.stroke()
 		@cc.context.fill()
 

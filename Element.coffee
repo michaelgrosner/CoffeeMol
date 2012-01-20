@@ -9,7 +9,6 @@ class Element
 
 		@info = {}
 		@selector = null
-		@bonds = []
 	
 	constructorName: =>
 		# THIS WILL BREAK IE COMPAT.
@@ -19,26 +18,25 @@ class Element
 		shortenName = (n) ->
 			if n.length > 20 then n.substr(0,17)+"..." else n
 
-		genIFSLink  = (selector_str, key, val, pretty) ->
-			link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
-						'#{key}', '#{val}');"
-			"<a href=\"#{link}\">#{pretty}</a>"
-
-
 		if @constructorName() != "Residue"
 
 			plural = if @children.length == 1 then '' else 's'
 
-			pointsLink = genIFSLink @selector.str, "drawMethod", "points", "P"
-			linesLink  = genIFSLink @selector.str, "drawMethod", "lines", "L"
-			bothLink   = genIFSLink @selector.str, "drawMethod", "both", "B"
+			pointsLink  = genIFSLink @selector.str, "drawMethod", "points", "P"
+			linesLink   = genIFSLink @selector.str, "drawMethod", "lines", "L"
+			bothLink    = genIFSLink @selector.str, "drawMethod", "both", "B"
+			cartoonLink = genIFSLink @selector.str, "drawMethod", "cartoon", "C"
 
 			child_type_name = @children[0].constructorName()
-			x = "#{@constructorName()}: #{shortenName @name} with #{@children.length}\
-				#{child_type_name}#{plural} | #{pointsLink} | \
-				#{linesLink} | #{bothLink}"
-			p = (c.writeContextInfo() for c in @children)
-			return "#{x}<br>#{p.join "" }"
+
+			# a) Not sure if I even need @selector.str in the class
+			# b) Not sure if I can include /'s in a class descriptor
+			dropdown = "<span class='dropdown #{@selector.str}'> #{pointsLink} | \
+					#{linesLink} | #{bothLink} | #{cartoonLink}</span>"
+			ctx_info = "#{@constructorName()}: #{shortenName @name} with #{@children.length}\
+				#{child_type_name}#{plural} | #{dropdown}"
+			children_info = (c.writeContextInfo() for c in @children)
+			return "#{ctx_info}<br>#{children_info.join "" }"
 
 	init: ->
 		@atoms = @getOfType Atom
@@ -102,20 +100,19 @@ class Element
 			@cc.context.beginPath()
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y
-			if b.a1.info.drawMethod == 'lines'
-				color = (c + b.a1.z for c in b.a1.info.drawColor)
-				@cc.context.strokeStyle = arrayToRGB color
-			else
-				color = (140 + b.a1.z for c in b.a1.info.drawColor)
-				@cc.context.strokeStyle = arrayToRGB color
+			color = (c + b.a1.z for c in b.a1.info.drawColor)
+			@cc.context.strokeStyle = arrayToRGB color
 			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
 		null
 
 	drawPoints: =>
-		@atoms.sort sortByZ
-		a.drawPoint() for a in @atoms when a.info.drawMethod != "lines"
+		sorted_atoms = @atoms.slice()
+		sorted_atoms.sort sortByZ
+		for a in sorted_atoms
+			if a.info.drawMethod not in ["lines", "cartoon"]
+				a.drawPoint()
 		null
 
 	rotateAboutY: (theta) =>
@@ -148,3 +145,15 @@ class Element
 			a.y -= center[1]
 			a.z -= center[2]
 		null
+	
+	findBonds: =>
+		@bonds = []
+		for i in [2..@atoms.length-1]
+			a1 = @atoms[i]
+			j_step = if a1.info.drawMethod == 'cartoon' then 30 else 5
+			for j in [i+1..i+j_step] when j < @atoms.length-1
+				a2 = @atoms[j]
+
+				if isBonded a1, a2
+					b = new Bond a1, a2
+					@bonds.push b

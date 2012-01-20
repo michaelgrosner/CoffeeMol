@@ -9,19 +9,25 @@ class CanvasContext
 		catch error
 			console.log error
 
-		noselect =
+		# Prevent highlighting on canvas, something which often happens
+		# while clicking and dragging
+		$(@canvas).css
 			 "user-select": "none"
 			 "-moz-user-select": "none"
 			 "-webkit-user-select": "none"
-		$(@canvas).css noselect
-	
+
 	determinePointGrid: =>
+		# TODO: Is there a better algorithm than this mess?
+
+		# Seed grid with nulls
 		@grid = {}
 		for w in [-@x_origin..@canvas.width-@x_origin]
 			@grid[w] = {}
 			for h in [-@y_origin..@canvas.height-@y_origin]
 				@grid[w][h] = null
 
+		# Fill in grid with the top atom at that pixel. This serves as 
+		# a quick lookup when hovering over an atom
 		for el in @elements
 			for a in el.atoms
 				w = parseInt a.x
@@ -32,18 +38,24 @@ class CanvasContext
 						try
 							if not @grid[w+i][h+j]? or a.z > @grid[w+i][h+j].z
 								@grid[w+i][h+j] = a
+						# May need to rethink a bit more
 						catch error
-							console.log error, w, h
+							1#console.log error, w, h
 		null
 
 	showAtomInfo: (e) =>
+		#TODO: Does not work well with lines/cartoon
+		# Unhighlight the previously highlighted atom
 		if @a_highlighted_prev?
 			@a_highlighted_prev.info.drawColor = @a_highlighted_prev.info.prevDrawColor
 			@a_highlighted_prev.info.borderColor = @a_highlighted_prev.info.prevBorderColor
 			@a_highlighted_prev.drawPoint()
 
-		xx = parseInt (e.offsetX - @x_origin)/@zoom
-		yy = parseInt (e.offsetY - @y_origin)/@zoom
+		# Get mouse position, then use it to check against the previously computed
+		# @grid to show atomInfo() and highlight it a bright green color.
+		click = mousePosition e
+		xx = parseInt (click.x - @x_origin)/@zoom
+		yy = parseInt (click.y - @y_origin)/@zoom
 		if @grid[xx]? and @grid[xx][yy]?
 			a = @grid[xx][yy]
 
@@ -63,15 +75,20 @@ class CanvasContext
 		if $("#debug-info").length > 0
 			@canvas.width = window.innerWidth/1.5
 			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 45
-			@canvas.height = window.innerHeight - 70
+			@canvas.height = window.innerHeight - 20
 			@canvas.addEventListener 'mousemove',  @showAtomInfo
+
+		# Background color of the canvas
+		# TODO: Embedder changable?
 		@background_color = [255, 255, 255]
 	
+		# Previous mouse motions start at 0,0
 		@mouse_x_prev = 0
 		@mouse_y_prev = 0
 
-		$("#reset").live("click", @restoreToOriginal)
+		$("#reset").live "click", @restoreToOriginal
 
+		# Ready all sub-elements
 		for el in @elements
 			el.init()
 
@@ -84,15 +101,6 @@ class CanvasContext
 		@restoreToOriginal()
 		@assignSelectors()
 		@determinePointGrid()
-	
-	rotateToClick: (e) =>
-		# Doesn't fully work yet, not enabled
-		click_v  = [e.offsetX, e.offsetY]
-		center_v = [@x_origin, @y_origin]
-		console.log "click and center", click_v, center_v
-		theta = click_v.dot(center_v)/(click_v.norm()*center_v.norm())
-		@context.rotate Math.acos theta
-		@drawAll()
 	
 	assignSelectors: =>
 		#TODO: Fix this!
@@ -151,6 +159,7 @@ class CanvasContext
 		null
 	
 	changeAllDrawMethods: (new_method) =>
+		# Most likely used in conjuction with a link handler
 		@clear()
 		for el in @elements
 			el.info.drawMethod = new_method
@@ -163,14 +172,15 @@ class CanvasContext
 		@context.translate @x_origin, @y_origin
 	
 	mousedown: (e) =>
-		@mouse_x_prev = e.x
-		@mouse_y_prev = e.y
+		@mouse_x_prev = e.clientX
+		@mouse_y_prev = e.clientY
 		@canvas.removeEventListener 'mousemove', @showAtomInfo
 		@canvas.addEventListener 'mousemove', @mousemove
 		@canvas.addEventListener 'mouseout',  @mouseup
 		@canvas.addEventListener 'mouseup',   @mouseup
 	
 	changeZoom: (e) =>
+		# Use mousewheel to zoom in and out
 		if e instanceof WheelEvent
 			@zoom = @zoom_prev - e.wheelDelta/50
 		else
@@ -198,9 +208,9 @@ class CanvasContext
 				-1*tol
 			else
 				dz
-		
-		dx = boundMouseMotion @mouse_x_prev - e.x
-		dy = boundMouseMotion @mouse_y_prev - e.y
+
+		dx = boundMouseMotion @mouse_x_prev - e.clientX
+		dy = boundMouseMotion @mouse_y_prev - e.clientY
 		ds = Math.sqrt(dx*dx + dy*dy)
 
 		@time_start = new Date
@@ -212,11 +222,16 @@ class CanvasContext
 		@drawAll()
 
 		fps = 1000/(new Date - @time_start)
-		$("#debug-info").html("FPS: #{fps.toFixed 2}, ds: #{ds.toFixed 2},\
+		if fps < 15
+			low_fps_warning = '<p style="color: red;">It appears this molecule is too large to handle smoothly, consider using a faster computer or browser</p>'
+		else
+			low_fps_warning = ""
+
+		$("#debug-info").html("#{low_fps_warning}FPS: #{fps.toFixed 2}, ds: #{ds.toFixed 2},\
 				dx: #{dx.toFixed 2}, dy: #{dy.toFixed 2}")
 		
-		@mouse_x_prev = e.x
-		@mouse_y_prev = e.y
+		@mouse_x_prev = e.clientX
+		@mouse_y_prev = e.clientY
 
 		#console.log @elements[0].bonds[@elements[0].bonds.length-1].toString()
 	
@@ -233,8 +248,9 @@ class CanvasContext
 		@drawAll()
 
 	translateOrigin: (e) =>
-		@x_origin = e.offsetX
-		@y_origin = e.offsetY
+		click = mousePosition e
+		@x_origin = click.x
+		@y_origin = click.y
 		@clear()
 		@drawAll()
 
@@ -293,26 +309,21 @@ class CanvasContext
 			catch error
 				alert "Child from selector #{selector.str} does not exist"
 	
-			c_info = c.info
 			try
-				c_info[info_key] = info_value.toLowerCase()
+				c.info[info_key] = info_value.toLowerCase()
 			catch error
 				alert "Error: #{error} with #{info_key} to #{info_value}"
 	
-			c.propogateInfo c_info
+			c.propogateInfo c.info
 			@clear()
+			if c.info.drawMethod != 'points'
+				@findBonds()
 			@drawAll()
 			null
 	
 	findBonds: =>
+		@bonds = []
 		for el in @elements
-			for i in [2..el.atoms.length-1]
-				for j in [i+1..i+5] when j < el.atoms.length-1
-					a1 = el.atoms[i]
-					a2 = el.atoms[j]
-
-					if isBonded a1, a2
-						b = new Bond a1, a2
-						el.bonds.push b
+			el.findBonds()
 		null
 
