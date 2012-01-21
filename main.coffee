@@ -107,7 +107,7 @@ isBonded = (a1, a2) ->
 	# Cartoon method shall only draw bonds between protein-protein C-alphas and 
 	# along the DNA Phosphate backbone
 	if a1.info.drawMethod == 'cartoon'
-		if aad < 5 and a1.parent.isProtein() \
+		if aad < 4 and a1.parent.isProtein() \
 				and a1.original_atom_name == "CA" \
 				and a2.original_atom_name == "CA"
 			return true
@@ -217,7 +217,10 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 			chain_id_prev = d.chain_id
 			resi_id_prev = d.resi_id
 		
-		info = if info? then info else defaultInfo()
+		if not info?
+			info = defaultInfo()
+			if s.atoms.length > 100
+				info.drawMethod = 'cartoon'
 		s.propogateInfo info
 
 	$.ajax
@@ -266,8 +269,12 @@ if $("#debug-info").length > 0
 			drawColor: [251, 251, 1]
 	"""
 	structuresToLoad =
-		"PDBs/1CGP.pdb":
-			drawMethod: "both"
+		"PDBs/half1_0.pdb":
+			drawMethod: "cartoon"
+	
+	structuresToLoad =
+		"http://www.rcsb.org/pdb/files/1AOI.pdb":
+			drawMethod: "cartoon"
 			#drawColor: [47, 254, 254]
 	"""
 

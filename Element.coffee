@@ -80,6 +80,7 @@ class Element
 			alert "drawMethod #{@info.drawMethod} not supported! Choose: #{c}"
 		@drawLines()
 		@drawPoints()
+		#console.log (a.z.toFixed 2 for a in @atoms).join ", "
 
 	drawLines: => 
 		@bonds.sort sortBondsByZ
@@ -96,7 +97,6 @@ class Element
 			@cc.context.stroke()
 			"""
 			
-			# The actual bond
 			@cc.context.beginPath()
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y

@@ -16,7 +16,7 @@ class Atom extends Element
 		zz  = ATOM_SIZE/@cc.zoom
 		@cc.context.arc @x, @y, zz, 0, 2*Math.PI, false
 		@cc.context.lineWidth = 1/@cc.zoom
-		@cc.context.strokeStyle = @info.borderColor
+		@cc.context.strokeStyle = arrayToRGB [0,0,0]#@info.borderColor
 		@cc.context.fillStyle = arrayToRGB (c + @z for c in color)#@info.drawColor)
 		@cc.context.stroke()
 		@cc.context.fill()

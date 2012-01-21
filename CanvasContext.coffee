@@ -7,7 +7,7 @@ class CanvasContext
 			@canvas  = $(@canvas_tag)[0]
 			@context = @canvas.getContext '2d'
 		catch error
-			console.log error
+			alert error
 
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
@@ -46,10 +46,10 @@ class CanvasContext
 	showAtomInfo: (e) =>
 		#TODO: Does not work well with lines/cartoon
 		# Unhighlight the previously highlighted atom
-		if @a_highlighted_prev?
-			@a_highlighted_prev.info.drawColor = @a_highlighted_prev.info.prevDrawColor
-			@a_highlighted_prev.info.borderColor = @a_highlighted_prev.info.prevBorderColor
-			@a_highlighted_prev.drawPoint()
+		if @a_prev?
+			@a_prev.info.drawColor = @a_prev.info.prevDrawColor
+			@a_prev.info.borderColor = @a_prev.info.prevBorderColor
+			@a_prev.drawPoint()
 
 		# Get mouse position, then use it to check against the previously computed
 		# @grid to show atomInfo() and highlight it a bright green color.
@@ -59,13 +59,16 @@ class CanvasContext
 		if @grid[xx]? and @grid[xx][yy]?
 			a = @grid[xx][yy]
 
+			if a.info.drawMethod in ['lines', 'cartoon']
+				return null
+
 			a.info.prevDrawColor = a.info.drawColor
 			a.info.prevBorderColor = a.info.prevBorderColor
 			a.info.drawColor = [0,255,0]
 			a.info.borderColor = [0,0,255]
 			a.drawPoint()
 
-			@a_highlighted_prev = a
+			@a_prev = a
 
 			$("#atom-info").html a.atomInfo()
 		null
@@ -74,7 +77,7 @@ class CanvasContext
 		# Won't work outside of the debug environment
 		if $("#debug-info").length > 0
 			@canvas.width = window.innerWidth/1.5
-			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 45
+			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 63
 			@canvas.height = window.innerHeight - 20
 			@canvas.addEventListener 'mousemove',  @showAtomInfo
 
@@ -101,6 +104,7 @@ class CanvasContext
 		@restoreToOriginal()
 		@assignSelectors()
 		@determinePointGrid()
+
 	
 	assignSelectors: =>
 		#TODO: Fix this!
@@ -213,7 +217,7 @@ class CanvasContext
 		dy = boundMouseMotion @mouse_y_prev - e.clientY
 		ds = Math.sqrt(dx*dx + dy*dy)
 
-		@time_start = new Date
+		time_start = new Date
 
 		@clear()
 		for el in @elements
@@ -221,9 +225,9 @@ class CanvasContext
 			el.rotateAboutY degToRad -dx
 		@drawAll()
 
-		fps = 1000/(new Date - @time_start)
+		fps = 1000/(new Date - time_start)
 		if fps < 15
-			low_fps_warning = '<p style="color: red;">It appears this molecule is too large to handle smoothly, consider using a faster computer or browser</p>'
+			low_fps_warning = '<p style="color: red;">It appears this molecule is too large to handle smoothly, consider using "C"/Cartoon mode, a faster computer, or upgrade your browser</p>'
 		else
 			low_fps_warning = ""
 
