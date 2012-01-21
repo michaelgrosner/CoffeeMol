@@ -217,10 +217,11 @@ loadPDBAsStructure = (filepath, cc, info = null) ->
 			chain_id_prev = d.chain_id
 			resi_id_prev = d.resi_id
 		
-		if not info?
+		if info == null
 			info = defaultInfo()
 			if s.atoms.length > 100
 				info.drawMethod = 'cartoon'
+			console.log info
 		s.propogateInfo info
 
 	$.ajax
@@ -240,7 +241,10 @@ loadFromDict = (structuresToLoad) ->
 	for filepath, info of structuresToLoad
 		loadPDBAsStructure filepath, ctx, info
 
-$("#add-new-structure .submit").live 'click', addNewStructure
+fromSplashLink = (filename) ->
+	loadPDBAsStructure filename, window.ctx, {drawMethod: 'cartoon'} 
+	ctx.init()
+	ctx.writeContextInfo()
 
 ctx = new CanvasContext "#coffeemolCanvas"
 
@@ -249,11 +253,24 @@ delay = (ms, f) ->
 
 # If we are in the debug environment
 if $("#debug-info").length > 0
+	$("#add-new-structure .submit").live 'click', addNewStructure
 	
-	$("#help-area").live("click", -> $(this).css("display", "none"))
+	fade = "in"
+	$("#show-ctx-container").live "click", ->
+		if fade == "in"
+			$(".cc-size").fadeIn "fast", -> 
+				fade = "out"
+				$("#show-ctx-container").html "<< Options"
+		else if fade == "out"
+			$(".cc-size").fadeOut "fast", -> 
+				fade = "in"
+				$("#show-ctx-container").html "Options >>"
+
+	$("#help-area").live "click", -> $(this).css("display", "none")
 
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
+	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "cartoon"
@@ -267,18 +284,34 @@ if $("#debug-info").length > 0
 		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
 			drawMethod: "cartoon"
 			drawColor: [251, 251, 1]
-	"""
 	structuresToLoad =
 		"PDBs/half1_0.pdb":
 			drawMethod: "cartoon"
 	
 	structuresToLoad =
-		"http://www.rcsb.org/pdb/files/1AOI.pdb":
+		"http://www.rcsb.org/pdb/files/2Y1M.pdb":
 			drawMethod: "cartoon"
 			#drawColor: [47, 254, 254]
 	"""
 
-	loadFromDict structuresToLoad
+	dismissWelcomeSplash = ->
+		$("#welcome-splash").fadeOut "fast", -> 1
+
+	if not structuresToLoad?
+		$("#show-ctx-container").css 
+			"display": "none"
+
+		$("#welcome-splash").css
+			left: $(window).width()/2 - $("#welcome-splash").outerWidth()/2
+			top: $(window).height()/2 - $("#welcome-splash").outerHeight()/2
+
+		$("#welcome-splash").fadeIn "fast", -> 
+			$("#show-ctx-container").fadeIn "fast", -> 1
+			$(".sample-pdb-link").live "click", dismissWelcomeSplash
+			$("#welcome-splash #dismiss").live "click", dismissWelcomeSplash
+				
+	else
+		loadFromDict structuresToLoad
 	
 	ctx.init()
 	
@@ -287,3 +320,5 @@ if $("#debug-info").length > 0
 # Attach ctx instance to window to use it in the HTML
 window.ctx = ctx
 window.loadFromDict = loadFromDict
+window.loadPDBAsStructure = loadPDBAsStructure
+window.fromSplashLink = fromSplashLink

@@ -18,7 +18,7 @@ class Element
 		shortenName = (n) ->
 			if n.length > 20 then n.substr(0,17)+"..." else n
 
-		if @constructorName() != "Residue"
+		if @constructorName() != "Atom"
 
 			plural = if @children.length == 1 then '' else 's'
 
@@ -31,12 +31,10 @@ class Element
 
 			# a) Not sure if I even need @selector.str in the class
 			# b) Not sure if I can include /'s in a class descriptor
-			dropdown = "<span class='dropdown #{@selector.str}'> #{pointsLink} | \
-					#{linesLink} | #{bothLink} | #{cartoonLink}</span>"
-			ctx_info = "#{@constructorName()}: #{shortenName @name} with #{@children.length}\
-				#{child_type_name}#{plural} | #{dropdown}"
+			dropdown = "<span class='dropdown #{@selector.str}'> #{pointsLink} | #{linesLink} | #{bothLink} | #{cartoonLink}</span>"
+			ctx_info = "<span class='element-desc'>#{@constructorName()}: #{shortenName @name} with #{@children.length} #{child_type_name}#{plural}</span> #{dropdown}"
 			children_info = (c.writeContextInfo() for c in @children)
-			return "#{ctx_info}<br>#{children_info.join "" }"
+			return "<div class='element-controller #{@constructorName()}'>#{ctx_info}</div>#{children_info.join "" }"
 
 	init: ->
 		@atoms = @getOfType Atom

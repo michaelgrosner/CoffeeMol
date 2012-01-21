@@ -1,5 +1,11 @@
 class Structure extends Element
 	constructor: (parent, name, cc) ->
+		if name.startswith "http:"
+			n = name.split "/"
+			name = n[n.length-1]
+		if name.endswith ".pdb"
+			n = name.split "."
+			name = n[0]
 		super(parent, name, cc)
 		cc.addElement @
 

@@ -1,11 +1,21 @@
-body {font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px; background-color: #FFFFFF; padding: 0px; margin: 0px; overflow: hidden}
+html {padding: 0px; margin: 0px;}
+body {padding: 0px; margin: 0px; font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px; background-color: #FFFFFF; overflow: hidden}
 #coffeemolCanvas {float: left; background-color: #fff;} 
 #reset {position: absolute; bottom: 10px;}
-#title {font-size: 24px; font-family: "Georgia", serif; font-weight: 100; color: #14756E}
-#ctx-container {float: left; margin: 0px 20px; width: 400px; font-size: 10px; overflow-x: hidden; display: none}
+.title {font-size: 24px; font-family: "Georgia", serif; font-weight: 100; color: #14756E}
+.cc-size {position: absolute; overflow: hidden; display: none; width: 300px; padding: 20px; height: 100%}
+#ctx-opacity {-moz-opacity: .9; opacity: .9; filter:alpha(opacity=90); background-color: #fafafa; box-shadow: 0px 0px 10px #ccc;}
+#ctx-container {font-size: 10px; }
 #add-new-structure .submit {border: 1px solid #aaa; height: 25px; position: relative; left: -7px;}
 #add-new-structure .text   {border: 1px solid #aaa; height: 25px; position: relative; top: 1px;}
-
+#show-ctx-container {border: 1px solid #ccc; position: absolute; bottom: 5px; left: 5px; padding: 3px; z-index: 10;}
 #help-area {border: 1px solid #aaa; padding: 8px; color: #14756E}
+#welcome-splash {background-color: #eee; text-align: center; display: none; height: 50%; width: 50%; position: absolute; padding: 50px; border-radius: 50px; border: 15px solid #BE6521}
 
-/*.dropdown {display: none;}*/
+.dropdown {position: absolute; right: 30px;}
+.element-controller {width: 290px; margin-top: 3px; border: 1px solid #CCC; padding: 3px; border-radius: 5px;}
+.Structure {margin-top: 10px !important;}
+.Chain {}
+.Residue {display: none}
+
+.fake-button {cursor: hand; pointer: hand;}
