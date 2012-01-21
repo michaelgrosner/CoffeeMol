@@ -76,9 +76,10 @@ class CanvasContext
 	init: =>
 		# Won't work outside of the debug environment
 		if $("#debug-info").length > 0
-			@canvas.width = window.innerWidth/1.5
-			$("#ctx-container").css "width", window.innerWidth - @canvas.width - 63
-			@canvas.height = window.innerHeight - 20
+			@canvas.width = window.innerWidth
+			@canvas.height = window.innerHeight
+			#$("#ctx-container").css "width", window.innerWidth - @canvas.width - 63
+			#@canvas.height = window.innerHeight - 20
 			@canvas.addEventListener 'mousemove',  @showAtomInfo
 
 		# Background color of the canvas

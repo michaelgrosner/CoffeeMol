@@ -1,8 +1,8 @@
-body {font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px; background-color: #FFFFFF; padding: 0px; margin: 10px;}
-#coffeemolCanvas {border: 1px solid #aaa; float: left; background-color: #fff; box-shadow: 5px 10px 20px #eee;}
+body {font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px; background-color: #FFFFFF; padding: 0px; margin: 0px; overflow: hidden}
+#coffeemolCanvas {float: left; background-color: #fff;} 
 #reset {position: absolute; bottom: 10px;}
 #title {font-size: 24px; font-family: "Georgia", serif; font-weight: 100; color: #14756E}
-#ctx-container {float: left; margin: 0px 20px; width: 400px; font-size: 10px; overflow-x: hidden}
+#ctx-container {float: left; margin: 0px 20px; width: 400px; font-size: 10px; overflow-x: hidden; display: none}
 #add-new-structure .submit {border: 1px solid #aaa; height: 25px; position: relative; left: -7px;}
 #add-new-structure .text   {border: 1px solid #aaa; height: 25px; position: relative; top: 1px;}
 
