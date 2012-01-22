@@ -255,7 +255,7 @@ delay = (ms, f) ->
 if $("#debug-info").length > 0
 	$("#add-new-structure .submit").live 'click', addNewStructure
 	
-	fade = "in"
+	fade = "out"
 	$("#show-ctx-container").live "click", ->
 		if fade == "in"
 			$(".cc-size").fadeIn "fast", -> 
@@ -270,7 +270,6 @@ if $("#debug-info").length > 0
 
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
-	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "cartoon"
@@ -284,6 +283,7 @@ if $("#debug-info").length > 0
 		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
 			drawMethod: "cartoon"
 			drawColor: [251, 251, 1]
+	"""
 	structuresToLoad =
 		"PDBs/half1_0.pdb":
 			drawMethod: "cartoon"
@@ -295,11 +295,13 @@ if $("#debug-info").length > 0
 	"""
 
 	dismissWelcomeSplash = ->
+		$("#show-ctx-container").css "display", "block"
+		$(".cc-size").css "display", "block"
 		$("#welcome-splash").fadeOut "fast", -> 1
 
 	if not structuresToLoad?
-		$("#show-ctx-container").css 
-			"display": "none"
+		$("#show-ctx-container").css "display", "none"
+		$(".cc-size").css "display", "none"
 
 		$("#welcome-splash").css
 			left: $(window).width()/2 - $("#welcome-splash").outerWidth()/2

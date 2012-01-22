@@ -32,9 +32,9 @@ class Element
 			# a) Not sure if I even need @selector.str in the class
 			# b) Not sure if I can include /'s in a class descriptor
 			dropdown = "<span class='dropdown #{@selector.str}'> #{pointsLink} | #{linesLink} | #{bothLink} | #{cartoonLink}</span>"
-			ctx_info = "<span class='element-desc'>#{@constructorName()}: #{shortenName @name} with #{@children.length} #{child_type_name}#{plural}</span> #{dropdown}"
+			ctx_info = "<span class='element-desc #{@constructorName()}'>#{@constructorName()}: #{shortenName @name} with #{@children.length} #{child_type_name}#{plural}</span> #{dropdown}"
 			children_info = (c.writeContextInfo() for c in @children)
-			return "<div class='element-controller #{@constructorName()}'>#{ctx_info}</div>#{children_info.join "" }"
+			return "<div class='element-controller #{@constructorName()}'>#{ctx_info}#{children_info.join "" }</div>"
 
 	init: ->
 		@atoms = @getOfType Atom
