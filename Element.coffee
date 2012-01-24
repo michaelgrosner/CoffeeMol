@@ -22,17 +22,17 @@ class Element
 
 			plural = if @children.length == 1 then '' else 's'
 
-			pointsLink  = genIFSLink @selector.str, "drawMethod", "points", "P"
-			linesLink   = genIFSLink @selector.str, "drawMethod", "lines", "L"
-			bothLink    = genIFSLink @selector.str, "drawMethod", "both", "B"
-			cartoonLink = genIFSLink @selector.str, "drawMethod", "cartoon", "C"
+			pointsLink  = genIFSLink @selector.str, "drawMethod", "points", "Points"
+			linesLink   = genIFSLink @selector.str, "drawMethod", "lines", "Lines"
+			bothLink    = genIFSLink @selector.str, "drawMethod", "both", "Points + lines"
+			cartoonLink = genIFSLink @selector.str, "drawMethod", "cartoon", "Cartoon"
 
 			child_type_name = @children[0].constructorName()
 
 			# a) Not sure if I even need @selector.str in the class
 			# b) Not sure if I can include /'s in a class descriptor
-			dropdown = "<span class='dropdown #{@selector.str}'> #{pointsLink} | #{linesLink} | #{bothLink} | #{cartoonLink}</span>"
-			ctx_info = "<span class='element-desc #{@constructorName()}'>#{@constructorName()}: #{shortenName @name} with #{@children.length} #{child_type_name}#{plural}</span> #{dropdown}"
+			dropdown = "<span class='fake-button open-dropdown'>Draw</span><span class='dropdown #{@selector.str}'>#{pointsLink} #{linesLink} #{bothLink} #{cartoonLink}</span>"
+			ctx_info = "<span class='element-desc #{@constructorName()} fake-button'>#{@constructorName()}: #{shortenName @name} with #{@children.length} #{child_type_name}#{plural}</span> #{dropdown}"
 			children_info = (c.writeContextInfo() for c in @children)
 			return "<div class='element-controller #{@constructorName()}'>#{ctx_info}#{children_info.join "" }</div>"
 
@@ -78,7 +78,6 @@ class Element
 			alert "drawMethod #{@info.drawMethod} not supported! Choose: #{c}"
 		@drawLines()
 		@drawPoints()
-		#console.log (a.z.toFixed 2 for a in @atoms).join ", "
 
 	drawLines: => 
 		@bonds.sort sortBondsByZ
@@ -98,7 +97,10 @@ class Element
 			@cc.context.beginPath()
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y
-			color = (c + b.a1.z for c in b.a1.info.drawColor)
+			if b.a1.info.drawMethod != 'both'
+				color = (c + b.a1.z for c in b.a1.info.drawColor)
+			else
+				color = (100 - b.a1.z for c in b.a1.info.drawColor)
 			@cc.context.strokeStyle = arrayToRGB color
 			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()

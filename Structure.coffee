@@ -1,6 +1,6 @@
 class Structure extends Element
 	constructor: (parent, name, cc) ->
-		if name.startswith "http:"
+		if name.search "/" > 0#startswith "http:"
 			n = name.split "/"
 			name = n[n.length-1]
 		if name.endswith ".pdb"

@@ -1,21 +1,26 @@
 html {padding: 0px; margin: 0px;}
 body {padding: 0px; margin: 0px; font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px; background-color: #FFFFFF; overflow: hidden}
 #coffeemolCanvas {float: left; background-color: #fff;} 
-#reset {position: absolute; bottom: 10px;}
+#reset {position: absolute; bottom: 40px; z-index: 1}
 .title {font-size: 24px; font-family: "Georgia", serif; font-weight: 100; color: #14756E}
 .cc-size {position: absolute; overflow: hidden; width: 300px; padding: 20px; height: 100%}
 #ctx-opacity {-moz-opacity: .9; opacity: .9; filter:alpha(opacity=90); background-color: #fafafa; box-shadow: 0px 0px 10px #ccc;}
 #ctx-container {font-size: 10px; }
+#add-new-structure {margin-bottom: 10px;}
 #add-new-structure .submit {border: 1px solid #aaa; height: 25px; position: relative; left: -7px;}
-#add-new-structure .text   {border: 1px solid #aaa; height: 26px; position: relative; top: 1px;}
+#add-new-structure .text   {border: 1px solid #aaa; height: 26px; position: relative; top: 1px; width: 200px;}
 #show-ctx-container {border: 1px solid #ccc; position: absolute; bottom: 5px; left: 5px; padding: 3px; z-index: 10;}
-#help-area {border: 1px solid #aaa; padding: 8px; color: #14756E}
+#help-area {border: 1px solid #aaa; padding: 8px; color: #14756E; margin-bottom: 10px;}
+#help-area p {line-height: 5px;}
 #welcome-splash {background-color: #eee; text-align: center; display: none; height: 50%; width: 50%; position: absolute; padding: 50px; border-radius: 50px; border: 15px solid #BE6521}
+#ctx-info {overflow-y: auto; overflow-x: hidden}
 
-.dropdown {position: absolute; right: 30px;}
-.element-controller {margin-top: 3px; border: 1px solid #CCC; padding: 3px; border-radius: 5px;}
-.Structure {width: 290px; margin-top: 10px !important;}
-.Chain {width: 287px;}
-.Residue {display: none; width: 284px;}
+.open-dropdown {color: red;}
+.dropdown-option {line-height: 15px;}
+.dropdown {display: none; position: absolute; border: 1px solid #aaa; margin-left: 5px; background-color: #fafafa; padding: 5px; border-radius: 5px;}
+.element-controller {margin-top: 3px; border: 1px solid #CCC; padding: 3px; border-top-left-radius: 5px; border-bottom-left-radius: 5px;}
+.Structure {width: 290px; margin-top: 10px !important; border-top-right-radius: 5px; border-bottom-right-radius: 5px}
+.Chain {width: 286px;}
+.Residue {display: none; width: 282px;}
 
 .fake-button {cursor: hand; pointer: hand;}

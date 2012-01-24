@@ -175,7 +175,7 @@ defaultInfo = ->
 genIFSLink  = (selector_str, key, val, pretty) ->
 	link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
 			'#{key}', '#{val}');"
-	"<a href=\"#{link}\">#{pretty}</a>"
+	"<div class='dropdown-option'><a href=\"#{link}\">#{pretty}</a></div>"
 
 mousePosition = (e) ->
 	if not e.offsetX? or not e.offsetY?
@@ -186,49 +186,38 @@ mousePosition = (e) ->
 		y: e.offsetY
 
 loadPDBAsStructure = (filepath, cc, info = null) ->
-	parse_DEBUG = (data) ->
-		x = filepath
-		for a_str in data.split '\n' when a_str.startswith "ATOM"
-			d = pdbAtomToDict a_str
-			x += ", " + d.chain_id
-		console.log x
-
-	parse = (data) ->
-		s = new Structure null, filepath, cc
-		
-		for a_str in data.split '\n'
-			if a_str.startswith "TITLE"
-				s.attachTitle a_str
-			
-			if not a_str.startswith "ATOM"
-				continue
-
-			d = pdbAtomToDict a_str
-			if not chain_id_prev? or d.chain_id != chain_id_prev
-				c = new Chain s, d.chain_id
-
-			if not resi_id_prev? or d.resi_id != resi_id_prev
-				r = new Residue c, d.resi_name, d.resi_id
-
-			#if (d.atom_name == "P" and r.isDNA()) \
-			#		or (d.atom_name in ["N", "O", "CA"] and r.isProtein())
-			a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
-			
-			chain_id_prev = d.chain_id
-			resi_id_prev = d.resi_id
-		
-		if info == null
-			info = defaultInfo()
-			if s.atoms.length > 100
-				info.drawMethod = 'cartoon'
-			console.log info
-		s.propogateInfo info
-
 	$.ajax
 		async: false
 		type: "GET"
 		url: filepath
-		success: parse
+		success: (data) ->
+			s = new Structure null, filepath, cc
+			
+			for a_str in data.split '\n'
+				if a_str.startswith "TITLE"
+					s.attachTitle a_str
+				
+				if not a_str.startswith "ATOM"
+					continue
+	
+				d = pdbAtomToDict a_str
+				if not chain_id_prev? or d.chain_id != chain_id_prev
+					c = new Chain s, d.chain_id
+	
+				if not resi_id_prev? or d.resi_id != resi_id_prev
+					r = new Residue c, d.resi_name, d.resi_id
+	
+				a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
+				
+				chain_id_prev = d.chain_id
+				resi_id_prev = d.resi_id
+			
+			if info == null
+				info = defaultInfo()
+				if s.atoms.length > 100
+					info.drawMethod = 'cartoon'
+			s.propogateInfo info
+
 	null
 
 addNewStructure = (e) ->
@@ -252,9 +241,21 @@ delay = (ms, f) ->
 	setInterval f, ms
 
 # If we are in the debug environment
-if $("#debug-info").length > 0
+if $("#debug-info").length
 	$("#add-new-structure .submit").live 'click', addNewStructure
+	#$("#ctx-info").on window.onresize, ->
+	#	console.log $(@).offset()
+
+	fitCtxInfo = ->
+		c = $("#ctx-info")
+		top = c.offset().top
+		w_height = $(window).height()
+		c.height w_height-top-100
 	
+	fitCtxInfo()
+	$(window).resize fitCtxInfo
+
+		
 	fade = "out"
 	$("#show-ctx-container").live "click", ->
 		if fade == "in"
@@ -289,8 +290,8 @@ if $("#debug-info").length > 0
 			drawMethod: "cartoon"
 	
 	structuresToLoad =
-		"http://www.rcsb.org/pdb/files/2Y1M.pdb":
-			drawMethod: "cartoon"
+		"http://www.rcsb.org/pdb/files/1MMS.pdb":
+			drawMethod: "both"
 			#drawColor: [47, 254, 254]
 	"""
 
@@ -318,6 +319,15 @@ if $("#debug-info").length > 0
 	ctx.init()
 	
 	ctx.writeContextInfo()
+	
+	$(".open-dropdown").live "click", ->
+		# Probably not good form, but the dropdown should be a sibling to the 
+		# right of `.open-dropdown`
+		d = $(@).next()
+		if (d.filter ":hidden").length == 1
+			d.fadeIn "fast"
+		else
+			d.fadeOut "fast"
 
 # Attach ctx instance to window to use it in the HTML
 window.ctx = ctx

@@ -8,6 +8,17 @@ class CanvasContext
 			@context = @canvas.getContext '2d'
 		catch error
 			alert error
+		
+
+		if $("#debug-info").length
+			@resizeToWindow()
+			$(window).resize ->
+				@resizeToWindow()
+				@drawAll()
+
+		# Background color of the canvas
+		# TODO: Embedder changable?
+		@background_color = [255, 255, 255]
 
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
@@ -15,6 +26,35 @@ class CanvasContext
 			 "user-select": "none"
 			 "-moz-user-select": "none"
 			 "-webkit-user-select": "none"
+
+	resizeToWindow: =>
+		@canvas.width = window.innerWidth
+		@canvas.height = window.innerHeight
+
+	init: =>
+		# Won't work outside of the debug environment
+		if $("#debug-info").length > 0
+			@canvas.addEventListener 'mousemove',  @showAtomInfo
+
+		# Previous mouse motions start at 0,0
+		@mouse_x_prev = 0
+		@mouse_y_prev = 0
+
+		# Ready all sub-elements
+		for el in @elements
+			el.init()
+
+		$("#reset").live "click", @restoreToOriginal
+		@canvas.addEventListener 'mousedown',  @mousedown
+		@canvas.addEventListener 'mousewheel', @changeZoom
+		@canvas.addEventListener 'dblclick',   @translateOrigin
+
+		@findBonds()
+		@assignSelectors()
+		@determinePointGrid()
+
+		@restoreToOriginal()
+		# Finish loading
 
 	determinePointGrid: =>
 		# TODO: Is there a better algorithm than this mess?
@@ -72,40 +112,6 @@ class CanvasContext
 
 			$("#atom-info").html a.atomInfo()
 		null
-
-	init: =>
-		# Won't work outside of the debug environment
-		if $("#debug-info").length > 0
-			@canvas.width = window.innerWidth
-			@canvas.height = window.innerHeight
-			#$("#ctx-container").css "width", window.innerWidth - @canvas.width - 63
-			#@canvas.height = window.innerHeight - 20
-			@canvas.addEventListener 'mousemove',  @showAtomInfo
-
-		# Background color of the canvas
-		# TODO: Embedder changable?
-		@background_color = [255, 255, 255]
-	
-		# Previous mouse motions start at 0,0
-		@mouse_x_prev = 0
-		@mouse_y_prev = 0
-
-		$("#reset").live "click", @restoreToOriginal
-
-		# Ready all sub-elements
-		for el in @elements
-			el.init()
-
-		@canvas.addEventListener 'mousedown',  @mousedown
-		@canvas.addEventListener 'mousewheel', @changeZoom
-		@canvas.addEventListener 'dblclick',   @translateOrigin
-		#@canvas.addEventListener 'click', @rotateToClick
-
-		@findBonds()
-		@restoreToOriginal()
-		@assignSelectors()
-		@determinePointGrid()
-
 	
 	assignSelectors: =>
 		#TODO: Fix this!
@@ -249,6 +255,8 @@ class CanvasContext
 			el.translateTo(center)
 		@x_origin = @canvas.width/2
 		@y_origin = @canvas.height/2
+		if $("#debug-info").length
+			@x_origin += $(".cc-size").width()/2
 		@clear()
 		@drawAll()
 
@@ -265,6 +273,14 @@ class CanvasContext
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
 		$("#ctx-info").html htmlInfo
+		$(".element-desc").live "click", ->
+			cc = $(@).siblings().next()
+			cc = cc.add cc.find ".element-desc"
+			shown = cc.css "display"
+			if shown == "none"	
+				cc.fadeIn "fast", -> 1
+			else
+				cc.fadeOut "fast", -> 1
 	
 	avgCenterOfAllElements: =>
 		avgs = [0.0, 0.0, 0.0]
