@@ -1,7 +1,7 @@
 ctx = new CanvasContext "#coffeemolCanvas"
 
 if $("#debug-info").length
-	$("#add-new-structure .submit").live 'click', addNewStructure
+	$("#add-new-structure .submit").on 'click', addNewStructure
 	#$("#ctx-info").on window.onresize, ->
 	#	console.log $(@).offset()
 
@@ -16,7 +16,7 @@ if $("#debug-info").length
 
 		
 	fade = "out"
-	$("#show-ctx-container").live "click", ->
+	$("#show-ctx-container").on "click", ->
 		if fade == "in"
 			$(".cc-size").fadeIn "fast", -> 
 				fade = "out"
@@ -26,7 +26,7 @@ if $("#debug-info").length
 				fade = "in"
 				$("#show-ctx-container").html "Options >>"
 
-	$("#help-area").live "click", -> $(this).css("display", "none")
+	$("#help-area").on "click", -> $(this).css("display", "none")
 
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
@@ -57,7 +57,7 @@ if $("#debug-info").length
 	dismissWelcomeSplash = ->
 		$("#show-ctx-container").css "display", "block"
 		$(".cc-size").css "display", "block"
-		$("#welcome-splash").fadeOut "fast", -> 1
+		$("#welcome-splash").fadeOut "fast"
 
 	if not structuresToLoad?
 		$("#show-ctx-container").css "display", "none"
@@ -67,10 +67,10 @@ if $("#debug-info").length
 			left: $(window).width()/2 - $("#welcome-splash").outerWidth()/2
 			top: $(window).height()/2 - $("#welcome-splash").outerHeight()/2
 
-		$("#welcome-splash").fadeIn "fast", -> 
-			$("#show-ctx-container").fadeIn "fast", -> 1
-			$(".sample-pdb-link").live "click", dismissWelcomeSplash
-			$("#welcome-splash #dismiss").live "click", dismissWelcomeSplash
+		$("#welcome-splash").fadeIn "fast", ->
+			$("#show-ctx-container").fadeIn "fast"
+			$(".sample-pdb-link").on "click", dismissWelcomeSplash
+			$("#welcome-splash #dismiss").on "click", dismissWelcomeSplash
 				
 	else
 		loadFromDict structuresToLoad
@@ -79,7 +79,7 @@ if $("#debug-info").length
 	
 	ctx.writeContextInfo()
 	
-	$(".open-dropdown").live "click", ->
+	$(".open-dropdown").on "click", ->
 		# Probably not good form, but the dropdown should be a sibling to the 
 		# right of `.open-dropdown`
 		d = $(@).next()

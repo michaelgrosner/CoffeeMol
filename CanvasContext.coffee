@@ -33,7 +33,7 @@ class CanvasContext
 
 	init: =>
 		# Won't work outside of the debug environment
-		if $("#debug-info").length > 0
+		if $("#debug-info").length
 			@canvas.addEventListener 'mousemove',  @showAtomInfo
 
 		# Previous mouse motions start at 0,0
@@ -44,7 +44,7 @@ class CanvasContext
 		for el in @elements
 			el.init()
 
-		$("#reset").live "click", @restoreToOriginal
+		$("#reset").on "click", @restoreToOriginal
 		@canvas.addEventListener 'mousedown',  @mousedown
 		@canvas.addEventListener 'mousewheel', @changeZoom
 		@canvas.addEventListener 'dblclick',   @translateOrigin
@@ -273,7 +273,7 @@ class CanvasContext
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
 		$("#ctx-info").html htmlInfo
-		$(".element-desc").live "click", ->
+		$(".element-desc").on "click", ->
 			cc = $(@).siblings().next()
 			cc = cc.add cc.find ".element-desc"
 			shown = cc.css "display"
