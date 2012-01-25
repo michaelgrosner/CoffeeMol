@@ -115,6 +115,12 @@ class Element
 				a.drawPoint()
 		null
 
+	rotateAboutZ: (theta) =>
+		cos = Math.cos theta
+		sin = Math.sin theta
+		a.rotateAboutZ sin, cos for a in @atoms
+		null
+	
 	rotateAboutY: (theta) =>
 		cos = Math.cos theta
 		sin = Math.sin theta

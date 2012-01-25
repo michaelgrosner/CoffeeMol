@@ -9,10 +9,9 @@ class CanvasContext
 		catch error
 			alert error
 		
-
 		if $("#debug-info").length
 			@resizeToWindow()
-			$(window).resize ->
+			$(window).resize =>
 				@resizeToWindow()
 				@drawAll()
 
@@ -32,10 +31,6 @@ class CanvasContext
 		@canvas.height = window.innerHeight
 
 	init: =>
-		# Won't work outside of the debug environment
-		if $("#debug-info").length
-			@canvas.addEventListener 'mousemove',  @showAtomInfo
-
 		# Previous mouse motions start at 0,0
 		@mouse_x_prev = 0
 		@mouse_y_prev = 0
@@ -46,12 +41,17 @@ class CanvasContext
 
 		$("#reset").on "click", @restoreToOriginal
 		@canvas.addEventListener 'mousedown',  @mousedown
+		@canvas.addEventListener 'DOMMouseScroll', @changeZoom
 		@canvas.addEventListener 'mousewheel', @changeZoom
 		@canvas.addEventListener 'dblclick',   @translateOrigin
 
 		@findBonds()
 		@assignSelectors()
-		@determinePointGrid()
+
+		# Won't work outside of the debug environment
+		if $("#debug-info").length
+			@canvas.addEventListener 'mousemove',  @showAtomInfo
+			@determinePointGrid()
 
 		@restoreToOriginal()
 		# Finish loading
@@ -192,10 +192,11 @@ class CanvasContext
 	
 	changeZoom: (e) =>
 		# Use mousewheel to zoom in and out
-		if e instanceof WheelEvent
-			@zoom = @zoom_prev - e.wheelDelta/50
-		else
-			@zoom = @zoom_prev - e
+		if e.hasOwnProperty 'wheelDelta'
+			@zoom = @zoom_prev - e.wheelDelta/50.0
+		else #if e.hasOwnProperty 'detail' 
+			@zoom = @zoom_prev - e.detail/50.0
+		e.preventDefault()
 		@clear()
 		if @zoom > 0
 			@drawAll()
@@ -247,12 +248,12 @@ class CanvasContext
 		#console.log @elements[0].bonds[@elements[0].bonds.length-1].toString()
 	
 	restoreToOriginal: =>
-		@zoom = @findBestZoom()
-		@zoom_prev = @zoom
 		center = @avgCenterOfAllElements()
 		for el in @elements
 			el.restoreToOriginal()
 			el.translateTo(center)
+		@zoom = @findBestZoom()
+		@zoom_prev = @zoom
 		@x_origin = @canvas.width/2
 		@y_origin = @canvas.height/2
 		if $("#debug-info").length
@@ -277,10 +278,10 @@ class CanvasContext
 			cc = $(@).siblings().next()
 			cc = cc.add cc.find ".element-desc"
 			shown = cc.css "display"
-			if shown == "none"	
-				cc.fadeIn "fast", -> 1
+			if shown == "none"
+				cc.fadeIn "fast"
 			else
-				cc.fadeOut "fast", -> 1
+				cc.fadeOut "fast"
 	
 	avgCenterOfAllElements: =>
 		avgs = [0.0, 0.0, 0.0]
@@ -344,7 +345,19 @@ class CanvasContext
 	
 	findBonds: =>
 		@bonds = []
-		for el in @elements
-			el.findBonds()
+		el.findBonds() for el in @elements
 		null
 
+	timedRotation: (dim, dt) =>
+		@delayID = delay dt, =>
+			@clear()
+			if dim == 'X'
+				el.rotateAboutX degToRad 1 for el in @elements
+			else if dim == 'Y'
+				el.rotateAboutY degToRad 1 for el in @elements
+			else if dim == 'Z'
+				el.rotateAboutZ degToRad 1 for el in @elements
+			@drawAll()
+	
+	stopRotation: ->
+		clearInterval @delayID

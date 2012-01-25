@@ -15,9 +15,9 @@ body {padding: 0px; margin: 0px; font-family: "Georgia", serif; text-rendering: 
 #welcome-splash {background-color: #eee; text-align: center; display: none; height: 50%; width: 50%; position: absolute; padding: 50px; border-radius: 50px; border: 15px solid #BE6521}
 #ctx-info {overflow-y: auto; overflow-x: hidden}
 
-.open-dropdown {color: red;}
+.open-dropdown {color: red; float: right; text-decoration: underline}
 .dropdown-option {line-height: 15px;}
-.dropdown {display: none; position: absolute; border: 1px solid #aaa; margin-left: 5px; background-color: #fafafa; padding: 5px; border-radius: 5px;}
+.dropdown {display: none; position: fixed; border: 1px solid #aaa; margin-left: 5px; background-color: #fafafa; padding: 5px; border-radius: 5px;}
 .element-controller {margin-top: 3px; border: 1px solid #CCC; padding: 3px; border-top-left-radius: 5px; border-bottom-left-radius: 5px;}
 .Structure {width: 290px; margin-top: 10px !important; border-top-right-radius: 5px; border-bottom-right-radius: 5px}
 .Chain {width: 286px;}

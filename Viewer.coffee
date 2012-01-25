@@ -1,5 +1,3 @@
-ctx = new CanvasContext "#coffeemolCanvas"
-
 if $("#debug-info").length
 	$("#add-new-structure .submit").on 'click', addNewStructure
 	#$("#ctx-info").on window.onresize, ->
@@ -10,6 +8,7 @@ if $("#debug-info").length
 		top = c.offset().top
 		w_height = $(window).height()
 		c.height w_height-top-100
+	# COMMENT
 	
 	fitCtxInfo()
 	$(window).resize fitCtxInfo
@@ -79,11 +78,14 @@ if $("#debug-info").length
 	
 	ctx.writeContextInfo()
 	
-	$(".open-dropdown").on "click", ->
+	$(".open-dropdown").on "click", (e) ->
 		# Probably not good form, but the dropdown should be a sibling to the 
 		# right of `.open-dropdown`
 		d = $(@).next()
 		if (d.filter ":hidden").length == 1
+			d.css
+				'top':  e.pageY
+				'left': e.pageX
 			d.fadeIn "fast"
 		else
 			d.fadeOut "fast"

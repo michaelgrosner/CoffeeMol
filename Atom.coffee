@@ -29,6 +29,10 @@ class Atom extends Element
 		@y = @y*cos - @z*sin
 		@z = @y*sin + @z*cos
 
+	rotateAboutZ: (sin, cos) =>
+		@x = @x*cos - @y*sin
+		@y = @x*sin + @y*cos
+
 	restoreToOriginal: =>
 		@x = @original_position[0]
 		@y = @original_position[1]

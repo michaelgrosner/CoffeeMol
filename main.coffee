@@ -238,6 +238,8 @@ fromSplashLink = (filename) ->
 delay = (ms, f) -> 
 	setInterval f, ms
 
+ctx = new CanvasContext "#coffeemolCanvas"
+
 # If we are in the debug environment
 # Attach ctx instance to window to use it in the HTML
 window.ctx = ctx
