@@ -209,17 +209,18 @@ class CanvasContext
 		@canvas.addEventListener 'mouseout',  @mouseup
 		@canvas.addEventListener 'mouseup',   @mouseup
 
-		for el in @elements
-			el.stashInfo()
-			new_info = deepCopy el.info
-			new_info.drawMethod = 'cartoon'
-			el.propogateInfo new_info
-			el.findBonds()
+		#for el in @elements
+		#	el.stashInfo()
+		#	new_info = deepCopy el.info
+		#	new_info.drawMethod = 'cartoon'
+		#	new_info.drawColor = [100,100,100]
+		#	el.propogateInfo new_info
+		#	el.findBonds()
 
 	mouseup: (e) =>
-		for el in @elements
-			el.retrieveStashedInfo()
-			el.findBonds()
+		#for el in @elements
+		#	el.retrieveStashedInfo()
+		#	el.findBonds()
 		@clear()
 		@drawAll()
 
@@ -392,7 +393,7 @@ class CanvasContext
 	
 	stopRotation: ->
 		clearInterval @delayID
-		
+
 
 # TODO: Large mouse movements will squish and distort the molecule (perhaps
 # JS can't keep up with large motions? Numerical error? Coding error???)
