@@ -40,9 +40,16 @@ class CanvasContext
 			el.init()
 
 		$("#reset").on "click", @restoreToOriginal
+
+		# TODO: Determine which events need to be in operation depending on
+		# device type
 		@canvas.addEventListener 'mousedown',  @mousedown
+		@canvas.addEventListener 'touchstart',  @touchstart
+
 		@canvas.addEventListener 'DOMMouseScroll', @changeZoom
 		@canvas.addEventListener 'mousewheel', @changeZoom
+		@canvas.addEventListener 'gesturestart', @iOSChangeZoom
+
 		@canvas.addEventListener 'dblclick',   @translateOrigin
 
 		@findBonds()
@@ -51,12 +58,14 @@ class CanvasContext
 		# Won't work outside of the debug environment
 		if $("#debug-info").length
 			@canvas.addEventListener 'mousemove',  @showAtomInfo
-			@determinePointGrid()
+		@determinePointGrid()
 
 		@restoreToOriginal()
 		# Finish loading
 
 	determinePointGrid: =>
+		if $("#debug-info").length == 0
+			return null
 		# TODO: Is there a better algorithm than this mess?
 
 		# Seed grid with nulls
@@ -80,10 +89,13 @@ class CanvasContext
 								@grid[w+i][h+j] = a
 						# May need to rethink a bit more
 						catch error
-							1#console.log error, w, h
+							1
 		null
 
 	showAtomInfo: (e) =>
+		if not $("debug-info").length
+			return null
+
 		#TODO: Does not work well with lines/cartoon
 		# Unhighlight the previously highlighted atom
 		if @a_prev?
@@ -176,12 +188,19 @@ class CanvasContext
 			el.info.drawMethod = new_method
 		@drawAll()
 
-	clear: => 
+	clear: =>
 		#@context.setTransform 1, 0, 0, 1, 0, 0
 		#@context.clearRect 0, 0, @canvas.width, @canvas.height
 		@canvas.width = @canvas.width
 		@context.translate @x_origin, @y_origin
-	
+
+# Event handlers
+	touchstart: (mobile_e) =>
+		mobile_e.preventDefault()
+		@canvas.addEventListener 'touchmove', @touchmove
+		@canvas.addEventListener 'touchend',  @touchend
+		@mousedown mobile_e.touches[0]
+
 	mousedown: (e) =>
 		@mouse_x_prev = e.clientX
 		@mouse_y_prev = e.clientY
@@ -189,38 +208,33 @@ class CanvasContext
 		@canvas.addEventListener 'mousemove', @mousemove
 		@canvas.addEventListener 'mouseout',  @mouseup
 		@canvas.addEventListener 'mouseup',   @mouseup
-	
-	changeZoom: (e) =>
-		# Use mousewheel to zoom in and out
-		if e.hasOwnProperty 'wheelDelta'
-			@zoom = @zoom_prev - e.wheelDelta/50.0
-		else #if e.hasOwnProperty 'detail' 
-			@zoom = @zoom_prev - e.detail/50.0
-		e.preventDefault()
-		@clear()
-		if @zoom > 0
-			@drawAll()
-			@zoom_prev = @zoom
+
+		for el in @elements
+			el.stashInfo()
+			new_info = deepCopy el.info
+			new_info.drawMethod = 'cartoon'
+			el.propogateInfo new_info
+			el.findBonds()
 
 	mouseup: (e) =>
+		for el in @elements
+			el.retrieveStashedInfo()
+			el.findBonds()
+		@clear()
+		@drawAll()
+
 		@canvas.removeEventListener 'mousemove', @mousemove
 		@canvas.addEventListener 'mousemove',  @showAtomInfo
 		@determinePointGrid()
 	
+	touchend: (mobile_e) =>
+		@canvas.removeEventListener 'touchmove', @mousemove
+		@mouseup mobile_e.touches[0]
+	
+	touchmove: (mobile_e) =>
+		@mousemove mobile_e.touches[0]
+	
 	mousemove: (e) =>
-		# TODO: Large mouse movements will squish and distort the molecule (perhaps
-		# JS can't keep up with large motions? Numerical error? Coding error???)
-		# Limit to some tolerance level `tol`. I assume it's probably highly dependent
-		# on CPU/Browser/GPU(?) etc.
-		tol = 2
-		boundMouseMotion = (dz) ->
-			if dz > tol
-				tol
-			else if dz < -1*tol
-				-1*tol
-			else
-				dz
-
 		dx = boundMouseMotion @mouse_x_prev - e.clientX
 		dy = boundMouseMotion @mouse_y_prev - e.clientY
 		ds = Math.sqrt(dx*dx + dy*dy)
@@ -244,9 +258,32 @@ class CanvasContext
 		
 		@mouse_x_prev = e.clientX
 		@mouse_y_prev = e.clientY
-
-		#console.log @elements[0].bonds[@elements[0].bonds.length-1].toString()
 	
+	iOSChangeZoom: (gesture) =>
+		zoomChanger = (gesture) =>
+			gesture.preventDefault()
+			# Fiddle around with this a bit more to find a good use
+			@zoom *= Math.sqrt gesture.scale
+			el.rotateAboutZ degToRad boundMouseMotion gesture.rotation for el in @elements
+			@clear()
+			if @zoom > 0
+				@drawAll()
+				@zoom_prev = @zoom
+		zoomChanger gesture
+		@canvas.addEventListener 'gesturechange', zoomChanger
+
+	changeZoom: (e) =>
+		# Use mousewheel to zoom in and out
+		if e.hasOwnProperty 'wheelDelta'
+			@zoom = @zoom_prev - e.wheelDelta/50.0
+		else #if e.hasOwnProperty 'detail' 
+			@zoom = @zoom_prev - e.detail/50.0
+		e.preventDefault()
+		@clear()
+		if @zoom > 0
+			@drawAll()
+			@zoom_prev = @zoom
+
 	restoreToOriginal: =>
 		center = @avgCenterOfAllElements()
 		for el in @elements
@@ -274,15 +311,7 @@ class CanvasContext
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
 		$("#ctx-info").html htmlInfo
-		$(".element-desc").on "click", ->
-			cc = $(@).siblings().next()
-			cc = cc.add cc.find ".element-desc"
-			shown = cc.css "display"
-			if shown == "none"
-				cc.fadeIn "fast"
-			else
-				cc.fadeOut "fast"
-	
+			
 	avgCenterOfAllElements: =>
 		avgs = [0.0, 0.0, 0.0]
 		total_atoms = 0
@@ -319,7 +348,9 @@ class CanvasContext
 		# or a single Selector, or an array of those two types.
 		# TODO: This will not change drawMethods for anything other than top level
 		# elements (Structure)
-		if not selectors instanceof Array or typeof selectors == 'string'
+		if selectors == "all"
+			selectors = (el.selector for el in @elements)
+		else if not selectors instanceof Array or typeof selectors == 'string'
 			selectors = [selectors]
 
 		for selector in selectors
@@ -337,11 +368,11 @@ class CanvasContext
 				alert "Error: #{error} with #{info_key} to #{info_value}"
 	
 			c.propogateInfo c.info
-			@clear()
-			if c.info.drawMethod != 'points'
-				@findBonds()
-			@drawAll()
-			null
+		@clear()
+		if c.info.drawMethod != 'points'
+			@findBonds()
+		@drawAll()
+		null
 	
 	findBonds: =>
 		@bonds = []
@@ -361,3 +392,17 @@ class CanvasContext
 	
 	stopRotation: ->
 		clearInterval @delayID
+		
+
+# TODO: Large mouse movements will squish and distort the molecule (perhaps
+# JS can't keep up with large motions? Numerical error? Coding error???)
+# Limit to some tolerance level `tol`. I assume it's probably highly dependent
+# on CPU/Browser/GPU(?) etc.
+tol = 2
+boundMouseMotion = (dz) ->
+	if dz > tol
+		tol
+	else if dz < -1*tol
+		-1*tol
+	else
+		dz

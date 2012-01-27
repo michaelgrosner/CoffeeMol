@@ -34,13 +34,13 @@ if $("#debug-info").length
 			drawMethod: "cartoon"
 			drawColor: [47, 254, 254]
 		"PDBs/A1_open_2HU_78bp_1/half1_0.pdb":
-			drawMethod: "cartoon"
+			drawMethod: "points"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":
-			drawMethod: "cartoon"
+			drawMethod: "both"
 			drawColor: [254, 0, 254]
 		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
-			drawMethod: "cartoon"
+			drawMethod: "lines"
 			drawColor: [251, 251, 1]
 	"""
 	structuresToLoad =
@@ -78,7 +78,7 @@ if $("#debug-info").length
 	
 	ctx.writeContextInfo()
 	
-	$(".open-dropdown").on "click", (e) ->
+	$("#ctx-info").on "click", ".open-dropdown", (e) ->
 		# Probably not good form, but the dropdown should be a sibling to the 
 		# right of `.open-dropdown`
 		d = $(@).next()
@@ -90,4 +90,9 @@ if $("#debug-info").length
 		else
 			d.fadeOut "fast"
 
+	$("#ctx-info").on "click", ".element-desc", (e) ->
+		cc = $(@).siblings().next()
+		cc = cc.add cc.find ".element-desc"
+		shown = cc.css "display"
+		if shown == "none" then cc.fadeIn "fast" else cc.fadeOut "fast"
 

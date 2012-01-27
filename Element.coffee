@@ -44,9 +44,8 @@ class Element
 	
 	propogateInfo: (info) ->
 
-		# Object deep-copy. See http://stackoverflow.com/a/122704/178073
-		@info = $.extend(true, {}, info)
-
+		@info = deepCopy info
+		
 		if @info.drawColor?
 			@info.drawColor = hexToRGBArray @info.drawColor 
 		else
@@ -60,6 +59,16 @@ class Element
 		for c in @children
 			c.propogateInfo info
 		null
+	
+	stashInfo: ->
+		@old_info = deepCopy @info
+		for c in @children
+			c.stashInfo()
+	
+	retrieveStashedInfo: ->
+		@info = deepCopy @old_info
+		for c in @children
+			c.retrieveStashedInfo()
 
 	getOfType: (type) ->
 		ret = []

@@ -164,6 +164,10 @@ randomRGB = ->
 	rr = -> randomInt 255
 	[rr(), rr(), rr()]
 
+# Object deep-copy. See http://stackoverflow.com/a/122704/178073
+deepCopy = (o) ->
+	$.extend(true, {}, o)
+
 randomDrawMethod = ->
 	supported_draw_methods[randomInt supported_draw_methods.length]
 
