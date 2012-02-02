@@ -17,11 +17,11 @@ if $("#debug-info").length
 	fade = "out"
 	$("#show-ctx-container").on "click", ->
 		if fade == "in"
-			$(".cc-size").fadeIn "fast", -> 
+			$(".cc-size").fadeIn "fast", ->
 				fade = "out"
 				$("#show-ctx-container").html "<< Options"
 		else if fade == "out"
-			$(".cc-size").fadeOut "fast", -> 
+			$(".cc-size").fadeOut "fast", ->
 				fade = "in"
 				$("#show-ctx-container").html "Options >>"
 

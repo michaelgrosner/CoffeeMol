@@ -71,7 +71,7 @@ hexToRGBArray = (h) ->
 	temp = (h.substring i, i+2 for i in [0..4] by 2)
 	(parseInt t, 16 for t in temp)
 
-arrayToRGB = (a) -> 
+arrayToRGB = (a) ->
 	if typeof a == 'string'
 		if a.startswith "#" and a.length == 7
 			console.log "hex"

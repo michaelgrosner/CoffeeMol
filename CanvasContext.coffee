@@ -65,6 +65,7 @@ class CanvasContext
 
 	determinePointGrid: =>
 		if $("#debug-info").length == 0
+			console.log "not determining pg"
 			return null
 		# TODO: Is there a better algorithm than this mess?
 
@@ -94,6 +95,7 @@ class CanvasContext
 
 	showAtomInfo: (e) =>
 		if not $("debug-info").length
+			console.log "not showing atom info"
 			return null
 
 		#TODO: Does not work well with lines/cartoon
