@@ -191,16 +191,10 @@ mousePosition = (e) ->
 
 addNewStructure = (e) ->
 	filepath = $("#add-new-structure .text").val()
-	#loadPDBAsStructure filepath, ctx
 	ctx.addNewStructure filepath
-	ctx.init()
-	ctx.writeContextInfo()
 
 fromSplashLink = (filename) ->
 	ctx.addNewStructure filename, {drawMethod: 'cartoon'} 
-	#loadPDBAsStructure filename, window.ctx, {drawMethod: 'cartoon'} 
-	ctx.init()
-	ctx.writeContextInfo()
 
 delay = (ms, f) -> 
 	setInterval f, ms

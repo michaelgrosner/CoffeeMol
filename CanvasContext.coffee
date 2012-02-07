@@ -9,12 +9,6 @@ class CanvasContext
 		catch error
 			alert error
 		
-		if $("#debug-info").length
-			@resizeToWindow()
-			$(window).resize =>
-				@resizeToWindow()
-				@drawAll()
-
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
 		$(@canvas).css
@@ -23,36 +17,40 @@ class CanvasContext
 			 "-webkit-user-select": "none"
 			 "background-color": arrayToRGB @background_color
 
-	init: =>
 		# Previous mouse motions start at 0,0
 		@mouse_x_prev = 0
 		@mouse_y_prev = 0
 
+		# Add the event handlers we will need
+		# Investigate migrating to jQuery `on`
+		$("#reset").on "click", @restoreToOriginal
+		@canvas.addEventListener 'mousedown',  @mousedown
+		@canvas.addEventListener 'touchstart',  @touchstart
+		@canvas.addEventListener 'DOMMouseScroll', @changeZoom
+		@canvas.addEventListener 'mousewheel', @changeZoom
+		@canvas.addEventListener 'gesturestart', @iOSChangeZoom
+		@canvas.addEventListener 'dblclick',   @translateOrigin
+
+		# Won't work outside of the debug environment
+		if $("#debug-info").length
+			@resizeToWindow()
+			@canvas.addEventListener 'mousemove',  @showAtomInfo
+			$(window).resize =>
+				@resizeToWindow()
+				@drawAll()
+
+	init: =>
 		# Ready all sub-elements
 		for el in @elements
 			el.init()
 
-		$("#reset").on "click", @restoreToOriginal
-
-		# TODO: Determine which events need to be in operation depending on
-		# device type
-		@canvas.addEventListener 'mousedown',  @mousedown
-		@canvas.addEventListener 'touchstart',  @touchstart
-
-		@canvas.addEventListener 'DOMMouseScroll', @changeZoom
-		@canvas.addEventListener 'mousewheel', @changeZoom
-		@canvas.addEventListener 'gesturestart', @iOSChangeZoom
-
-		@canvas.addEventListener 'dblclick',   @translateOrigin
-
 		@findBonds()
 		@assignSelectors()
 
-		# Won't work outside of the debug environment
-		if $("#debug-info").length
-			@canvas.addEventListener 'mousemove',  @showAtomInfo
-
 		@restoreToOriginal()
+		@determinePointGrid()
+
+		@writeContextInfo()
 
 	addElement: (el) ->
 		@elements.push el
@@ -88,14 +86,23 @@ class CanvasContext
 				if s.atoms.length > 100
 					info.drawMethod = 'cartoon'
 			s.propogateInfo info
+
+			if @structures_left_to_load?
+				@structures_left_to_load -= 1
+				if @structures_left_to_load == 0 
+					@init()
 		$.ajax
-			async: false
+			async: true
 			type: "GET"
 			url: filepath
 			success: handlePDB
 		null
 
 	loadFromDict: (structuresToLoad) =>
+		@structures_left_to_load = 0
+		for filepath, info of structuresToLoad
+			@structures_left_to_load += 1
+
 		for filepath, info of structuresToLoad
 			@addNewStructure filepath, info
 	
@@ -384,7 +391,6 @@ class CanvasContext
 			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
 			el_info.join " "
 		$("#ctx-info").html htmlInfo
-
 
 	assignSelectors: =>
 		#TODO: Fix this!
