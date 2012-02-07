@@ -73,11 +73,12 @@ hexToRGBArray = (h) ->
 
 arrayToRGB = (a) ->
 	if typeof a == 'string'
-		if a.startswith "#" and a.length == 7
+		if a.startswith "#"
 			console.log "hex"
 			return a
 		else
-			alert "Improperly formatted string -> color. Must be of the form #XXXXXX"
+			alert "Improperly formatted string -> color. \
+					Must be of the form #XXXXXX"
 
 	if not a?
 		a = randomRGB()

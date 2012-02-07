@@ -1,5 +1,5 @@
 class CanvasContext
-	constructor: (@canvas_tag) ->
+	constructor: (@canvas_tag, @background_color = "#ffffff") ->
 		@elements = []
 	
 		try	
@@ -15,16 +15,13 @@ class CanvasContext
 				@resizeToWindow()
 				@drawAll()
 
-		# Background color of the canvas
-		# TODO: Embedder changable?
-		@background_color = [255, 255, 255]
-
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
 		$(@canvas).css
 			 "user-select": "none"
 			 "-moz-user-select": "none"
 			 "-webkit-user-select": "none"
+			 "background-color": arrayToRGB @background_color
 
 	resizeToWindow: =>
 		@canvas.width = window.innerWidth
