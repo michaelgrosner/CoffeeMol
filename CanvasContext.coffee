@@ -1,14 +1,14 @@
 class CanvasContext
 	constructor: (@canvas_tag, @background_color = "#ffffff") ->
 		@elements = []
-	
+
 		try	
 			# Use jQuery to get the canvas
 			@canvas  = $(@canvas_tag)[0]
 			@context = @canvas.getContext '2d'
 		catch error
 			alert error
-		
+
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
 		$(@canvas).css
@@ -61,26 +61,26 @@ class CanvasContext
 	addNewStructure: (filepath, info = null) =>
 		handlePDB = (data) => 
 			s = new Structure null, filepath, @
-			
+
 			for a_str in data.split '\n'
 				if a_str.startswith "TITLE"
 					s.attachTitle a_str
-				
+
 				if not a_str.startswith "ATOM"
 					continue
-	
+
 				d = pdbAtomToDict a_str
 				if not chain_id_prev? or d.chain_id != chain_id_prev
 					c = new Chain s, d.chain_id
-	
+
 				if not resi_id_prev? or d.resi_id != resi_id_prev
 					r = new Residue c, d.resi_name, d.resi_id
-	
+
 				a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
-				
+
 				chain_id_prev = d.chain_id
 				resi_id_prev = d.resi_id
-			
+
 			if info == null
 				info = defaultInfo()
 				if s.atoms.length > 100
@@ -105,7 +105,7 @@ class CanvasContext
 
 		for filepath, info of structuresToLoad
 			@addNewStructure filepath, info
-	
+
 	# -------
 	# DRAWING SECTION
 	# -------
@@ -137,7 +137,7 @@ class CanvasContext
 				if Math.abs(a.y) > max_y
 					max_y = Math.abs(a.y)
 		if max_x > max_y then @canvas.width/(2*max_x) else @canvas.width/(2*max_y)
-	
+
 	drawGridLines: =>
 		@context.moveTo 0, -@canvas.height
 		@context.lineTo 0, @canvas.height
@@ -147,7 +147,7 @@ class CanvasContext
 
 		@context.strokeStyle = "#eee"
 		@context.stroke()
-		
+
 	changeAllDrawMethods: (new_method) =>
 		# Most likely used in conjuction with a link handler
 		@clear()
@@ -200,14 +200,14 @@ class CanvasContext
 		@canvas.removeEventListener 'mousemove', @mousemove
 		@canvas.addEventListener 'mousemove',  @showAtomInfo
 		@determinePointGrid()
-	
+
 	touchend: (mobile_e) =>
 		@canvas.removeEventListener 'touchmove', @mousemove
 		@mouseup mobile_e.touches[0]
-	
+
 	touchmove: (mobile_e) =>
 		@mousemove mobile_e.touches[0]
-	
+
 	mousemove: (e) =>
 		dx = boundMouseMotion @mouse_x_prev - e.clientX
 		dy = boundMouseMotion @mouse_y_prev - e.clientY
@@ -231,10 +231,10 @@ class CanvasContext
 				ds: #{ds.toFixed 2}, \
 				dx: #{dx.toFixed 2}, \
 				dy: #{dy.toFixed 2}")
-		
+
 		@mouse_x_prev = e.clientX
 		@mouse_y_prev = e.clientY
-	
+
 	# iOS (at least) Pinch-To-Zoom functionality
 	iOSChangeZoom: (gesture) =>
 		zoomChanger = (gesture) =>
@@ -291,7 +291,7 @@ class CanvasContext
 		@y_origin = click.y
 		@clear()
 		@drawAll()
-			
+
 	avgCenterOfAllElements: =>
 		avgs = [0.0, 0.0, 0.0]
 		total_atoms = 0
@@ -303,7 +303,7 @@ class CanvasContext
 			avgs[2] += elAvg[2]*ela
 			total_atoms += el.atoms.length
 		(a/total_atoms for a in avgs)
-	
+
 	timedRotation: (dim, dt) =>
 		@delayID = delay dt, =>
 			@clear()
@@ -314,7 +314,7 @@ class CanvasContext
 			else if dim == 'Z'
 				el.rotateAboutZ degToRad 1 for el in @elements
 			@drawAll()
-	
+
 	stopRotation: ->
 		clearInterval @delayID
 
@@ -384,7 +384,7 @@ class CanvasContext
 
 			$("#atom-info").html a.atomInfo()
 		null
-	
+
 	writeContextInfo: =>
 		# See http://api.jquery.com/html/
 		htmlInfo = (index, oldhtml) =>
@@ -394,7 +394,8 @@ class CanvasContext
 
 	assignSelectors: =>
 		#TODO: Fix this!
-		# Also, remember the order of for ... in arguments is reversed comapred to Python!
+		# Also, remember the order of for ... in arguments is reversed 
+        # comapred to Python!
 		for el, ne in @elements
 			el.selector = new Selector [ne]
 			for c, nc in el.children
@@ -421,12 +422,9 @@ class CanvasContext
 
 		c = @
 		for i in selector.array
-			if c.elements?
-				c = c.elements[i]
-			else
-				c = c.children[i]
+			c = if c.elements? then c.elements[i] else c = c.children[i]
 		return c
-	
+
 	changeInfoFromSelectors: (selectors, info_key, info_value) =>
 		# `selectors` can be a single String which will map to a single Selector
 		# or a single Selector, or an array of those two types.
@@ -438,19 +436,19 @@ class CanvasContext
 			selectors = [selectors]
 
 		for selector in selectors
-	
+
 			selector = @handleSelectorArg selector
-	
+
 			try
 				c = @childFromSelector(selector)
 			catch error
 				alert "Child from selector #{selector.str} does not exist"
-	
+
 			try
 				c.info[info_key] = info_value.toLowerCase()
 			catch error
 				alert "Error: #{error} with #{info_key} to #{info_value}"
-	
+
 			c.propogateInfo c.info
 		@clear()
 		if c.info.drawMethod != 'points'

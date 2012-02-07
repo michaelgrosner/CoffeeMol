@@ -27,14 +27,6 @@ nuc_acids = ["A",  "C",  "G",   "T",
 			 "DA", "DC", "DG", "DT",
 			 "RA", "RC", "RG", "RT"]
 
-# Using http://www.pymolwiki.org/index.php/Color_Values
-atom_colors =
-	'C': [51,  255,  51]
-	'O': [255, 76,   76]
-	'N': [51,  51,  255]
-	'P': [255, 128,   0]
-	'H': [229, 229, 229]
-	'S': [229, 198,  64]
 
 # See http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
 # Currently, just use < 2

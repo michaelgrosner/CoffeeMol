@@ -130,6 +130,10 @@ class Element
 		sin = Math.sin theta
 		a.rotateAboutX sin, cos for a in @atoms
 		null
+
+	rotateAboutXYZ: (dx, dy, dz) =>
+		a.rotateAboutXYZ dx, dy, dz for a in @atoms
+		null
 	
 	restoreToOriginal: =>
 		a.restoreToOriginal() for a in @atoms
@@ -154,7 +158,7 @@ class Element
 		@bonds = []
 		for i in [2..@atoms.length-1]
 			a1 = @atoms[i]
-			j_step = if a1.info.drawMethod == 'cartoon' then 30 else 5
+			j_step = if a1.info.drawMethod == 'cartoon' then 30 else 10
 			for j in [i+1..i+j_step] when j < @atoms.length-1
 				a2 = @atoms[j]
 

@@ -7,10 +7,7 @@ class Atom extends Element
 		"<Atom: #{@name} [#{@x.toFixed 2}, #{@y.toFixed 2}, #{@z.toFixed 2}]>"
 
 	drawPoint: () =>
-		if not @info.drawColor? #and @info.drawMethod == "points"
-			color = atom_colors[@name]
-		else
-			color = @info.drawColor
+		color = if not @info.drawColor? then atom_colors[@name] else @info.drawColor
 
 		@cc.context.beginPath()
 		zz  = ATOM_SIZE/@cc.zoom
@@ -21,6 +18,8 @@ class Atom extends Element
 		@cc.context.stroke()
 		@cc.context.fill()
 
+	# For the next 3 rotation functions, `sin` and `cos` are given as 
+	# Math.sin(dy), precomputed in `Element`
 	rotateAboutY: (sin, cos) =>
 		@x = @x*cos  + @z*sin
 		@z = -@x*sin + @z*cos
@@ -32,6 +31,19 @@ class Atom extends Element
 	rotateAboutZ: (sin, cos) =>
 		@x = @x*cos - @y*sin
 		@y = @x*sin + @y*cos
+
+	# Probably broken
+	rotateAboutXYZ: (j, k, l) =>
+		@x = @x * Math.cos(k) * Math.cos(l) + @z * Math.sin(k) - \
+				@y * Math.cos(k) * Math.sin(l)
+		@y = -@z * Math.cos(k) * Math.sin(j) + @x * (Math.cos(l) * Math.sin(j) \
+				* Math.sin(k) + Math.cos(j) * Math.sin(l)) + \
+				@y * (Math.cos(j) * Math.cos(l) - Math.sin(j) * \
+				Math.sin(k) * Math.sin(l))
+		@z = @z * Math.cos(j) * Math.cos(k) + @x * (-Math.cos(j) * Math.cos(l) \
+				* Math.sin(k) + Math.sin(j) * Math.sin(l)) + \
+				@y * (Math.cos(l) * Math.sin(j) + Math.cos(j) * \
+				Math.sin(k) * Math.sin(l))
 
 	restoreToOriginal: =>
 		@x = @original_position[0]
@@ -47,6 +59,15 @@ class Atom extends Element
 			s = s.up()
 			if not s? then break else parents.push @cc.childFromSelector s
 		(encodeHTML p.toString() for p in parents).join "<br>"
+
+# Using http://www.pymolwiki.org/index.php/Color_Values
+atom_colors =
+	'C': [51,  255,  51]
+	'O': [255, 76,   76]
+	'N': [51,  51,  255]
+	'P': [255, 128,   0]
+	'H': [229, 229, 229]
+	'S': [229, 198,  64]
 
 sortBondsByZ = (b1, b2) ->
 	b1.a2.z - b2.a2.z
