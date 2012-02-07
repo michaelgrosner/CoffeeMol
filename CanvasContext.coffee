@@ -94,7 +94,7 @@ class CanvasContext
 		null
 
 	showAtomInfo: (e) =>
-		if not $("debug-info").length
+		if not $("#debug-info").length
 			console.log "not showing atom info"
 			return null
 
@@ -108,10 +108,10 @@ class CanvasContext
 		# Get mouse position, then use it to check against the previously computed
 		# @grid to show atomInfo() and highlight it a bright green color.
 		click = mousePosition e
-		xx = parseInt (click.x - @x_origin)/@zoom
-		yy = parseInt (click.y - @y_origin)/@zoom
-		if @grid[xx]? and @grid[xx][yy]?
-			a = @grid[xx][yy]
+		grid_x = parseInt (click.x - @x_origin)/@zoom
+		grid_y = parseInt (click.y - @y_origin)/@zoom
+		if @grid[grid_x]? and @grid[grid_x][grid_y]?
+			a = @grid[grid_x][grid_y]
 
 			if a.info.drawMethod in ['lines', 'cartoon']
 				return null
@@ -396,6 +396,44 @@ class CanvasContext
 	stopRotation: ->
 		clearInterval @delayID
 
+	addNewStructure: (filepath, info = null) =>
+		handlePDB = (data) => 
+			s = new Structure null, filepath, @
+			
+			for a_str in data.split '\n'
+				if a_str.startswith "TITLE"
+					s.attachTitle a_str
+				
+				if not a_str.startswith "ATOM"
+					continue
+	
+				d = pdbAtomToDict a_str
+				if not chain_id_prev? or d.chain_id != chain_id_prev
+					c = new Chain s, d.chain_id
+	
+				if not resi_id_prev? or d.resi_id != resi_id_prev
+					r = new Residue c, d.resi_name, d.resi_id
+	
+				a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
+				
+				chain_id_prev = d.chain_id
+				resi_id_prev = d.resi_id
+			
+			if info == null
+				info = defaultInfo()
+				if s.atoms.length > 100
+					info.drawMethod = 'cartoon'
+			s.propogateInfo info
+		$.ajax
+			async: false
+			type: "GET"
+			url: filepath
+			success: handlePDB
+		null
+
+	loadFromDict: (structuresToLoad) =>
+		for filepath, info of structuresToLoad
+			@addNewStructure filepath, info
 
 # TODO: Large mouse movements will squish and distort the molecule (perhaps
 # JS can't keep up with large motions? Numerical error? Coding error???)

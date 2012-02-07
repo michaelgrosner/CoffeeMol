@@ -92,17 +92,6 @@ class Element
 		@bonds.sort sortBondsByZ
 		for b in @bonds when b.a1.info.drawMethod != 'points'
 
-			# This is to give a slight outline to each line
-			"""
-			@cc.context.beginPath()
-			@cc.context.moveTo b.a1.x, b.a1.y
-			@cc.context.lineTo b.a2.x, b.a2.y
-			@cc.context.strokeStyle = arrayToRGB [10,10,10] 
-			@cc.context.lineWidth = .1/@cc.zoom+2/@cc.zoom
-			@cc.context.closePath()
-			@cc.context.stroke()
-			"""
-			
 			@cc.context.beginPath()
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y

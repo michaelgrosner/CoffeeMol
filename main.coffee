@@ -189,53 +189,16 @@ mousePosition = (e) ->
 		x: e.offsetX
 		y: e.offsetY
 
-loadPDBAsStructure = (filepath, cc, info = null) ->
-	$.ajax
-		async: false
-		type: "GET"
-		url: filepath
-		success: (data) ->
-			s = new Structure null, filepath, cc
-			
-			for a_str in data.split '\n'
-				if a_str.startswith "TITLE"
-					s.attachTitle a_str
-				
-				if not a_str.startswith "ATOM"
-					continue
-	
-				d = pdbAtomToDict a_str
-				if not chain_id_prev? or d.chain_id != chain_id_prev
-					c = new Chain s, d.chain_id
-	
-				if not resi_id_prev? or d.resi_id != resi_id_prev
-					r = new Residue c, d.resi_name, d.resi_id
-	
-				a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
-				
-				chain_id_prev = d.chain_id
-				resi_id_prev = d.resi_id
-			
-			if info == null
-				info = defaultInfo()
-				if s.atoms.length > 100
-					info.drawMethod = 'cartoon'
-			s.propogateInfo info
-
-	null
-
 addNewStructure = (e) ->
 	filepath = $("#add-new-structure .text").val()
-	loadPDBAsStructure filepath, ctx
+	#loadPDBAsStructure filepath, ctx
+	ctx.addNewStructure filepath
 	ctx.init()
 	ctx.writeContextInfo()
 
-loadFromDict = (structuresToLoad) ->
-	for filepath, info of structuresToLoad
-		loadPDBAsStructure filepath, ctx, info
-
 fromSplashLink = (filename) ->
-	loadPDBAsStructure filename, window.ctx, {drawMethod: 'cartoon'} 
+	ctx.addNewStructure filename, {drawMethod: 'cartoon'} 
+	#loadPDBAsStructure filename, window.ctx, {drawMethod: 'cartoon'} 
 	ctx.init()
 	ctx.writeContextInfo()
 
@@ -247,6 +210,4 @@ ctx = new CanvasContext "#coffeemolCanvas"
 # If we are in the debug environment
 # Attach ctx instance to window to use it in the HTML
 window.ctx = ctx
-window.loadFromDict = loadFromDict
-window.loadPDBAsStructure = loadPDBAsStructure
 window.fromSplashLink = fromSplashLink

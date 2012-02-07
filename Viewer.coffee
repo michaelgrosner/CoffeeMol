@@ -72,7 +72,7 @@ if $("#debug-info").length
 			$("#welcome-splash #dismiss").on "click", dismissWelcomeSplash
 				
 	else
-		loadFromDict structuresToLoad
+		ctx.loadFromDict structuresToLoad
 	
 	ctx.init()
 	
