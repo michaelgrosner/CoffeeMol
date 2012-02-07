@@ -29,6 +29,7 @@ if $("#debug-info").length
 
 	# the filepath argument can also use a http address 
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
+	"""
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
 			drawMethod: "cartoon"
@@ -42,16 +43,15 @@ if $("#debug-info").length
 		"PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb":
 			drawMethod: "lines"
 			drawColor: [251, 251, 1]
-	"""
-	structuresToLoad =
-		"PDBs/half1_0.pdb":
-			drawMethod: "cartoon"
-	
 	structuresToLoad =
 		"http://www.rcsb.org/pdb/files/1MMS.pdb":
 			drawMethod: "both"
 			#drawColor: [47, 254, 254]
 	"""
+	structuresToLoad =
+		"PDBs/half1_0.pdb":
+			drawMethod: "both"
+	
 
 	dismissWelcomeSplash = ->
 		$("#show-ctx-container").css "display", "block"

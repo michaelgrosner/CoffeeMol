@@ -23,10 +23,6 @@ class CanvasContext
 			 "-webkit-user-select": "none"
 			 "background-color": arrayToRGB @background_color
 
-	resizeToWindow: =>
-		@canvas.width = window.innerWidth
-		@canvas.height = window.innerHeight
-
 	init: =>
 		# Previous mouse motions start at 0,0
 		@mouse_x_prev = 0
@@ -55,11 +51,269 @@ class CanvasContext
 		# Won't work outside of the debug environment
 		if $("#debug-info").length
 			@canvas.addEventListener 'mousemove',  @showAtomInfo
-		@determinePointGrid()
 
 		@restoreToOriginal()
-		# Finish loading
 
+	addElement: (el) ->
+		@elements.push el
+
+	# -------
+	# LOADING SECTION
+	# -------
+	addNewStructure: (filepath, info = null) =>
+		handlePDB = (data) => 
+			s = new Structure null, filepath, @
+			
+			for a_str in data.split '\n'
+				if a_str.startswith "TITLE"
+					s.attachTitle a_str
+				
+				if not a_str.startswith "ATOM"
+					continue
+	
+				d = pdbAtomToDict a_str
+				if not chain_id_prev? or d.chain_id != chain_id_prev
+					c = new Chain s, d.chain_id
+	
+				if not resi_id_prev? or d.resi_id != resi_id_prev
+					r = new Residue c, d.resi_name, d.resi_id
+	
+				a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
+				
+				chain_id_prev = d.chain_id
+				resi_id_prev = d.resi_id
+			
+			if info == null
+				info = defaultInfo()
+				if s.atoms.length > 100
+					info.drawMethod = 'cartoon'
+			s.propogateInfo info
+		$.ajax
+			async: false
+			type: "GET"
+			url: filepath
+			success: handlePDB
+		null
+
+	loadFromDict: (structuresToLoad) =>
+		for filepath, info of structuresToLoad
+			@addNewStructure filepath, info
+	
+	# -------
+	# DRAWING SECTION
+	# -------
+	drawAll: (DEBUG = false) =>
+		@drawGridLines()
+
+		@context.scale @zoom, @zoom
+
+		# When drawing by lines, sort elements in order of depth of overall Z
+		# This should be smarter, and bonds should be moved to a CanvasContext
+		# so they can sorted that way
+		sortByAvgZ = (e1, e2) ->
+			c1 = e1.avgCenter()
+			c2 = e2.avgCenter()
+			c1[2] - c2[2]
+
+		@elements.sort sortByAvgZ
+		for el in @elements
+			el.draw()
+		null
+
+	findBestZoom: =>
+		max_x = 0
+		max_y = 0
+		for el in @elements
+			for a in el.atoms
+				if Math.abs(a.x) > max_x
+					max_x = Math.abs(a.x)
+				if Math.abs(a.y) > max_y
+					max_y = Math.abs(a.y)
+		if max_x > max_y then @canvas.width/(2*max_x) else @canvas.width/(2*max_y)
+	
+	drawGridLines: =>
+		@context.moveTo 0, -@canvas.height
+		@context.lineTo 0, @canvas.height
+
+		@context.moveTo -@canvas.width, 0
+		@context.lineTo @canvas.width, 0
+
+		@context.strokeStyle = "#eee"
+		@context.stroke()
+		
+	changeAllDrawMethods: (new_method) =>
+		# Most likely used in conjuction with a link handler
+		@clear()
+		for el in @elements
+			el.info.drawMethod = new_method
+		@drawAll()
+
+	resizeToWindow: =>
+		@canvas.width = window.innerWidth
+		@canvas.height = window.innerHeight
+
+	clear: =>
+		#@context.setTransform 1, 0, 0, 1, 0, 0
+		#@context.clearRect 0, 0, @canvas.width, @canvas.height
+		@canvas.width = @canvas.width
+		@context.translate @x_origin, @y_origin
+
+	# -------
+	# EVENTS SECTION
+	# -------
+	touchstart: (mobile_e) =>
+		mobile_e.preventDefault()
+		@canvas.addEventListener 'touchmove', @touchmove
+		@canvas.addEventListener 'touchend',  @touchend
+		@mousedown mobile_e.touches[0]
+
+	mousedown: (e) =>
+		@mouse_x_prev = e.clientX
+		@mouse_y_prev = e.clientY
+		@canvas.removeEventListener 'mousemove', @showAtomInfo
+		@canvas.addEventListener 'mousemove', @mousemove
+		@canvas.addEventListener 'mouseout',  @mouseup
+		@canvas.addEventListener 'mouseup',   @mouseup
+
+		#for el in @elements
+		#	el.stashInfo()
+		#	new_info = deepCopy el.info
+		#	new_info.drawMethod = 'cartoon'
+		#	new_info.drawColor = [100,100,100]
+		#	el.propogateInfo new_info
+		#	el.findBonds()
+
+	mouseup: (e) =>
+		#for el in @elements
+		#	el.retrieveStashedInfo()
+		#	el.findBonds()
+		@clear()
+		@drawAll()
+
+		@canvas.removeEventListener 'mousemove', @mousemove
+		@canvas.addEventListener 'mousemove',  @showAtomInfo
+		@determinePointGrid()
+	
+	touchend: (mobile_e) =>
+		@canvas.removeEventListener 'touchmove', @mousemove
+		@mouseup mobile_e.touches[0]
+	
+	touchmove: (mobile_e) =>
+		@mousemove mobile_e.touches[0]
+	
+	mousemove: (e) =>
+		dx = boundMouseMotion @mouse_x_prev - e.clientX
+		dy = boundMouseMotion @mouse_y_prev - e.clientY
+		ds = Math.sqrt(dx*dx + dy*dy)
+
+		time_start = new Date
+
+		@clear()
+		for el in @elements
+			el.rotateAboutX degToRad dy
+			el.rotateAboutY degToRad -dx
+		@drawAll()
+
+		fps = 1000/(new Date - time_start)
+		if fps < 15
+			low_fps_warning = '<p style="color: red;">It appears this molecule is too large to handle smoothly, consider using "C"/Cartoon mode, a faster computer, or upgrade your browser</p>'
+		else
+			low_fps_warning = ""
+
+		$("#debug-info").html("#{low_fps_warning}FPS: #{fps.toFixed 2}, \
+				ds: #{ds.toFixed 2}, \
+				dx: #{dx.toFixed 2}, \
+				dy: #{dy.toFixed 2}")
+		
+		@mouse_x_prev = e.clientX
+		@mouse_y_prev = e.clientY
+	
+	# iOS (at least) Pinch-To-Zoom functionality
+	iOSChangeZoom: (gesture) =>
+		zoomChanger = (gesture) =>
+			# Prevent from whole page zooming
+			gesture.preventDefault()
+			# Zooming metric
+			@zoom *= Math.sqrt gesture.scale
+			for el in @elements
+				el.rotateAboutZ degToRad boundMouseMotion gesture.rotation
+			@clear()
+			if @zoom > 0
+				@drawAll()
+				@zoom_prev = @zoom
+		zoomChanger gesture
+		@canvas.addEventListener 'gesturechange', zoomChanger
+
+	changeZoom: (e) =>
+		# Use mousewheel to zoom in and out
+		if e.hasOwnProperty 'wheelDelta'
+			@zoom = @zoom_prev - e.wheelDelta/50.0
+		else #if e.hasOwnProperty 'detail' 
+			@zoom = @zoom_prev - e.detail/50.0
+		e.preventDefault()
+		@clear()
+		if @zoom > 0
+			@drawAll()
+			@zoom_prev = @zoom
+
+	restoreToOriginal: =>
+		center = @avgCenterOfAllElements()
+		for el in @elements
+			el.restoreToOriginal()
+			el.translateTo(center)
+		@zoom = @findBestZoom()
+		@zoom_prev = @zoom
+		@x_origin = @canvas.width/2
+		@y_origin = @canvas.height/2
+		if $("#debug-info").length
+			@x_origin += $(".cc-size").width()/2
+		@clear()
+		@drawAll()
+
+	findBonds: =>
+		@bonds = []
+		el.findBonds() for el in @elements
+		null
+
+	# -------
+	# MOTION SECTION
+	# -------
+	translateOrigin: (e) =>
+		click = mousePosition e
+		@x_origin = click.x
+		@y_origin = click.y
+		@clear()
+		@drawAll()
+			
+	avgCenterOfAllElements: =>
+		avgs = [0.0, 0.0, 0.0]
+		total_atoms = 0
+		for el in @elements
+			elAvg = el.avgCenter()
+			ela = el.atoms.length
+			avgs[0] += elAvg[0]*ela
+			avgs[1] += elAvg[1]*ela
+			avgs[2] += elAvg[2]*ela
+			total_atoms += el.atoms.length
+		(a/total_atoms for a in avgs)
+	
+	timedRotation: (dim, dt) =>
+		@delayID = delay dt, =>
+			@clear()
+			if dim == 'X'
+				el.rotateAboutX degToRad 1 for el in @elements
+			else if dim == 'Y'
+				el.rotateAboutY degToRad 1 for el in @elements
+			else if dim == 'Z'
+				el.rotateAboutZ degToRad 1 for el in @elements
+			@drawAll()
+	
+	stopRotation: ->
+		clearInterval @delayID
+
+	# -------
+	# DEBUG SECTION
+	# -------
 	determinePointGrid: =>
 		if $("#debug-info").length == 0
 			console.log "not determining pg"
@@ -124,6 +378,14 @@ class CanvasContext
 			$("#atom-info").html a.atomInfo()
 		null
 	
+	writeContextInfo: =>
+		# See http://api.jquery.com/html/
+		htmlInfo = (index, oldhtml) =>
+			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
+			el_info.join " "
+		$("#ctx-info").html htmlInfo
+
+
 	assignSelectors: =>
 		#TODO: Fix this!
 		# Also, remember the order of for ... in arguments is reversed comapred to Python!
@@ -137,193 +399,9 @@ class CanvasContext
 						a.selector = new Selector [ne, nc, nr, na]
 		null
 
-
-	findBestZoom: =>
-		max_x = 0
-		max_y = 0
-		for el in @elements
-			for a in el.atoms
-				if Math.abs(a.x) > max_x
-					max_x = Math.abs(a.x)
-				if Math.abs(a.y) > max_y
-					max_y = Math.abs(a.y)
-		if max_x > max_y then @canvas.width/(2*max_x) else @canvas.width/(2*max_y)
-	
-	drawGridLines: =>
-		@context.moveTo 0, -@canvas.height
-		@context.lineTo 0, @canvas.height
-
-		@context.moveTo -@canvas.width, 0
-		@context.lineTo @canvas.width, 0
-
-		@context.strokeStyle = "#eee"
-		@context.stroke()
-	
-	addElement: (el) ->
-		@elements.push el
-
-	drawAll: (DEBUG = false) =>
-		@drawGridLines()
-
-		@context.scale @zoom, @zoom
-
-		# When drawing by lines, sort elements in order of depth of overall Z
-		# This should be smarter, and bonds should be moved to a CanvasContext
-		# so they can sorted that way
-		sortByAvgZ = (e1, e2) ->
-			c1 = e1.avgCenter()
-			c2 = e2.avgCenter()
-			c1[2] - c2[2]
-
-		@elements.sort sortByAvgZ
-		for el in @elements
-			el.draw()
-		null
-	
-	changeAllDrawMethods: (new_method) =>
-		# Most likely used in conjuction with a link handler
-		@clear()
-		for el in @elements
-			el.info.drawMethod = new_method
-		@drawAll()
-
-	clear: =>
-		#@context.setTransform 1, 0, 0, 1, 0, 0
-		#@context.clearRect 0, 0, @canvas.width, @canvas.height
-		@canvas.width = @canvas.width
-		@context.translate @x_origin, @y_origin
-
-# Event handlers
-	touchstart: (mobile_e) =>
-		mobile_e.preventDefault()
-		@canvas.addEventListener 'touchmove', @touchmove
-		@canvas.addEventListener 'touchend',  @touchend
-		@mousedown mobile_e.touches[0]
-
-	mousedown: (e) =>
-		@mouse_x_prev = e.clientX
-		@mouse_y_prev = e.clientY
-		@canvas.removeEventListener 'mousemove', @showAtomInfo
-		@canvas.addEventListener 'mousemove', @mousemove
-		@canvas.addEventListener 'mouseout',  @mouseup
-		@canvas.addEventListener 'mouseup',   @mouseup
-
-		#for el in @elements
-		#	el.stashInfo()
-		#	new_info = deepCopy el.info
-		#	new_info.drawMethod = 'cartoon'
-		#	new_info.drawColor = [100,100,100]
-		#	el.propogateInfo new_info
-		#	el.findBonds()
-
-	mouseup: (e) =>
-		#for el in @elements
-		#	el.retrieveStashedInfo()
-		#	el.findBonds()
-		@clear()
-		@drawAll()
-
-		@canvas.removeEventListener 'mousemove', @mousemove
-		@canvas.addEventListener 'mousemove',  @showAtomInfo
-		@determinePointGrid()
-	
-	touchend: (mobile_e) =>
-		@canvas.removeEventListener 'touchmove', @mousemove
-		@mouseup mobile_e.touches[0]
-	
-	touchmove: (mobile_e) =>
-		@mousemove mobile_e.touches[0]
-	
-	mousemove: (e) =>
-		dx = boundMouseMotion @mouse_x_prev - e.clientX
-		dy = boundMouseMotion @mouse_y_prev - e.clientY
-		ds = Math.sqrt(dx*dx + dy*dy)
-
-		time_start = new Date
-
-		@clear()
-		for el in @elements
-			el.rotateAboutX degToRad dy
-			el.rotateAboutY degToRad -dx
-		@drawAll()
-
-		fps = 1000/(new Date - time_start)
-		if fps < 15
-			low_fps_warning = '<p style="color: red;">It appears this molecule is too large to handle smoothly, consider using "C"/Cartoon mode, a faster computer, or upgrade your browser</p>'
-		else
-			low_fps_warning = ""
-
-		$("#debug-info").html("#{low_fps_warning}FPS: #{fps.toFixed 2}, ds: #{ds.toFixed 2},\
-				dx: #{dx.toFixed 2}, dy: #{dy.toFixed 2}")
-		
-		@mouse_x_prev = e.clientX
-		@mouse_y_prev = e.clientY
-	
-	iOSChangeZoom: (gesture) =>
-		zoomChanger = (gesture) =>
-			gesture.preventDefault()
-			# Fiddle around with this a bit more to find a good use
-			@zoom *= Math.sqrt gesture.scale
-			el.rotateAboutZ degToRad boundMouseMotion gesture.rotation for el in @elements
-			@clear()
-			if @zoom > 0
-				@drawAll()
-				@zoom_prev = @zoom
-		zoomChanger gesture
-		@canvas.addEventListener 'gesturechange', zoomChanger
-
-	changeZoom: (e) =>
-		# Use mousewheel to zoom in and out
-		if e.hasOwnProperty 'wheelDelta'
-			@zoom = @zoom_prev - e.wheelDelta/50.0
-		else #if e.hasOwnProperty 'detail' 
-			@zoom = @zoom_prev - e.detail/50.0
-		e.preventDefault()
-		@clear()
-		if @zoom > 0
-			@drawAll()
-			@zoom_prev = @zoom
-
-	restoreToOriginal: =>
-		center = @avgCenterOfAllElements()
-		for el in @elements
-			el.restoreToOriginal()
-			el.translateTo(center)
-		@zoom = @findBestZoom()
-		@zoom_prev = @zoom
-		@x_origin = @canvas.width/2
-		@y_origin = @canvas.height/2
-		if $("#debug-info").length
-			@x_origin += $(".cc-size").width()/2
-		@clear()
-		@drawAll()
-
-	translateOrigin: (e) =>
-		click = mousePosition e
-		@x_origin = click.x
-		@y_origin = click.y
-		@clear()
-		@drawAll()
-
-	writeContextInfo: =>
-		# See http://api.jquery.com/html/
-		htmlInfo = (index, oldhtml) =>
-			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
-			el_info.join " "
-		$("#ctx-info").html htmlInfo
-			
-	avgCenterOfAllElements: =>
-		avgs = [0.0, 0.0, 0.0]
-		total_atoms = 0
-		for el in @elements
-			elAvg = el.avgCenter()
-			ela = el.atoms.length
-			avgs[0] += elAvg[0]*ela
-			avgs[1] += elAvg[1]*ela
-			avgs[2] += elAvg[2]*ela
-			total_atoms += el.atoms.length
-		(a/total_atoms for a in avgs)
-	
+	# -------
+	# CHILD SELECTOR SECTION
+	# -------
 	handleSelectorArg: (s) =>
 		if typeof s == "string"
 			s = new Selector s
@@ -373,64 +451,7 @@ class CanvasContext
 			@findBonds()
 		@drawAll()
 		null
-	
-	findBonds: =>
-		@bonds = []
-		el.findBonds() for el in @elements
-		null
 
-	timedRotation: (dim, dt) =>
-		@delayID = delay dt, =>
-			@clear()
-			if dim == 'X'
-				el.rotateAboutX degToRad 1 for el in @elements
-			else if dim == 'Y'
-				el.rotateAboutY degToRad 1 for el in @elements
-			else if dim == 'Z'
-				el.rotateAboutZ degToRad 1 for el in @elements
-			@drawAll()
-	
-	stopRotation: ->
-		clearInterval @delayID
-
-	addNewStructure: (filepath, info = null) =>
-		handlePDB = (data) => 
-			s = new Structure null, filepath, @
-			
-			for a_str in data.split '\n'
-				if a_str.startswith "TITLE"
-					s.attachTitle a_str
-				
-				if not a_str.startswith "ATOM"
-					continue
-	
-				d = pdbAtomToDict a_str
-				if not chain_id_prev? or d.chain_id != chain_id_prev
-					c = new Chain s, d.chain_id
-	
-				if not resi_id_prev? or d.resi_id != resi_id_prev
-					r = new Residue c, d.resi_name, d.resi_id
-	
-				a = new Atom r, d.atom_name, d.x, d.y, d.z, d.original_atom_name
-				
-				chain_id_prev = d.chain_id
-				resi_id_prev = d.resi_id
-			
-			if info == null
-				info = defaultInfo()
-				if s.atoms.length > 100
-					info.drawMethod = 'cartoon'
-			s.propogateInfo info
-		$.ajax
-			async: false
-			type: "GET"
-			url: filepath
-			success: handlePDB
-		null
-
-	loadFromDict: (structuresToLoad) =>
-		for filepath, info of structuresToLoad
-			@addNewStructure filepath, info
 
 # TODO: Large mouse movements will squish and distort the molecule (perhaps
 # JS can't keep up with large motions? Numerical error? Coding error???)

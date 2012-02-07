@@ -74,7 +74,6 @@ hexToRGBArray = (h) ->
 arrayToRGB = (a) ->
 	if typeof a == 'string'
 		if a.startswith "#"
-			console.log "hex"
 			return a
 		else
 			alert "Improperly formatted string -> color. \
