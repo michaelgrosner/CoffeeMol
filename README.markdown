@@ -10,13 +10,13 @@ An embeddable JavaScript Molecular Visualizer for HTML5 Browsers written in Coff
 $ coffee -cj {CoffeeMol,CanvasContext,Element,Structure,Chain,Residue,Atom,Selector,main,Viewer}.coffee
 ```
 
-* Create a `<canvas>` element with id `coffeemolCanvas`, include at least jQuery version 1.5.1, and the compiled `CoffeeMol.js` file.
+* Create a `<canvas>` element with id `coffeemolCanvas`, include at least jQuery version 1.7.1, and the compiled `CoffeeMol.js` file.
 
 ```html
 <canvas height="300" width="300" id="coffeemolCanvas">Canvas Load Failed</canvas>
 ...
 </body>
-<script src="jquery-1.5.1.min.js" type="text/javascript"></script>
+<script src="jquery-1.7.1.min.js" type="text/javascript"></script>
 <script src="CoffeeMol.js"  type="text/javascript"></script>
 ```
 
@@ -43,3 +43,10 @@ structures = {
 
 window.coffeemol.loadFromDict(structures);
 ```
+
+### Issues
+
+* Very slow on iOS and slow with larger structures (using "cartoon" mode may help by showing a reduced version of the structure)
+* Only tested on the latest Chrome, Firefox, and Safari versions as of 2/7/12 on a Mac running Lion
+* Rotation speed is bounded due to roundoff error? Bad math?
+* Highly unoptimized
