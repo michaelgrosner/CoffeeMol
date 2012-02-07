@@ -20,10 +20,15 @@ $ coffee -cj {CoffeeMol,CanvasContext,Element,Structure,Chain,Residue,Atom,Selec
 <script src="CoffeeMol.js"  type="text/javascript"></script>
 ```
 
-* Include the following JavaScript:
+* The JavaScript object corresponding to `coffeemolCanvas` is attached to `window.coffeemol`. To pre-load PDB files into the viewer, include the following JavaScript:
 
 ```js
-// Change this dictionary to suit your PDB needs
+window.coffeemol.addNewStructure("path/to/any/valid.pdb");
+```
+
+Multiple structures can be loaded using an object (or dictionary, if you're from Python) 
+```js
+// Change this object to suit your PDB needs
 structures = {
 	"http://www.rcsb.org/pdb/files/1MBO.pdb": {  // URL to a well-behaved PDB file
 		drawMethod: "both",						 // Use 'lines', 'points', or 'both'
@@ -35,10 +40,5 @@ structures = {
 	}
 };
 
-// CoffeeMol only exposes the CanvasContext object to `window` and a loader function
-ctx = window.ctx;
-window.loadFromDict(structures);
-
-// Once everything is loaded, run it
-c.init();
+window.coffeemol.loadFromDict(structures);
 ```

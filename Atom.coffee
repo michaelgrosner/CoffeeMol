@@ -52,6 +52,7 @@ class Atom extends Element
 		
 	asArray: => [@x, @y, @z]
 
+	# A jQuery callback, thus index and oldhtml which are still not used
 	atomInfo: (index, oldhtml) =>
 		s = @selector
 		parents = [@]
@@ -70,7 +71,18 @@ atom_colors =
 	'S': [229, 198,  64]
 
 sortBondsByZ = (b1, b2) ->
-	b1.a2.z - b2.a2.z
+	# These are the average z between the two atoms in each bond
+	b1.zCenter() - b2.zCenter()
+
+sortByZ = (a1, a2) ->
+	a1.z - a2.z
+
+atomAtomDistance = (a1, a2) -> 
+	Math.sqrt( 
+		(a1.x-a2.x)*(a1.x-a2.x) +
+		(a1.y-a2.y)*(a1.y-a2.y) +
+		(a1.z-a2.z)*(a1.z-a2.z)
+	)
 
 class Bond
 	constructor: (@a1, @a2) ->
@@ -80,4 +92,10 @@ class Bond
 		"<Bond of Length: #{@computeLength().toFixed 3} between #{@a1.toString()} and #{@a2.toString()}>"
 
 	computeLength: =>
-		@length = atomAtomDistance @a1, @a2
+		if @length?
+			@length
+		else
+			@length = atomAtomDistance @a1, @a2
+	
+	zCenter: =>
+		(@a1.z + @a2.z)/2.0

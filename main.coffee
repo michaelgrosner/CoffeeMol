@@ -121,15 +121,8 @@ degToRad = (deg) ->
 radToDeg = (rad) ->
 	rad*57.2957795
 
-sortByZ = (a1, a2) ->
-	a1.z - a2.z
-
-atomAtomDistance = (a1, a2) -> 
-	Math.sqrt( 
-		(a1.x-a2.x)*(a1.x-a2.x) +
-		(a1.y-a2.y)*(a1.y-a2.y) +
-		(a1.z-a2.z)*(a1.z-a2.z)
-	)
+delay = (ms, f) -> 
+	setInterval f, ms
 
 pdbAtomToDict = (a_str) ->
 	# Sometimes PDBs use `DA` instead of `A` for nucleotides
@@ -169,7 +162,7 @@ defaultInfo = ->
 	borderColor: [0, 0, 0]
 
 genIFSLink  = (selector_str, key, val, pretty) ->
-	link = "javascript:window.ctx.changeInfoFromSelectors('#{selector_str}', \
+	link = "javascript:window.coffeemol.changeInfoFromSelectors('#{selector_str}', \
 			'#{key}', '#{val}');"
 	"<div class='dropdown-option'><a href=\"#{link}\">#{pretty}</a></div>"
 
@@ -183,17 +176,14 @@ mousePosition = (e) ->
 
 addNewStructure = (e) ->
 	filepath = $("#add-new-structure .text").val()
-	ctx.addNewStructure filepath
+	coffeemol.addNewStructure filepath
 
 fromSplashLink = (filename) ->
-	ctx.addNewStructure filename, {drawMethod: 'cartoon'} 
+	coffeemol.addNewStructure filename, {drawMethod: 'cartoon'} 
 
-delay = (ms, f) -> 
-	setInterval f, ms
-
-ctx = new CanvasContext "#coffeemolCanvas"
+coffeemol = new CanvasContext "#coffeemolCanvas"
 
 # If we are in the debug environment
-# Attach ctx instance to window to use it in the HTML
-window.ctx = ctx
+# Attach coffeemol instance to window to use it in the HTML
+window.coffeemol = coffeemol
 window.fromSplashLink = fromSplashLink

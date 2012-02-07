@@ -392,6 +392,9 @@ class CanvasContext
 			el_info.join " "
 		$("#ctx-info").html htmlInfo
 
+	# -------
+	# CHILD SELECTOR SECTION
+	# -------
 	assignSelectors: =>
 		#TODO: Fix this!
 		# Also, remember the order of for ... in arguments is reversed 
@@ -406,9 +409,6 @@ class CanvasContext
 						a.selector = new Selector [ne, nc, nr, na]
 		null
 
-	# -------
-	# CHILD SELECTOR SECTION
-	# -------
 	handleSelectorArg: (s) =>
 		if typeof s == "string"
 			s = new Selector s

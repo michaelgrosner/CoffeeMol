@@ -72,11 +72,9 @@ if $("#debug-info").length
 			$("#welcome-splash #dismiss").on "click", dismissWelcomeSplash
 				
 	else
-		ctx.loadFromDict structuresToLoad
+		coffeemol.loadFromDict structuresToLoad
 	
-	#ctx.init()
-	
-	ctx.writeContextInfo()
+	coffeemol.writeContextInfo()
 	
 	$("#ctx-info").on "click", ".open-dropdown", (e) ->
 		# Probably not good form, but the dropdown should be a sibling to the 
