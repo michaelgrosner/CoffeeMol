@@ -27,6 +27,7 @@ window.coffeemol.addNewStructure("path/to/any/valid.pdb");
 ```
 
 Multiple structures can be loaded using an object (or dictionary, if you're from Python) 
+
 ```js
 // Change this object to suit your PDB needs
 structures = {
