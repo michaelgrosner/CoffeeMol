@@ -59,7 +59,10 @@ class Atom extends Element
 		for i in [1..10]
 			s = s.up()
 			if not s? then break else parents.push @cc.childFromSelector s
-		(encodeHTML p.toString() for p in parents).join "<br>"
+		try
+			(encodeHTML p.toString() for p in parents).join "<br>"
+		catch error
+			console.log parents
 
 # Using http://www.pymolwiki.org/index.php/Color_Values
 atom_colors =

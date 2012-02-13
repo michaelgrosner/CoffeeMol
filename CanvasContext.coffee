@@ -30,15 +30,9 @@ class CanvasContext
 		@canvas.addEventListener 'mousewheel', @changeZoom
 		@canvas.addEventListener 'gesturestart', @iOSChangeZoom
 		@canvas.addEventListener 'dblclick',   @translateOrigin
+		@canvas.addEventListener 'mousemove',  @showAtomInfo
 
-		# Won't work outside of the debug environment
-		if $("#debug-info").length
-			@resizeToWindow()
-			@canvas.addEventListener 'mousemove',  @showAtomInfo
-			$(window).resize =>
-				@resizeToWindow()
-				@drawAll()
-
+	# Should be called by a loading function like addNewStructure or loadFromDict
 	init: =>
 		# Ready all sub-elements
 		for el in @elements
@@ -83,14 +77,14 @@ class CanvasContext
 
 			if info == null
 				info = defaultInfo()
-				if s.atoms.length > 100
-					info.drawMethod = 'cartoon'
 			s.propogateInfo info
 
 			if @structures_left_to_load?
 				@structures_left_to_load -= 1
 				if @structures_left_to_load == 0 
 					@init()
+			else
+				@init()
 		$.ajax
 			async: true
 			type: "GET"
@@ -222,15 +216,6 @@ class CanvasContext
 		@drawAll()
 
 		fps = 1000/(new Date - time_start)
-		if fps < 15
-			low_fps_warning = '<p style="color: red;">It appears this molecule is too large to handle smoothly, consider using "C"/Cartoon mode, a faster computer, or upgrade your browser</p>'
-		else
-			low_fps_warning = ""
-
-		$("#debug-info").html("#{low_fps_warning}FPS: #{fps.toFixed 2}, \
-				ds: #{ds.toFixed 2}, \
-				dx: #{dx.toFixed 2}, \
-				dy: #{dy.toFixed 2}")
 
 		@mouse_x_prev = e.clientX
 		@mouse_y_prev = e.clientY
@@ -272,8 +257,6 @@ class CanvasContext
 		@zoom_prev = @zoom
 		@x_origin = @canvas.width/2
 		@y_origin = @canvas.height/2
-		if $("#debug-info").length
-			@x_origin += $(".cc-size").width()/2
 		@clear()
 		@drawAll()
 
@@ -322,9 +305,6 @@ class CanvasContext
 	# DEBUG SECTION
 	# -------
 	determinePointGrid: =>
-		if $("#debug-info").length == 0
-			console.log "not determining pg"
-			return null
 		# TODO: Is there a better algorithm than this mess?
 
 		# Seed grid with nulls
@@ -336,11 +316,12 @@ class CanvasContext
 
 		# Fill in grid with the top atom at that pixel. This serves as 
 		# a quick lookup when hovering over an atom
+		dx = parseInt ATOM_SIZE/@zoom
+		console.log dx
 		for el in @elements
 			for a in el.atoms
 				w = parseInt a.x
 				h = parseInt a.y
-				dx = parseInt ATOM_SIZE/@zoom
 				for i in [-1*dx..dx]
 					for j in [-1*dx..dx]
 						try
@@ -352,10 +333,6 @@ class CanvasContext
 		null
 
 	showAtomInfo: (e) =>
-		if not $("#debug-info").length
-			console.log "not showing atom info"
-			return null
-
 		#TODO: Does not work well with lines/cartoon
 		# Unhighlight the previously highlighted atom
 		if @a_prev?
@@ -382,19 +359,8 @@ class CanvasContext
 
 			@a_prev = a
 
-			$("#atom-info").html a.atomInfo()
 		null
 
-	writeContextInfo: =>
-		# See http://api.jquery.com/html/
-		htmlInfo = (index, oldhtml) =>
-			el_info = ("<p>#{el.writeContextInfo()}</p>" for el in @elements)
-			el_info.join " "
-		$("#ctx-info").html htmlInfo
-
-	# -------
-	# CHILD SELECTOR SECTION
-	# -------
 	assignSelectors: =>
 		#TODO: Fix this!
 		# Also, remember the order of for ... in arguments is reversed 

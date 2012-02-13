@@ -7,7 +7,7 @@ An embeddable JavaScript Molecular Visualizer for HTML5 Browsers written in Coff
 * Compile
 
 ```bash
-$ coffee -cj {CoffeeMol,CanvasContext,Element,Structure,Chain,Residue,Atom,Selector,main,Viewer}.coffee
+$ coffee -cj {CoffeeMol,CanvasContext,Element,Structure,Chain,Residue,Atom,Selector,main}.coffee
 ```
 
 * Create a `<canvas>` element with id `coffeemolCanvas`, include at least jQuery version 1.7.1, and the compiled `CoffeeMol.js` file.
