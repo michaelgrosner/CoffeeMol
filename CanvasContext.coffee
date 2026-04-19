@@ -41,6 +41,7 @@ class CanvasContext
 		@assignSelectors()
 
 		@restoreToOriginal()
+		@computeZExtent()
 		@determinePointGrid()
 
 		@writeContextInfo()
@@ -226,13 +227,15 @@ class CanvasContext
 
 	# iOS (at least) Pinch-To-Zoom functionality
 	iOSChangeZoom: (gesture) =>
+		zoom_at_start    = @zoom
+		rotation_prev    = 0
 		zoomChanger = (gesture) =>
-			# Prevent from whole page zooming
 			gesture.preventDefault()
-			# Zooming metric
-			@zoom *= Math.sqrt gesture.scale
+			@zoom      = zoom_at_start * gesture.scale
+			dRotation  = gesture.rotation - rotation_prev
+			rotation_prev = gesture.rotation
 			for el in @elements
-				el.rotateAboutZ degToRad gesture.rotation
+				el.rotateAboutZ degToRad dRotation
 			@clear()
 			if @zoom > 0
 				@drawAll()
@@ -242,7 +245,7 @@ class CanvasContext
 
 	changeZoom: (e) =>
 		e.preventDefault()
-		@zoom = @zoom_prev - e.deltaY/500.0
+		@zoom = @zoom_prev * Math.exp(-e.deltaY / 300)
 		if @zoom > 0
 			@clear()
 			@drawAll()
@@ -261,6 +264,14 @@ class CanvasContext
 		@clear()
 		@drawAll()
 		@determinePointGrid()
+
+	computeZExtent: =>
+		max_z = 0
+		for el in @elements
+			for a in el.atoms
+				if Math.abs(a.z) > max_z
+					max_z = Math.abs(a.z)
+		@z_extent = if max_z > 0 then max_z else 1
 
 	findBonds: =>
 		@bonds = []

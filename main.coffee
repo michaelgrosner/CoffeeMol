@@ -158,8 +158,6 @@ randomDrawMethod = ->
 
 defaultInfo = ->
 	drawMethod: randomDrawMethod()
-	drawColor: randomRGB()
-	borderColor: [0, 0, 0]
 
 genIFSLink  = (selector_str, key, val, pretty) ->
 	link = "javascript:window.coffeemol.changeInfoFromSelectors('#{selector_str}', \

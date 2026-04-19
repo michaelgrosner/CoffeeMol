@@ -6,16 +6,37 @@ class Atom extends Element
 	toString: =>
 		"<Atom: #{@name} [#{@x.toFixed 2}, #{@y.toFixed 2}, #{@z.toFixed 2}]>"
 
+	cpkColor: =>
+		@info.drawColor ? atom_colors[@name] ? atom_colors['_']
+
+	depthShadedColor: =>
+		base   = @cpkColor()
+		extent = @cc.z_extent ? 1
+		t      = Math.max(0, Math.min(1, (@z + extent) / (2 * extent)))
+		factor = 0.3 + 0.7 * t
+		(Math.round(c * factor) for c in base)
+
 	drawPoint: () =>
-		color = if not @info.drawColor? then atom_colors[@name] else @info.drawColor
+		base   = @cpkColor()
+		relR   = atom_radii[@name] ? 1.0
+		zz     = ATOM_SIZE * relR / @cc.zoom
+
+		extent = @cc.z_extent ? 1
+		t      = Math.max(0, Math.min(1, (@z + extent) / (2 * extent)))
+		factor = 0.3 + 0.7 * t
+
+		shaded    = (Math.round(c * factor)             for c in base)
+		highlight = (Math.min(255, Math.round(c * 0.4 + 160)) for c in base)
+
+		grad = @cc.context.createRadialGradient(
+			@x - zz * 0.35, @y - zz * 0.35, 0,
+			@x,             @y,             zz)
+		grad.addColorStop 0, arrayToRGB highlight
+		grad.addColorStop 1, arrayToRGB shaded
 
 		@cc.context.beginPath()
-		zz  = ATOM_SIZE/@cc.zoom
-		@cc.context.arc @x, @y, zz, 0, 2*Math.PI, false
-		@cc.context.lineWidth = 1/@cc.zoom
-		@cc.context.strokeStyle = arrayToRGB [0,0,0]#@info.borderColor
-		@cc.context.fillStyle = arrayToRGB (c + @z for c in color)#@info.drawColor)
-		@cc.context.stroke()
+		@cc.context.arc @x, @y, zz, 0, 2 * Math.PI, false
+		@cc.context.fillStyle = grad
 		@cc.context.fill()
 
 	# For the next 3 rotation functions, `sin` and `cos` are given as 
@@ -67,14 +88,30 @@ class Atom extends Element
 		catch error
 			console.log parents
 
-# Using http://www.pymolwiki.org/index.php/Color_Values
+# Jmol CPK colors — http://jmol.sourceforge.net/jscolors/
 atom_colors =
-	'C': [51,  255,  51]
-	'O': [255, 76,   76]
-	'N': [51,  51,  255]
+	'H': [255, 255, 255]
+	'C': [144, 144, 144]
+	'N': [ 48,  80, 248]
+	'O': [255,  13,  13]
+	'F': [144, 224,  80]
 	'P': [255, 128,   0]
-	'H': [229, 229, 229]
-	'S': [229, 198,  64]
+	'S': [255, 200,  50]
+	'K': [143,  64, 212]
+	'I': [148,   0, 148]
+	'V': [166,   0, 255]
+	'_': [180, 180, 180]
+
+# Van der Waals radii relative to C = 1.0
+atom_radii =
+	'H': 0.65
+	'C': 1.00
+	'N': 0.93
+	'O': 0.91
+	'F': 0.88
+	'P': 1.12
+	'S': 1.12
+	'I': 1.35
 
 sortBondsByZ = (b1, b2) ->
 	# These are the average z between the two atoms in each bond

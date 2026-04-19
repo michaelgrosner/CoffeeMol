@@ -45,16 +45,11 @@ class Element
 	propogateInfo: (info) ->
 
 		@info = deepCopy info
-		
-		if @info.drawColor?
-			@info.drawColor = hexToRGBArray @info.drawColor 
-		else
-			@info.drawColor = randomRGB()
 
-		if @info.borderColor?
-			@info.borderColor = hexToRGBArray @info.borderColor
+		if @info.drawColor?
+			@info.drawColor = hexToRGBArray @info.drawColor
 		else
-			@info.borderColor = [0, 0, 0]
+			@info.drawColor = null
 
 		for c in @children
 			c.propogateInfo info
@@ -88,18 +83,13 @@ class Element
 		@drawLines()
 		@drawPoints()
 
-	drawLines: => 
+	drawLines: =>
 		@bonds.sort sortBondsByZ
 		for b in @bonds when b.a1.info.drawMethod != 'points'
-
 			@cc.context.beginPath()
 			@cc.context.moveTo b.a1.x, b.a1.y
 			@cc.context.lineTo b.a2.x, b.a2.y
-			if b.a1.info.drawMethod != 'both'
-				color = (c + b.a1.z for c in b.a1.info.drawColor)
-			else
-				color = (100 - b.a1.z for c in b.a1.info.drawColor)
-			@cc.context.strokeStyle = arrayToRGB color
+			@cc.context.strokeStyle = arrayToRGB b.a1.depthShadedColor()
 			@cc.context.lineWidth = 2/@cc.zoom
 			@cc.context.closePath()
 			@cc.context.stroke()
