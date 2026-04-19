@@ -181,7 +181,8 @@ addNewStructure = (e) ->
 fromSplashLink = (filename) ->
 	coffeemol.addNewStructure filename, {drawMethod: 'cartoon'} 
 
-coffeemol = new CanvasContext "#coffeemolCanvas"
+isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+coffeemol = new CanvasContext "#coffeemolCanvas", (if isDark then "#111111" else "#ffffff")
 
 # If we are in the debug environment
 # Attach coffeemol instance to window to use it in the HTML

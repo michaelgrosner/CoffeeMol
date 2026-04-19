@@ -1,17 +1,102 @@
 <html>
 	<head>
 		<title>CoffeeMol</title>
-		<link rel="stylesheet" type="text/css" href="index.css" >
+		<link rel="stylesheet" type="text/css" href="index.css">
 	</head>
 	<body>
 		<canvas id="coffeemolCanvas">Canvas Load Failed</canvas>
-		<div id="reset" class="fake-button">Reset To Original position</div>
-	</body>
-	<script src="jquery.min.js" type="text/javascript"></script>
-	<script src="CoffeeMol.js" type="text/javascript"></script>
-	<script type="text/javascript">
-		window.coffeemol.resizeToWindow();
-		window.coffeemol.addNewStructure("PDBs/1KX5.pdb");
-	</script>
 
+		<div id="mol-panel">
+			<div id="mol-header">
+				<span class="panel-title"><span class="coffee">Coffee</span>Mol</span>
+			</div>
+
+			<div id="mol-picker">
+				<select id="mol-select"></select>
+				<button id="mol-load">Load</button>
+			</div>
+
+			<div id="mol-info">
+				<div id="mol-title-display"></div>
+				<div id="mol-meta"></div>
+			</div>
+
+			<div id="reset" class="action-button">Reset view</div>
+		</div>
+	</body>
+
+	<script src="jquery.min.js"></script>
+	<script src="CoffeeMol.js"></script>
+	<script>
+		const molecules = [
+			{ path: 'PDBs/1KX5.pdb', id: '1KX5' },
+			{ path: 'PDBs/1CGP.pdb', id: '1CGP' },
+			{ path: 'PDBs/3IV5.pdb', id: '3IV5' },
+			{ path: 'PDBs/1EFA.pdb', id: '1EFA' },
+			{ path: 'PDBs/2L9I.pdb', id: '2L9I' },
+			{ path: 'PDBs/2Y1M.pdb', id: '2Y1M' },
+			{ path: 'PDBs/3JR9.pdb', id: '3JR9' },
+			{ path: 'PDBs/3JRA.pdb', id: '3JRA' },
+			{ path: 'PDBs/3JRB.pdb', id: '3JRB' },
+			{ path: 'PDBs/3JRC.pdb', id: '3JRC' },
+			{ path: 'PDBs/3JRF.pdb', id: '3JRF' },
+			{ path: 'PDBs/3JRH.pdb', id: '3JRH' },
+		];
+
+		const select = document.getElementById('mol-select');
+		molecules.forEach(m => {
+			const opt = document.createElement('option');
+			opt.value = m.path;
+			opt.dataset.id = m.id;
+			opt.textContent = m.id;
+			select.appendChild(opt);
+		});
+
+		async function fetchMeta(pdbId) {
+			const titleEl = document.getElementById('mol-title-display');
+			const metaEl  = document.getElementById('mol-meta');
+			titleEl.textContent = pdbId;
+			metaEl.textContent  = 'Loading…';
+			try {
+				const res  = await fetch(`https://data.rcsb.org/rest/v1/core/entry/${pdbId}`);
+				const data = await res.json();
+
+				const title      = data?.struct?.title ?? '—';
+				const method     = data?.rcsb_entry_info?.experimental_method ?? '—';
+				const resolution = data?.rcsb_entry_info?.resolution_combined?.[0];
+				const atoms      = data?.rcsb_entry_info?.deposited_atom_count;
+				const released   = data?.rcsb_accession_info?.initial_release_date?.slice(0, 10);
+				const keywords   = data?.struct_keywords?.text;
+
+				titleEl.textContent = title;
+
+				const rows = [
+					['Method',     method],
+					resolution ? ['Resolution', resolution.toFixed(2) + ' Å'] : null,
+					atoms      ? ['Atoms',      atoms.toLocaleString()]        : null,
+					released   ? ['Released',   released]                      : null,
+					keywords   ? ['Keywords',   keywords]                      : null,
+				].filter(Boolean);
+
+				metaEl.innerHTML = rows.map(([k, v]) =>
+					`<div class="meta-row"><span class="meta-key">${k}</span><span class="meta-val">${v}</span></div>`
+				).join('');
+			} catch {
+				metaEl.textContent = 'Metadata unavailable';
+			}
+		}
+
+		function loadSelected() {
+			const opt   = select.options[select.selectedIndex];
+			const path  = opt.value;
+			const pdbId = opt.dataset.id;
+			window.coffeemol.loadNewStructure(path);
+			fetchMeta(pdbId);
+		}
+
+		document.getElementById('mol-load').addEventListener('click', loadSelected);
+
+		window.coffeemol.resizeToWindow();
+		loadSelected();
+	</script>
 </html>

@@ -48,6 +48,12 @@ class CanvasContext
 	addElement: (el) ->
 		@elements.push el
 
+	loadNewStructure: (filepath, info = null) =>
+		@elements = []
+		@bonds = []
+		@grid = {}
+		@addNewStructure filepath, info
+
 	writeContextInfo: =>
 		info = (el.writeContextInfo() for el in @elements)
 		$("#ctx-info").html info.join ""

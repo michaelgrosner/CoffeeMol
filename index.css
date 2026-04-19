@@ -1,26 +1,135 @@
-html {padding: 0px; margin: 0px;}
-body {padding: 0px; margin: 0px; font-family: "Georgia", serif; text-rendering: optimizeLegibility; font-size: 14px; background-color: #FFFFFF; overflow: hidden}
-#coffeemolCanvas {float: left; background-color: #fff;} 
-#reset {position: absolute; bottom: 40px; z-index: 1}
-.title {font-size: 24px; font-family: "Georgia", serif; font-weight: 100; color: #14756E}
-.cc-size {position: absolute; overflow: hidden; width: 300px; padding: 20px; height: 100%}
-#ctx-opacity {-moz-opacity: .9; opacity: .9; filter:alpha(opacity=90); background-color: #fafafa; box-shadow: 0px 0px 10px #ccc;}
-#ctx-container {font-size: 10px; }
-#add-new-structure {margin-bottom: 10px;}
-#add-new-structure .submit {border: 1px solid #aaa; height: 25px; position: relative; left: -7px;}
-#add-new-structure .text   {border: 1px solid #aaa; height: 26px; position: relative; top: 1px; width: 200px;}
-#show-ctx-container {border: 1px solid #ccc; position: absolute; bottom: 5px; left: 5px; padding: 3px; z-index: 10;}
-#help-area {border: 1px solid #aaa; padding: 8px; color: #14756E; margin-bottom: 10px;}
-#help-area p {line-height: 5px;}
-#welcome-splash {background-color: #eee; text-align: center; display: none; height: 50%; width: 50%; position: absolute; padding: 50px; border-radius: 50px; border: 15px solid #BE6521}
-#ctx-info {overflow-y: auto; overflow-x: hidden}
+:root {
+	--bg:         #ffffff;
+	--panel-bg:   rgba(255, 255, 255, 0.82);
+	--border:     #ddd;
+	--text:       #222;
+	--text-muted: #666;
+	--accent:     #BE6521;
+	--btn-bg:     #f0f0f0;
+	--btn-hover:  #e0e0e0;
+}
 
-.open-dropdown {color: red; float: right; text-decoration: underline}
-.dropdown-option {line-height: 15px;}
-.dropdown {display: none; position: fixed; border: 1px solid #aaa; margin-left: 5px; background-color: #fafafa; padding: 5px; border-radius: 5px;}
-.element-controller {margin-top: 3px; border: 1px solid #CCC; padding: 3px; border-top-left-radius: 5px; border-bottom-left-radius: 5px;}
-.Structure {width: 290px; margin-top: 10px !important; border-top-right-radius: 5px; border-bottom-right-radius: 5px}
-.Chain {width: 286px;}
-.Residue {display: none; width: 282px;}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg:         #111111;
+		--panel-bg:   rgba(24, 24, 24, 0.88);
+		--border:     #333;
+		--text:       #e8e8e8;
+		--text-muted: #999;
+		--btn-bg:     #2a2a2a;
+		--btn-hover:  #3a3a3a;
+	}
+}
 
-.fake-button {cursor: hand; pointer: hand;}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+	width: 100%; height: 100%;
+	background: var(--bg);
+	overflow: hidden;
+}
+
+#coffeemolCanvas {
+	position: absolute;
+	top: 0; left: 0;
+	display: block;
+}
+
+/* ── Panel ─────────────────────────────────────────── */
+
+#mol-panel {
+	position: absolute;
+	top: 16px; left: 16px;
+	width: 240px;
+	background: var(--panel-bg);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 14px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 13px;
+	color: var(--text);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	z-index: 10;
+}
+
+#mol-header .panel-title {
+	font-size: 18px;
+	font-weight: 600;
+}
+
+#mol-header .coffee { color: var(--accent); }
+
+/* ── Picker ─────────────────────────────────────────── */
+
+#mol-picker {
+	display: flex;
+	gap: 6px;
+}
+
+#mol-select {
+	flex: 1;
+	padding: 5px 8px;
+	border-radius: 6px;
+	border: 1px solid var(--border);
+	background: var(--btn-bg);
+	color: var(--text);
+	font-size: 13px;
+	cursor: pointer;
+}
+
+#mol-load, .action-button {
+	padding: 5px 10px;
+	border-radius: 6px;
+	border: 1px solid var(--border);
+	background: var(--btn-bg);
+	color: var(--text);
+	font-size: 13px;
+	cursor: pointer;
+	white-space: nowrap;
+	text-align: center;
+	user-select: none;
+}
+
+#mol-load:hover, .action-button:hover {
+	background: var(--btn-hover);
+}
+
+/* ── Metadata ────────────────────────────────────────── */
+
+#mol-title-display {
+	font-weight: 600;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--text);
+	text-transform: capitalize;
+}
+
+#mol-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.meta-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 11px;
+}
+
+.meta-key {
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.meta-val {
+	color: var(--text);
+	text-align: right;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
