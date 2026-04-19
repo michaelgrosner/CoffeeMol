@@ -1,22 +1,6 @@
 # CoffeeMol
 
-An embeddable molecular visualizer for HTML5 browsers, written in CoffeeScript. Renders PDB files on a `<canvas>` element using 2D drawing APIs — no WebGL required.
-
-## Building
-
-Requires [CoffeeScript 2](https://coffeescript.org/):
-
-```bash
-npm install -g coffeescript
-```
-
-Compile all source files into a single bundle:
-
-```bash
-cat Viewer.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.coffee \
-    Residue.coffee Atom.coffee Selector.coffee main.coffee \
-    | coffee --compile --stdio > CoffeeMol.js
-```
+An embeddable molecular visualizer for HTML5 browsers, written in vanilla JavaScript. Renders PDB files on a `<canvas>` element using 2D drawing APIs — no WebGL required, no build step, no dependencies.
 
 ## Running
 
