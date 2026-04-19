@@ -156,10 +156,11 @@ class Element
 	
 	findBonds: =>
 		@bonds = []
-		for i in [2..@atoms.length-1]
+		return if @atoms.length < 2
+		for i in [0..@atoms.length-2]
 			a1 = @atoms[i]
 			j_step = if a1.info.drawMethod == 'cartoon' then 30 else 10
-			for j in [i+1..i+j_step] when j < @atoms.length-1
+			for j in [i+1..Math.min(i+j_step, @atoms.length-1)]
 				a2 = @atoms[j]
 
 				if isBonded a1, a2

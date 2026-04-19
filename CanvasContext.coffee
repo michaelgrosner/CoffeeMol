@@ -26,8 +26,7 @@ class CanvasContext
 		$("#reset").on "click", @restoreToOriginal
 		@canvas.addEventListener 'mousedown',  @mousedown
 		@canvas.addEventListener 'touchstart',  @touchstart
-		@canvas.addEventListener 'DOMMouseScroll', @changeZoom
-		@canvas.addEventListener 'mousewheel', @changeZoom
+		@canvas.addEventListener 'wheel', @changeZoom
 		@canvas.addEventListener 'gesturestart', @iOSChangeZoom
 		@canvas.addEventListener 'dblclick',   @translateOrigin
 		@canvas.addEventListener 'mousemove',  @showAtomInfo
@@ -241,21 +240,18 @@ class CanvasContext
 		@canvas.addEventListener 'gesturechange', zoomChanger
 
 	changeZoom: (e) =>
-		# Use mousewheel to zoom in and out
-		if e.hasOwnProperty 'wheelDelta'
-			@zoom = @zoom_prev - e.wheelDelta/50.0
-		else #if e.hasOwnProperty 'detail' 
-			@zoom = @zoom_prev - e.detail/50.0
 		e.preventDefault()
-		@clear()
+		@zoom = @zoom_prev - e.deltaY/500.0
 		if @zoom > 0
+			@clear()
 			@drawAll()
 			@zoom_prev = @zoom
 
 	restoreToOriginal: =>
-		center = @avgCenterOfAllElements()
 		for el in @elements
 			el.restoreToOriginal()
+		center = @avgCenterOfAllElements()
+		for el in @elements
 			el.translateTo(center)
 		@zoom = @findBestZoom()
 		@zoom_prev = @zoom
@@ -263,6 +259,7 @@ class CanvasContext
 		@y_origin = @canvas.height/2
 		@clear()
 		@drawAll()
+		@determinePointGrid()
 
 	findBonds: =>
 		@bonds = []
@@ -321,7 +318,6 @@ class CanvasContext
 		# Fill in grid with the top atom at that pixel. This serves as 
 		# a quick lookup when hovering over an atom
 		dx = parseInt ATOM_SIZE/@zoom
-		console.log dx
 		for el in @elements
 			for a in el.atoms
 				w = parseInt a.x
@@ -431,7 +427,7 @@ class CanvasContext
 # JS can't keep up with large motions? Numerical error? Coding error???)
 # Limit to some tolerance level `tol`. I assume it's probably highly dependent
 # on CPU/Browser/GPU(?) etc.
-tol = 2
+tol = 20
 boundMouseMotion = (dz) ->
 	if dz > tol
 		tol

@@ -21,16 +21,19 @@ class Atom extends Element
 	# For the next 3 rotation functions, `sin` and `cos` are given as 
 	# Math.sin(dy), precomputed in `Element`
 	rotateAboutY: (sin, cos) =>
-		@x = @x*cos  + @z*sin
-		@z = -@x*sin + @z*cos
-	
+		ox = @x
+		@x = ox*cos  + @z*sin
+		@z = -ox*sin + @z*cos
+
 	rotateAboutX: (sin, cos) =>
-		@y = @y*cos - @z*sin
-		@z = @y*sin + @z*cos
+		oy = @y
+		@y = oy*cos - @z*sin
+		@z = oy*sin + @z*cos
 
 	rotateAboutZ: (sin, cos) =>
-		@x = @x*cos - @y*sin
-		@y = @x*sin + @y*cos
+		ox = @x
+		@x = ox*cos - @y*sin
+		@y = ox*sin + @y*cos
 
 	# Probably broken
 	rotateAboutXYZ: (j, k, l) =>

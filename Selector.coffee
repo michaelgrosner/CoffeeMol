@@ -13,21 +13,21 @@ class Selector
 			@array = @str.split selector_delimiter
 
 	right: =>
-		aNext = @array
+		aNext = @array.slice()
 		aNext[aNext.length-1] = aNext[aNext.length-1] + 1
 		new Selector aNext.join selector_delimiter
-	
+
 	left: =>
-		aNext = @array
+		aNext = @array.slice()
 		aNext[aNext.length-1] = aNext[aNext.length-1] - 1
 		new Selector aNext.join selector_delimiter
 
 	down: =>
-		aNext = @array
+		aNext = @array.slice()
 		aNext.push 0
 		new Selector aNext.join selector_delimiter
 
 	up: =>
 		aNext = @array[0..@array.length-2]
 		n = new Selector aNext.join selector_delimiter
-		if n.str == @.str then null else n 
+		if n.str == @.str then null else n
