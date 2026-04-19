@@ -20,26 +20,19 @@ cat Viewer.coffee CanvasContext.coffee Element.coffee Structure.coffee Chain.cof
 
 ## Running
 
-Because the viewer fetches PDB files via AJAX, you must serve the directory over HTTP — opening `index.html` directly from disk will fail due to browser CORS restrictions.
+Because the viewer fetches PDB files via HTTP, you must serve the directory over HTTP — opening `index.html` directly from disk will fail due to browser CORS restrictions.
 
 ```bash
 python3 -m http.server 8080
 # then open http://localhost:8080
 ```
 
-jQuery is required as `jquery.min.js` in the same directory. Download it once:
-
-```bash
-curl -sL https://code.jquery.com/jquery-1.12.4.min.js -o jquery.min.js
-```
-
 ## Embedding
 
-Add a `<canvas>` element and include jQuery and `CoffeeMol.js`:
+Add a `<canvas>` element and include `CoffeeMol.js` (no other dependencies required):
 
 ```html
 <canvas id="coffeemolCanvas" width="800" height="600">Canvas not supported</canvas>
-<script src="jquery.min.js"></script>
 <script src="CoffeeMol.js"></script>
 ```
 

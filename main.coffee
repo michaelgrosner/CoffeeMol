@@ -133,10 +133,10 @@ pdbAtomToDict = (a_str) ->
 	handleAtomName = (a) ->
 		a.substr 0, 1
 	
-	original_atom_name: $.trim a_str.substring 13, 16
-	atom_name: handleAtomName $.trim a_str.substring 13, 16
-	resi_name: handleResiName $.trim a_str.substring 17, 20
-	chain_id:  $.trim a_str.substring 21, 22
+	original_atom_name: a_str.substring(13, 16).trim()
+	atom_name: handleAtomName a_str.substring(13, 16).trim()
+	resi_name: handleResiName a_str.substring(17, 20).trim()
+	chain_id:  a_str.substring(21, 22).trim()
 	resi_id:   parseInt a_str.substring 23, 26
 	x: parseFloat a_str.substring 31, 38
 	y: parseFloat a_str.substring 38, 45
@@ -151,7 +151,7 @@ randomRGB = ->
 
 # Object deep-copy. See http://stackoverflow.com/a/122704/178073
 deepCopy = (o) ->
-	$.extend(true, {}, o)
+	structuredClone(o)
 
 randomDrawMethod = ->
 	supported_draw_methods[randomInt supported_draw_methods.length]
@@ -165,15 +165,11 @@ genIFSLink  = (selector_str, key, val, pretty) ->
 	"<div class='dropdown-option'><a href=\"#{link}\">#{pretty}</a></div>"
 
 mousePosition = (e) ->
-	if not e.offsetX? or not e.offsetY?
-		x: e.layerX - $(e.target).position().left
-		y: e.layerY - $(e.target).position().top
-	else
-		x: e.offsetX
-		y: e.offsetY
+	x: e.offsetX
+	y: e.offsetY
 
 addNewStructure = (e) ->
-	filepath = $("#add-new-structure .text").val()
+	filepath = document.querySelector('#add-new-structure .text')?.value
 	coffeemol.addNewStructure filepath
 
 fromSplashLink = (filename) ->

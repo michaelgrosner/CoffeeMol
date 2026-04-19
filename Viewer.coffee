@@ -1,33 +1,33 @@
-if $("#debug-info").length
-	$("#add-new-structure .submit").on 'click', addNewStructure
-	#$("#ctx-info").on window.onresize, ->
-	#	console.log $(@).offset()
+if document.getElementById('debug-info')
+	document.querySelector('#add-new-structure .submit')?.addEventListener 'click', addNewStructure
 
 	fitCtxInfo = ->
-		c = $("#ctx-info")
-		top = c.offset().top
-		w_height = $(window).height()
-		c.height w_height-top-100
+		c = document.getElementById('ctx-info')
+		top = c.getBoundingClientRect().top + window.scrollY
+		w_height = window.innerHeight
+		c.style.height = (w_height - top - 100) + 'px'
 	# COMMENT
-	
+
 	fitCtxInfo()
-	$(window).resize fitCtxInfo
+	window.addEventListener 'resize', fitCtxInfo
 
-		
+
 	fade = "out"
-	$("#show-ctx-container").on "click", ->
+	document.getElementById('show-ctx-container')?.addEventListener 'click', ->
+		ccSize = document.querySelectorAll('.cc-size')
 		if fade == "in"
-			$(".cc-size").fadeIn "fast", ->
-				fade = "out"
-				$("#show-ctx-container").html "<< Options"
+			ccSize.forEach (el) -> el.style.display = 'block'
+			fade = "out"
+			document.getElementById('show-ctx-container').textContent = "<< Options"
 		else if fade == "out"
-			$(".cc-size").fadeOut "fast", ->
-				fade = "in"
-				$("#show-ctx-container").html "Options >>"
+			ccSize.forEach (el) -> el.style.display = 'none'
+			fade = "in"
+			document.getElementById('show-ctx-container').textContent = "Options >>"
 
-	$("#help-area").on "click", -> $(this).css("display", "none")
+	document.getElementById('help-area')?.addEventListener 'click', ->
+		this.style.display = 'none'
 
-	# the filepath argument can also use a http address 
+	# the filepath argument can also use a http address
 	# (e.g. http://www.rcsb.org/pdb/files/1AOI.pdb)
 	structuresToLoad =
 		"PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":
@@ -51,46 +51,47 @@ if $("#debug-info").length
 		"PDBs/half1_0.pdb":
 			drawMethod: "both"
 	"""
-	
+
 
 	dismissWelcomeSplash = ->
-		$("#show-ctx-container").css "display", "block"
-		$(".cc-size").css "display", "block"
-		$("#welcome-splash").fadeOut "fast"
+		document.getElementById('show-ctx-container')?.style.display = 'block'
+		document.querySelectorAll('.cc-size').forEach (el) -> el.style.display = 'block'
+		document.getElementById('welcome-splash')?.style.display = 'none'
 
 	if not structuresToLoad?
-		$("#show-ctx-container").css "display", "none"
-		$(".cc-size").css "display", "none"
+		showCtx = document.getElementById('show-ctx-container')
+		if showCtx then showCtx.style.display = 'none'
+		document.querySelectorAll('.cc-size').forEach (el) -> el.style.display = 'none'
 
-		$("#welcome-splash").css
-			left: $(window).width()/2 - $("#welcome-splash").outerWidth()/2
-			top: $(window).height()/2 - $("#welcome-splash").outerHeight()/2
+		splash = document.getElementById('welcome-splash')
+		if splash
+			splash.style.left = (window.innerWidth/2 - splash.offsetWidth/2) + 'px'
+			splash.style.top  = (window.innerHeight/2 - splash.offsetHeight/2) + 'px'
+			splash.style.display = 'block'
+			if showCtx then showCtx.style.display = 'block'
+			document.querySelectorAll('.sample-pdb-link').forEach (el) ->
+				el.addEventListener 'click', dismissWelcomeSplash
+			document.querySelector('#welcome-splash #dismiss')?.addEventListener 'click', dismissWelcomeSplash
 
-		$("#welcome-splash").fadeIn "fast", ->
-			$("#show-ctx-container").fadeIn "fast"
-			$(".sample-pdb-link").on "click", dismissWelcomeSplash
-			$("#welcome-splash #dismiss").on "click", dismissWelcomeSplash
-				
 	else
 		coffeemol.loadFromDict structuresToLoad
-	
+
 	coffeemol.writeContextInfo()
-	
-	$("#ctx-info").on "click", ".open-dropdown", (e) ->
-		# Probably not good form, but the dropdown should be a sibling to the 
-		# right of `.open-dropdown`
-		d = $(@).next()
-		if (d.filter ":hidden").length == 1
-			d.css
-				'top':  e.pageY
-				'left': e.pageX
-			d.fadeIn "fast"
-		else
-			d.fadeOut "fast"
 
-	$("#ctx-info").on "click", ".element-desc", (e) ->
-		cc = $(@).siblings().next()
-		cc = cc.add cc.find ".element-desc"
-		shown = cc.css "display"
-		if shown == "none" then cc.fadeIn "fast" else cc.fadeOut "fast"
-
+	document.getElementById('ctx-info')?.addEventListener 'click', (e) ->
+		if e.target.classList.contains('open-dropdown')
+			d = e.target.nextElementSibling
+			if d
+				if d.style.display == 'none' or d.style.display == ''
+					d.style.top  = e.pageY + 'px'
+					d.style.left = e.pageX + 'px'
+					d.style.display = 'block'
+				else
+					d.style.display = 'none'
+		else if e.target.classList.contains('element-desc')
+			siblings = Array.from(e.target.parentElement.children)
+			idx = siblings.indexOf(e.target)
+			cc = siblings.slice(idx + 1)
+			cc = cc.concat(cc.flatMap (el) -> Array.from(el.querySelectorAll('.element-desc')))
+			shown = cc[0]?.style.display
+			cc.forEach (el) -> el.style.display = if shown == 'none' or shown == '' then 'block' else 'none'

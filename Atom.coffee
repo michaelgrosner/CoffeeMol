@@ -76,7 +76,6 @@ class Atom extends Element
 		
 	asArray: => [@x, @y, @z]
 
-	# A jQuery callback, thus index and oldhtml which are still not used
 	atomInfo: (index, oldhtml) =>
 		s = @selector
 		parents = [@]

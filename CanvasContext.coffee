@@ -2,28 +2,25 @@ class CanvasContext
 	constructor: (@canvas_tag, @background_color = "#ffffff") ->
 		@elements = []
 
-		try	
-			# Use jQuery to get the canvas
-			@canvas  = $(@canvas_tag)[0]
+		try
+			@canvas  = document.querySelector(@canvas_tag)
 			@context = @canvas.getContext '2d'
 		catch error
 			alert error
 
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
-		$(@canvas).css
-			"user-select": "none"
-			"-moz-user-select": "none"
-			"-webkit-user-select": "none"
-			"background-color": arrayToRGB @background_color
+		@canvas.style.userSelect = 'none'
+		@canvas.style.MozUserSelect = 'none'
+		@canvas.style.webkitUserSelect = 'none'
+		@canvas.style.backgroundColor = arrayToRGB @background_color
 
 		# Previous mouse motions start at 0,0
 		@mouse_x_prev = 0
 		@mouse_y_prev = 0
 
 		# Add the event handlers we will need
-		# Investigate migrating to jQuery `on`
-		$("#reset").on "click", @restoreToOriginal
+		document.getElementById('reset')?.addEventListener 'click', @restoreToOriginal
 		@canvas.addEventListener 'mousedown',  @mousedown
 		@canvas.addEventListener 'touchstart',  @touchstart
 		@canvas.addEventListener 'wheel', @changeZoom
@@ -57,7 +54,8 @@ class CanvasContext
 
 	writeContextInfo: =>
 		info = (el.writeContextInfo() for el in @elements)
-		$("#ctx-info").html info.join ""
+		el = document.getElementById('ctx-info')
+		if el then el.innerHTML = info.join ""
 
 	# -------
 	# LOADING SECTION
@@ -95,11 +93,7 @@ class CanvasContext
 					@init()
 			else
 				@init()
-		$.ajax
-			async: true
-			type: "GET"
-			url: filepath
-			success: handlePDB
+		fetch(filepath).then((r) -> r.text()).then(handlePDB)
 		null
 
 	loadFromDict: (structuresToLoad) =>
