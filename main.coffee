@@ -23,9 +23,9 @@ if typeof Array.prototype.dot != 'function'
 			alert "Lengths for dot product must be equal"
 		summation (v[i]*@[i] for i in [0..v.length-1])
 
-nuc_acids = ["A",  "C",  "G",   "T",
-			 "DA", "DC", "DG", "DT",
-			 "RA", "RC", "RG", "RT"]
+nuc_acids = ["A",  "C",  "G",  "T",
+			"DA", "DC", "DG", "DT",
+			"RA", "RC", "RG", "RT"]
 
 
 # See http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html

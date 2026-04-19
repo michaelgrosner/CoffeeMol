@@ -12,10 +12,10 @@ class CanvasContext
 		# Prevent highlighting on canvas, something which often happens
 		# while clicking and dragging
 		$(@canvas).css
-			 "user-select": "none"
-			 "-moz-user-select": "none"
-			 "-webkit-user-select": "none"
-			 "background-color": arrayToRGB @background_color
+			"user-select": "none"
+			"-moz-user-select": "none"
+			"-webkit-user-select": "none"
+			"background-color": arrayToRGB @background_color
 
 		# Previous mouse motions start at 0,0
 		@mouse_x_prev = 0
@@ -48,6 +48,10 @@ class CanvasContext
 
 	addElement: (el) ->
 		@elements.push el
+
+	writeContextInfo: =>
+		info = (el.writeContextInfo() for el in @elements)
+		$("#ctx-info").html info.join ""
 
 	# -------
 	# LOADING SECTION

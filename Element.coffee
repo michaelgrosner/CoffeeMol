@@ -2,7 +2,7 @@ class Element
 	constructor: (@parent, @name, cc = null) ->
 		@children = []
 
-		if parent? 
+		if @parent?
 			@parent.addChild @
 
 		@cc = if cc? then cc else @parent.cc
