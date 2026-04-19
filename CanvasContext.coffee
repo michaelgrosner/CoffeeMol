@@ -212,19 +212,14 @@ class CanvasContext
 		@mousemove mobile_e.touches[0]
 
 	mousemove: (e) =>
-		dx = boundMouseMotion @mouse_x_prev - e.clientX
-		dy = boundMouseMotion @mouse_y_prev - e.clientY
-		ds = Math.sqrt(dx*dx + dy*dy)
-
-		time_start = new Date
+		dx = @mouse_x_prev - e.clientX
+		dy = @mouse_y_prev - e.clientY
 
 		@clear()
 		for el in @elements
 			el.rotateAboutX degToRad dy
 			el.rotateAboutY degToRad -dx
 		@drawAll()
-
-		fps = 1000/(new Date - time_start)
 
 		@mouse_x_prev = e.clientX
 		@mouse_y_prev = e.clientY
@@ -237,7 +232,7 @@ class CanvasContext
 			# Zooming metric
 			@zoom *= Math.sqrt gesture.scale
 			for el in @elements
-				el.rotateAboutZ degToRad boundMouseMotion gesture.rotation
+				el.rotateAboutZ degToRad gesture.rotation
 			@clear()
 			if @zoom > 0
 				@drawAll()
@@ -429,15 +424,3 @@ class CanvasContext
 		null
 
 
-# TODO: Large mouse movements will squish and distort the molecule (perhaps
-# JS can't keep up with large motions? Numerical error? Coding error???)
-# Limit to some tolerance level `tol`. I assume it's probably highly dependent
-# on CPU/Browser/GPU(?) etc.
-tol = 20
-boundMouseMotion = (dz) ->
-	if dz > tol
-		tol
-	else if dz < -1*tol
-		-1*tol
-	else
-		dz
