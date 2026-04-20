@@ -21,7 +21,15 @@
 				<div id="mol-meta"></div>
 			</div>
 
-			<div id="reset" class="action-button">Reset view</div>
+			<div class="controls-row">
+				<select id="mol-draw-method" class="action-button">
+					<option value="cartoon">Cartoon</option>
+					<option value="both">Points + Lines</option>
+					<option value="lines">Lines</option>
+					<option value="points">Points</option>
+				</select>
+				<div id="reset" class="action-button">Reset</div>
+			</div>
 		</div>
 	</body>
 
@@ -97,7 +105,8 @@
 			pdbId = pdbId.trim().toUpperCase();
 			if (!pdbId) return;
 			document.getElementById('pdb-input').value = pdbId;
-			window.coffeemol.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.pdb`);
+			const drawMethod = document.getElementById('mol-draw-method').value;
+			window.coffeemol.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.pdb`, { drawMethod });
 			fetchMeta(pdbId);
 		}
 
@@ -107,6 +116,10 @@
 
 		document.getElementById('pdb-input').addEventListener('keydown', e => {
 			if (e.key === 'Enter') loadPdb(e.target.value);
+		});
+
+		document.getElementById('mol-draw-method').addEventListener('change', e => {
+			window.coffeemol.changeAllDrawMethods(e.target.value);
 		});
 
 		window.coffeemol.resizeToWindow();

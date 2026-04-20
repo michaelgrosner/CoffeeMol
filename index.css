@@ -140,3 +140,31 @@ html, body {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+
+/* ── Controls ────────────────────────────────────────── */
+
+.controls-row {
+	display: flex;
+	gap: 6px;
+}
+
+#mol-draw-method {
+	flex: 1;
+	padding: 5px 8px;
+	border-radius: 6px;
+	border: 1px solid var(--border);
+	background: var(--btn-bg);
+	color: var(--text);
+	font-size: 13px;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+#mol-draw-method:hover {
+	background: var(--btn-hover);
+}
+
+#mol-draw-method:focus {
+	outline: none;
+	border-color: var(--accent);
+}

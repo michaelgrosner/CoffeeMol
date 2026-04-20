@@ -597,6 +597,7 @@ class CanvasContext {
             let resi_id_prev:  number | null = null;
             let c!: Chain;
             let r!: Residue;
+            let atom_count = 0;
             for (const a_str of data.split('\n')) {
                 if (a_str.startswith("TITLE")) { s.attachTitle(a_str); continue; }
                 if (!a_str.startswith("ATOM"))  continue;
@@ -606,8 +607,22 @@ class CanvasContext {
                 new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name);
                 chain_id_prev = d.chain_id;
                 resi_id_prev  = d.resi_id;
+                atom_count++;
             }
-            const resolvedInfo: AtomInfo = info == null ? defaultInfo() : info as AtomInfo;
+            
+            let resolvedInfo: AtomInfo;
+            if (info != null) {
+                resolvedInfo = info as AtomInfo;
+            } else {
+                resolvedInfo = defaultInfo();
+                if (atom_count > 2000) {
+                    resolvedInfo.drawMethod = 'cartoon';
+                } else if (atom_count > 500) {
+                    resolvedInfo.drawMethod = 'lines';
+                } else {
+                    resolvedInfo.drawMethod = 'both';
+                }
+            }
             s.propogateInfo(resolvedInfo);
             if (this.structures_left_to_load != null) {
                 if (--this.structures_left_to_load === 0) this.init();
@@ -654,7 +669,11 @@ class CanvasContext {
 
     changeAllDrawMethods(new_method: DrawMethod): void {
         this.clear();
-        for (const el of this.elements) el.info.drawMethod = new_method;
+        for (const el of this.elements) {
+            el.info.drawMethod = new_method;
+            el.propogateInfo(el.info);
+        }
+        if (new_method !== 'points') this.findBonds();
         this.drawAll();
     }
 
@@ -934,13 +953,6 @@ if (document.getElementById('debug-info')) {
 
     document.getElementById('help-area')?.addEventListener('click', function(this: HTMLElement) { this.style.display = 'none'; });
 
-    const structuresToLoad: Record<string, StructureLoadInfo> = {
-        "PDBs/A1_open_2HU_78bp_1/out-1-16.pdb":                { drawMethod: "cartoon", drawColor: [47,  254, 254] },
-        "PDBs/A1_open_2HU_78bp_1/half1_0.pdb":                  { drawMethod: "points",  drawColor: [254, 0,   254] },
-        "PDBs/A1_open_2HU_78bp_1/half2-78bp-ID0_B1-16.pdb":    { drawMethod: "both",    drawColor: [254, 0,   254] },
-        "PDBs/A1_open_2HU_78bp_1/proteins-78bp-ID0_B1-16.pdb": { drawMethod: "lines",   drawColor: [251, 251, 1]   },
-    };
-
     const dismissWelcomeSplash = () => {
         const showCtx = document.getElementById('show-ctx-container');
         if (showCtx) showCtx.style.display = 'block';
@@ -949,21 +961,17 @@ if (document.getElementById('debug-info')) {
         if (splash) splash.style.display = 'none';
     };
 
-    if (structuresToLoad == null) {
-        const showCtx = document.getElementById('show-ctx-container');
-        if (showCtx) showCtx.style.display = 'none';
-        document.querySelectorAll<HTMLElement>('.cc-size').forEach(el => el.style.display = 'none');
-        const splash = document.getElementById('welcome-splash');
-        if (splash) {
-            splash.style.left    = (window.innerWidth  / 2 - splash.offsetWidth  / 2) + 'px';
-            splash.style.top     = (window.innerHeight / 2 - splash.offsetHeight / 2) + 'px';
-            splash.style.display = 'block';
-            if (showCtx) showCtx.style.display = 'block';
-            document.querySelectorAll('.sample-pdb-link').forEach(el => el.addEventListener('click', dismissWelcomeSplash));
-            document.querySelector('#welcome-splash #dismiss')?.addEventListener('click', dismissWelcomeSplash);
-        }
-    } else {
-        coffeemol.loadFromDict(structuresToLoad);
+    const showCtx = document.getElementById('show-ctx-container');
+    if (showCtx) showCtx.style.display = 'none';
+    document.querySelectorAll<HTMLElement>('.cc-size').forEach(el => el.style.display = 'none');
+    const splash = document.getElementById('welcome-splash');
+    if (splash) {
+        splash.style.left    = (window.innerWidth  / 2 - splash.offsetWidth  / 2) + 'px';
+        splash.style.top     = (window.innerHeight / 2 - splash.offsetHeight / 2) + 'px';
+        splash.style.display = 'block';
+        if (showCtx) showCtx.style.display = 'block';
+        document.querySelectorAll('.sample-pdb-link').forEach(el => el.addEventListener('click', dismissWelcomeSplash));
+        document.querySelector('#welcome-splash #dismiss')?.addEventListener('click', dismissWelcomeSplash);
     }
 
     coffeemol.writeContextInfo();
