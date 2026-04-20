@@ -12,7 +12,7 @@
 			</div>
 
 			<div id="mol-picker">
-				<select id="mol-select"></select>
+				<input id="pdb-input" type="text" placeholder="PDB ID e.g. 1KX5" spellcheck="false" autocomplete="off">
 				<button id="mol-load">Load</button>
 			</div>
 
@@ -27,29 +27,37 @@
 
 	<script src="CoffeeMol.js"></script>
 	<script>
-		const molecules = [
-			{ path: 'PDBs/1KX5.pdb', id: '1KX5' },
-			{ path: 'PDBs/1CGP.pdb', id: '1CGP' },
-			{ path: 'PDBs/3IV5.pdb', id: '3IV5' },
-			{ path: 'PDBs/1EFA.pdb', id: '1EFA' },
-			{ path: 'PDBs/2L9I.pdb', id: '2L9I' },
-			{ path: 'PDBs/2Y1M.pdb', id: '2Y1M' },
-			{ path: 'PDBs/3JR9.pdb', id: '3JR9' },
-			{ path: 'PDBs/3JRA.pdb', id: '3JRA' },
-			{ path: 'PDBs/3JRB.pdb', id: '3JRB' },
-			{ path: 'PDBs/3JRC.pdb', id: '3JRC' },
-			{ path: 'PDBs/3JRF.pdb', id: '3JRF' },
-			{ path: 'PDBs/3JRH.pdb', id: '3JRH' },
-		];
+		const MAX_ATOM_COUNT = 100_000;
+		const RCSB_FILE_BASE = 'https://files.rcsb.org/download';
+		const RCSB_SEARCH    = 'https://search.rcsb.org/rcsbsearch/v2/query';
+		const RCSB_META_BASE = 'https://data.rcsb.org/rest/v1/core/entry';
 
-		const select = document.getElementById('mol-select');
-		molecules.forEach(m => {
-			const opt = document.createElement('option');
-			opt.value = m.path;
-			opt.dataset.id = m.id;
-			opt.textContent = m.id;
-			select.appendChild(opt);
-		});
+		async function fetchRandomPdbId() {
+			const baseQuery = {
+				query: {
+					type: 'terminal',
+					service: 'text',
+					parameters: {
+						attribute: 'rcsb_entry_info.deposited_atom_count',
+						operator:  'less',
+						value:     MAX_ATOM_COUNT,
+					},
+				},
+				return_type: 'entry',
+			};
+			const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+
+			// First pass: get total count
+			const countRes  = await fetch(RCSB_SEARCH, { ...opts, body: JSON.stringify({ ...baseQuery, request_options: { paginate: { start: 0, rows: 0 } } }) });
+			const countData = await countRes.json();
+			const total     = countData.total_count;
+
+			// Second pass: fetch one entry at a random offset
+			const start   = Math.floor(Math.random() * total);
+			const res     = await fetch(RCSB_SEARCH, { ...opts, body: JSON.stringify({ ...baseQuery, request_options: { paginate: { start, rows: 1 } } }) });
+			const data    = await res.json();
+			return data.result_set[0].identifier;
+		}
 
 		async function fetchMeta(pdbId) {
 			const titleEl = document.getElementById('mol-title-display');
@@ -57,7 +65,7 @@
 			titleEl.textContent = pdbId;
 			metaEl.textContent  = 'Loading…';
 			try {
-				const res  = await fetch(`https://data.rcsb.org/rest/v1/core/entry/${pdbId}`);
+				const res  = await fetch(`${RCSB_META_BASE}/${pdbId}`);
 				const data = await res.json();
 
 				const title      = data?.struct?.title ?? '—';
@@ -85,17 +93,23 @@
 			}
 		}
 
-		function loadSelected() {
-			const opt   = select.options[select.selectedIndex];
-			const path  = opt.value;
-			const pdbId = opt.dataset.id;
-			window.coffeemol.loadNewStructure(path);
+		function loadPdb(pdbId) {
+			pdbId = pdbId.trim().toUpperCase();
+			if (!pdbId) return;
+			document.getElementById('pdb-input').value = pdbId;
+			window.coffeemol.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.pdb`);
 			fetchMeta(pdbId);
 		}
 
-		document.getElementById('mol-load').addEventListener('click', loadSelected);
+		document.getElementById('mol-load').addEventListener('click', () => {
+			loadPdb(document.getElementById('pdb-input').value);
+		});
+
+		document.getElementById('pdb-input').addEventListener('keydown', e => {
+			if (e.key === 'Enter') loadPdb(e.target.value);
+		});
 
 		window.coffeemol.resizeToWindow();
-		loadSelected();
+		fetchRandomPdbId().then(loadPdb);
 	</script>
 </html>
