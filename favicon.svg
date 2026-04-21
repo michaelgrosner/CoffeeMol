@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Central Bean -->
+  <path d="M16 8 C11 8 8 11.5 8 16 C8 20.5 11 24 16 24 C21 24 24 20.5 24 16 C24 11.5 21 8 16 8 Z" fill="#BE6521" />
+  <!-- S-Curve Crease -->
+  <path d="M13 20 C14 20 15 18 16 18 C17 18 18 16 19 16" stroke="#7A3E12" stroke-width="1.2" fill="none" stroke-linecap="round" />
+  
+  <!-- Molecular Bonds -->
+  <line x1="21" y1="10" x2="26" y2="6" stroke="#BE6521" stroke-width="1.5" />
+  <line x1="11" y1="22" x2="6" y2="26" stroke="#BE6521" stroke-width="1.5" />
+  <line x1="24" y1="16" x2="29" y2="18" stroke="#BE6521" stroke-width="1.5" />
+
+  <!-- Satellite Bean 1 (Top Right) -->
+  <path d="M27 3 C25.5 3 24.5 4 24.5 5.5 C24.5 7 25.5 8 27 8 C28.5 8 29.5 7 29.5 5.5 C29.5 4 28.5 3 27 3 Z" fill="#D27B3C" />
+  <!-- Satellite Bean 2 (Bottom Left) -->
+  <path d="M5 25 C3.5 25 2.5 26 2.5 27.5 C2.5 29 3.5 30 5 30 C6.5 30 7.5 29 7.5 27.5 C7.5 26 6.5 25 5 25 Z" fill="#D27B3C" />
+  <!-- Satellite Bean 3 (Right) -->
+  <circle cx="30" cy="18.5" r="1.5" fill="#BE6521" />
+</svg>

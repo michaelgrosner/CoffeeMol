@@ -1,10 +1,39 @@
 <html>
 	<head>
-		<title>CoffeeMol</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>CoffeeMol — Molecular Visualizer</title>
+		<meta name="description" content="A lightweight, embeddable molecular visualizer for PDB and mmCIF files. No WebGL required.">
+		
+		<!-- Favicon & Icons -->
+		<link rel="icon" type="image/svg+xml" href="favicon.svg">
+		<link rel="apple-touch-icon" href="favicon.svg">
+		
+		<!-- Open Graph / Social -->
+		<meta property="og:type" content="website">
+		<meta property="og:title" content="CoffeeMol — Molecular Visualizer">
+		<meta property="og:description" content="Embeddable molecular visualizer for HTML5 browsers. Renders structure files without WebGL or runtime dependencies.">
+		<meta property="og:image" content="traces/cm_output.jpg">
+		
+		<link rel="manifest" href="manifest.json">
 		<link rel="stylesheet" type="text/css" href="index.css">
 	</head>
 	<body>
 		<canvas id="coffeemolCanvas">Canvas Load Failed</canvas>
+
+		<div class="spinner-container" id="spinner">
+			<div class="mol-spinner">
+				<div class="spinner-atom"></div>
+				<div class="spinner-atom"></div>
+				<div class="spinner-atom"></div>
+				<div class="spinner-bond"></div>
+				<div class="spinner-bond"></div>
+				<div class="spinner-bond"></div>
+			</div>
+			<div style="color: var(--accent); font-weight: 600; font-family: sans-serif; font-size: 14px;">Analyzing Molecule...</div>
+		</div>
+
+		<div id="drop-overlay"></div>
 
 		<div id="mol-panel">
 			<div id="mol-header">
@@ -54,6 +83,22 @@
 		const RCSB_SEARCH    = 'https://search.rcsb.org/rcsbsearch/v2/query';
 		const RCSB_META_BASE = 'https://data.rcsb.org/rest/v1/core/entry';
 		const RCSB_WWW_BASE  = 'https://www.rcsb.org/structure';
+
+		// --- Service Worker ---
+		if ('serviceWorker' in navigator) {
+			window.addEventListener('load', () => {
+				navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed:', err));
+			});
+		}
+
+		// --- UI Helpers ---
+		function toggleSpinner(show) {
+			document.getElementById('spinner').classList.toggle('active', show);
+		}
+
+		function updateTitle(name) {
+			document.title = name ? `${name} — CoffeeMol` : "CoffeeMol — Molecular Visualizer";
+		}
 
 		// --- Persistence ---
 		const STORAGE_KEYS = {
@@ -147,10 +192,50 @@
 			if (!pdbId) return;
 			document.getElementById('pdb-input').value = pdbId;
 			const drawMethod = document.getElementById('mol-draw-method').value;
+			
+			toggleSpinner(true);
+			updateTitle(pdbId);
+
 			// Prefer mmCIF (.cif)
 			window.coffeemol.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.cif`, { drawMethod });
-			fetchMeta(pdbId);
+			fetchMeta(pdbId).finally(() => toggleSpinner(false));
 		}
+
+		// --- Drag and Drop ---
+		const dropOverlay = document.getElementById('drop-overlay');
+		
+		window.addEventListener('dragover', e => {
+			e.preventDefault();
+			dropOverlay.style.display = 'flex';
+		});
+
+		window.addEventListener('dragleave', e => {
+			if (e.relatedTarget === null) dropOverlay.style.display = 'none';
+		});
+
+		window.addEventListener('drop', e => {
+			e.preventDefault();
+			dropOverlay.style.display = 'none';
+			
+			const file = e.dataTransfer.files[0];
+			if (!file) return;
+
+			const reader = new FileReader();
+			reader.onload = event => {
+				const data = event.target.result;
+				const drawMethod = document.getElementById('mol-draw-method').value;
+				
+				toggleSpinner(true);
+				window.coffeemol.clear();
+				window.coffeemol.loadFromData(data, file.name, { drawMethod });
+				
+				document.getElementById('mol-title-display').textContent = file.name;
+				document.getElementById('mol-meta').textContent = `Local file: ${(file.size / 1024).toFixed(1)} KB`;
+				updateTitle(file.name);
+				toggleSpinner(false);
+			};
+			reader.readAsText(file);
+		});
 
 		// --- Events ---
 		document.getElementById('mol-load').addEventListener('click', () => {

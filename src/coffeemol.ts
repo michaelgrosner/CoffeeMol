@@ -105,7 +105,7 @@ export class CanvasContext {
             this.resizeToWindow();
             this.x_origin = this.canvas.width  / 2;
             this.y_origin = this.canvas.height / 2;
-            this.clear();
+            this.clearCanvas();
             this.drawAll();
         });
     }
@@ -124,7 +124,7 @@ export class CanvasContext {
 
     addElement(el: Structure): void { this.elements.push(el); }
 
-    loadNewStructure(filepath: string, info: AtomInfo | null = null): void {
+    loadNewStructure(filepath: string, info: StructureLoadInfo | AtomInfo | null = null): void {
         this.elements = [];
         this.bonds    = [];
         this.grid     = {};
@@ -139,8 +139,7 @@ export class CanvasContext {
         let resi_id_prev:  number | null = null;
         let c!: Chain;
         let r!: Residue;
-        let atom_count = 0;
-
+        
         const residues: Residue[] = [];
 
         for (const d of parsed.atoms) {
@@ -152,7 +151,6 @@ export class CanvasContext {
             new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name);
             chain_id_prev = d.chain_id;
             resi_id_prev  = d.resi_id;
-            atom_count++;
         }
 
         // Assign secondary structure
@@ -181,19 +179,21 @@ export class CanvasContext {
         }
     }
 
+    loadFromData(data: string, filename: string, info: StructureLoadInfo | AtomInfo | null = null): void {
+        const extension = filename.split('.').pop()?.toLowerCase();
+        let parsed: ParsedStructure;
+        if (extension === 'cif' || extension === 'mmcif') {
+            parsed = parseMmCIF(data);
+        } else {
+            parsed = parsePDB(data);
+        }
+        this.buildStructure(parsed, filename, info);
+    }
+
     addNewStructure(filepath: string, info: StructureLoadInfo | AtomInfo | null = null): void {
-        const extension = filepath.split('.').pop()?.toLowerCase();
         fetch(filepath)
             .then(r => r.text())
-            .then(data => {
-                let parsed: ParsedStructure;
-                if (extension === 'cif' || extension === 'mmcif') {
-                    parsed = parseMmCIF(data);
-                } else {
-                    parsed = parsePDB(data);
-                }
-                this.buildStructure(parsed, filepath, info);
-            })
+            .then(data => this.loadFromData(data, filepath, info))
             .catch(err => {
                 console.error(`Failed to load structure from ${filepath}:`, err);
                 alert(`Failed to load structure from ${filepath}`);
@@ -209,7 +209,7 @@ export class CanvasContext {
     // ---- Drawing ----
 
     drawAll(): void {
-        this.clear();
+        this.clearCanvas();
         this.context.save();
         this.context.translate(this.x_origin, this.y_origin);
         this.context.scale(this.zoom, this.zoom);
@@ -238,7 +238,7 @@ export class CanvasContext {
 
     changeAllDrawMethods(method: DrawMethod): void {
         for (const el of this.elements) el.propogateInfo({ drawMethod: method });
-        this.clear();
+        this.clearCanvas();
         if (method !== 'points') this.findBonds();
         this.drawAll();
     }
@@ -248,8 +248,15 @@ export class CanvasContext {
         this.canvas.height = window.innerHeight;
     }
 
-    clear(): void {
+    clearCanvas(): void {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    clear(): void {
+        this.elements = [];
+        this.bonds    = [];
+        this.grid     = {};
+        this.clearCanvas();
     }
 
     setBackgroundColor(color: string): void {
@@ -554,7 +561,7 @@ export class CanvasContext {
                 last_c = c;
             } catch (_) { console.warn(`Child from selector ${(selector as Selector).str} does not exist`); }
         }
-        this.clear();
+        this.clearCanvas();
         if (last_c && last_c.info.drawMethod !== 'points') this.findBonds();
         this.drawAll();
     }
