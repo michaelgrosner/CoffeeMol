@@ -75,6 +75,7 @@ export interface ColorScheme {
   ss_colors: Record<SecondaryStructureType, RGB>;
   chain_colors: RGB[];
   hydrophobicity_scale: Record<string, number>;
+  background?: string;
 }
 
 export const ATOM_SIZE = 3;
@@ -135,6 +136,7 @@ export const defaultColorScheme: ColorScheme = {
     GLY: -0.4, THR: -0.7, SER: -0.8, TRP: -0.9, TYR: -1.3, PRO: -1.6,
     HIS: -3.2, GLU: -3.5, GLN: -3.5, ASP: -3.5, ASN: -3.5, LYS: -3.9, ARG: -4.5,
   },
+  background: '#ffffff',
 };
 
 export const highContrastScheme: ColorScheme = {
@@ -150,7 +152,8 @@ export const highContrastScheme: ColorScheme = {
     helix: [255, 0, 0],
     sheet: [0, 255, 0],
     loop: [255, 255, 255],
-  }
+  },
+  background: '#000000',
 };
 
 export const oceanScheme: ColorScheme = {
@@ -167,6 +170,7 @@ export const oceanScheme: ColorScheme = {
     loop: [173, 216, 230],
   },
   chain_colors: [[0, 105, 148], [30, 144, 255], [72, 209, 204], [0, 206, 209]],
+  background: '#000814',
 };
 
 export const forestScheme: ColorScheme = {
@@ -183,6 +187,7 @@ export const forestScheme: ColorScheme = {
     loop: [245, 245, 220],
   },
   chain_colors: [[46, 139, 87], [60, 179, 113], [154, 205, 50], [85, 107, 47]],
+  background: '#0d1a0d',
 };
 
 export const monochromeScheme: ColorScheme = {
@@ -197,6 +202,7 @@ export const monochromeScheme: ColorScheme = {
     loop: [200, 200, 200],
   },
   chain_colors: [[50, 50, 50], [100, 100, 100], [150, 150, 150], [200, 200, 200]],
+  background: '#ffffff',
 };
 
 export const neonScheme: ColorScheme = {
@@ -216,6 +222,7 @@ export const neonScheme: ColorScheme = {
     loop: [0, 255, 255],
   },
   chain_colors: [[255, 0, 255], [57, 255, 20], [0, 255, 255], [255, 110, 199]],
+  background: '#000000',
 };
 
 export const molokaiScheme: ColorScheme = {
@@ -237,6 +244,7 @@ export const molokaiScheme: ColorScheme = {
   chain_colors: [
     [102, 217, 239], [166, 226, 46], [253, 151, 31], [174, 129, 255],
   ],
+  background: '#272822',
 };
 
 export const colorSchemes: Record<string, ColorScheme> = {

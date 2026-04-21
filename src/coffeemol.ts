@@ -969,6 +969,9 @@ export class CanvasContext {
    */
   setScheme(scheme: Partial<ColorScheme>): void {
     this.colorScheme = { ...this.colorScheme, ...scheme };
+    if (this.colorScheme.background) {
+      this.setBackgroundColor(this.colorScheme.background);
+    }
     // Re-assign chain colors if they changed
     for (const s of this.elements) {
       for (const c of s.children) {

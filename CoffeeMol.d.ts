@@ -54,6 +54,7 @@ declare module "src/types" {
         ss_colors: Record<SecondaryStructureType, RGB>;
         chain_colors: RGB[];
         hydrophobicity_scale: Record<string, number>;
+        background?: string;
     }
     export const ATOM_SIZE = 3;
     export const DEBUG = true;

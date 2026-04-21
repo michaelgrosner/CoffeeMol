@@ -268,7 +268,7 @@ export abstract class MolElement {
         width =
           b.a1.parent.ss === 'helix' ? 12 : b.a1.parent.ss === 'sheet' ? 8 : 5;
       }
-      const lw = width / this.cc.zoom;
+      const lw = width; // Constant screen-space width
 
       // Segment 1: a1 to mid
       const color1 = b.a1.depthShadedColorString(colorType);
@@ -380,7 +380,7 @@ export abstract class MolElement {
       if (a1.parent.ss === 'helix') width = 20;
       else if (a1.parent.ss === 'sheet') width = 16;
 
-      const lw = width / this.cc.zoom;
+      const lw = width; // Constant screen-space width
 
       if (!prevA && !nextA) continue;
 
