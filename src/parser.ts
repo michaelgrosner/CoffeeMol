@@ -1,6 +1,6 @@
 'use strict';
 
-import { ParsedStructure, ParsedAtom, nuc_acids } from './types';
+import { ParsedStructure, ParsedAtom, nuc_acids, SecondaryStructureRange } from './types';
 
 export function parsePDB(data: string): ParsedStructure {
     const atoms: ParsedAtom[] = [];

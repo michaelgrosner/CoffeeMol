@@ -2,7 +2,7 @@
 
 import { 
     AtomInfo, StructureLoadInfo, ParsedStructure, 
-    supported_draw_methods 
+    supported_draw_methods, DrawMethod
 } from './types';
 import { 
     arrayToRGB, defaultInfo,

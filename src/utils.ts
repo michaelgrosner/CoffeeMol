@@ -32,17 +32,21 @@ export function randomRGB(): RGB { return [randomInt(255), randomInt(255), rando
 export function arrayToRGB(a: RGB | string | null): string {
     if (typeof a === 'string') {
         if (a.startsWith("#")) return a;
-        alert("Improperly formatted string -> color. Must be of the form #XXXXXX");
+        console.error("Improperly formatted string -> color. Must be of the form #XXXXXX");
+        return "rgb(180,180,180)";
     }
+    let color: RGB;
     if (a == null) {
-        a = randomRGB();
-        if (DEBUG) console.warn(`No color defined for ${(a as RGB).toString()}. Using a random color`);
+        color = randomRGB();
+        if (DEBUG) console.warn(`No color defined for ${color.toString()}. Using a random color`);
+    } else {
+        color = a;
     }
-    if ((a as RGB).length !== 3) alert(`Array To RGB must be of length 3, it is length ${(a as RGB).length}: ${a}`);
+    if (color.length !== 3) console.error(`Array To RGB must be of length 3, it is length ${color.length}: ${color}`);
     
-    const r = Math.round(a[0] > 255 ? 255 : a[0] < 0 ? 0 : a[0]);
-    const g = Math.round(a[1] > 255 ? 255 : a[1] < 0 ? 0 : a[1]);
-    const b = Math.round(a[2] > 255 ? 255 : a[2] < 0 ? 0 : a[2]);
+    const r = Math.round(color[0] > 255 ? 255 : color[0] < 0 ? 0 : color[0]);
+    const g = Math.round(color[1] > 255 ? 255 : color[1] < 0 ? 0 : color[1]);
+    const b = Math.round(color[2] > 255 ? 255 : color[2] < 0 ? 0 : color[2]);
     return `rgb(${r},${g},${b})`;
 }
 
