@@ -25,14 +25,14 @@ SHEET    1   A 2 ALA A  11  ALA A  20  0
 ATOM      1  N   ALA A   1      24.364  26.685  14.285  1.00 20.00           N
 `;
     const parsed = parsePDB(pdbData);
-    expect(parsed.secondary_structure.length).toBe(2);
-    expect(parsed.secondary_structure[0]).toEqual({
+    expect(parsed.secondary_structure!.length).toBe(2);
+    expect(parsed.secondary_structure![0]).toEqual({
       type: 'helix',
       chain_id: 'A',
       start_resi_id: 1,
       end_resi_id: 10,
     });
-    expect(parsed.secondary_structure[1]).toEqual({
+    expect(parsed.secondary_structure![1]).toEqual({
       type: 'sheet',
       chain_id: 'A',
       start_resi_id: 11,
@@ -93,8 +93,8 @@ _struct_sheet_range.end_auth_seq_id
 A 11 20
 `;
     const parsed = parseMmCIF(cifData);
-    expect(parsed.secondary_structure.length).toBe(2);
-    expect(parsed.secondary_structure[0].type).toBe('helix');
-    expect(parsed.secondary_structure[1].type).toBe('sheet');
+    expect(parsed.secondary_structure!.length).toBe(2);
+    expect(parsed.secondary_structure![0].type).toBe('helix');
+    expect(parsed.secondary_structure![1].type).toBe('sheet');
   });
 });

@@ -10,7 +10,7 @@
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "build": "npm run type-check && esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --minify --sourcemap && tsc --declaration --emitDeclarationOnly --outFile CoffeeMol.d.ts",
     "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --sourcemap --watch --servedir=.",
-    "test": "vitest run"
+    "test": "npm run type-check && vitest run"
   },
   "repository": {
     "type": "git",
