@@ -1,27 +1,31 @@
 # CoffeeMol
 
-An embeddable molecular visualizer for HTML5 browsers, written in vanilla JavaScript. Renders PDB and mmCIF files on a `<canvas>` element using 2D drawing APIs — no WebGL required, no runtime dependencies.
+An embeddable molecular visualizer for HTML5 browsers, written in TypeScript. Renders PDB and mmCIF files on a `<canvas>` element using 2D drawing APIs — **no WebGL required, no runtime dependencies.**
+
+CoffeeMol brings a rich, 3D-like experience to any browser using a custom volumetric multi-pass shading engine.
 
 ## Features
 
-- **PDB and mmCIF** parsing support.
-- **No runtime dependencies** — just a single `CoffeeMol.js` file.
-- **No WebGL required** — works on any canvas-capable browser.
+- **PDB and mmCIF** parsing support with automatic secondary structure detection (helices, sheets, loops).
+- **Advanced 2D Rendering**: Volumetric shading, depth-based contrast enhancement, and multi-pass highlights for a "3D" feel without WebGL.
+- **Measurement Tool**: Built-in distance measurement between atoms.
+- **No runtime dependencies** — just a single bundled `CoffeeMol.js` file.
+- **Cross-platform**: Works on desktop and mobile (including touch/pinch gestures).
 
 ## Running
 
-Because the viewer fetches structure files via HTTP, you must serve the directory over HTTP.
+CoffeeMol uses TypeScript and `esbuild` for bundling.
 
 ```bash
-# Install dependencies (first time only)
+# Install development dependencies
 npm install
 
 # Build the project
 npm run build
 
-# Start a server
-python3 -m http.server 8080
-# then open http://localhost:8080
+# Start a development server
+npm run dev
+# then open http://localhost:8000
 ```
 
 ## Embedding
@@ -33,24 +37,29 @@ Add a `<canvas>` element and include `CoffeeMol.js`:
 <script src="CoffeeMol.js"></script>
 ```
 
-The viewer instance is available as `window.coffeemol`. Load a PDB or mmCIF file:
+The viewer instance is available as `window.coffeemol`. Load a structure:
 
 ```js
-window.coffeemol.addNewStructure("path/to/structure.pdb");
+// Replaces current structure(s) with optional display settings
+window.coffeemol.loadNewStructure("path/to/structure.pdb", { drawMethod: "ribbon" });
+
+// Appends to current structure(s)
 window.coffeemol.addNewStructure("path/to/structure.cif");
 ```
 
-To load multiple structures with specific display options:
+### Advanced Loading
+
+You can load multiple structures with specific display options:
 
 ```js
 window.coffeemol.loadFromDict({
   "path/to/protein.pdb": {
-    drawMethod: "lines",    // "points", "lines", "both", "cartoon", "ribbon", or "tube"
+    drawMethod: "ribbon",   // "points", "lines", "both", "cartoon", "ribbon", or "tube"
     drawColor: [255, 0, 0]  // RGB array
   },
-  "path/to/dna.pdb": {
-    drawMethod: "cartoon",
-    drawColor: [0, 128, 255]
+  "path/to/dna.cif": {
+    drawMethod: "tube",
+    drawColor: "#0080FF"    // Hex string support
   }
 });
 ```
@@ -59,27 +68,55 @@ window.coffeemol.loadFromDict({
 
 | Action | Control |
 |---|---|
-| Rotate | Click and drag |
-| Zoom | Scroll wheel / two-finger scroll |
-| Pinch to zoom | Touch (iOS) |
-| Re-center | Double-click |
-| Reset view | "Reset To Original position" button |
+| **Rotate** | Click and drag |
+| **Zoom** | Scroll wheel / two-finger scroll |
+| **Pinch to zoom** | Touch (iOS/Android) |
+| **Re-center** | Double-click on new origin |
+| **Measure** | **Right-click** first atom, then click second atom |
+| **Reset view** | Trigger `window.coffeemol.restoreToOriginal()` |
 
-## Draw methods
+## Draw Methods
 
-- **`points`** — atoms as circles, colored by element (CPK-style)
-- **`lines`** — bonds only
-- **`both`** — atoms and bonds
-- **`cartoon`** — simplified backbone trace: Cα–Cα for proteins, P–P for DNA
-- **`ribbon`** — smooth spline representation of the tertiary structure
-- **`tube`** — thick depth-shaded cylindrical segments for the backbone
+- **`ribbon`** — Smooth spline representation of the backbone (Cα/P trace) with volumetric shading. Automatically colored by secondary structure (helix, sheet, loop).
+- **`tube`** — Thick, depth-shaded cylindrical segments for the backbone.
+- **`cartoon`** — Simplified backbone trace: Cα–Cα for proteins, P–P for DNA.
+- **`points`** — Atoms as spheres, colored by element (CPK-style). Hydrogen, Carbon, Nitrogen, Oxygen, Fluorine, Phosphorus, Sulfur, Potassium, Iodine, and Vanadium are supported; unknown elements are gray.
+- **`lines`** — Bonds only.
+- **`both`** — Atoms and bonds combined.
 
-## Structure hierarchy
+## Measurement Tool
 
-PDB files are parsed into a four-level tree: `Structure → Chain → Residue → Atom`. Element colors are defined for C, N, O, P, H, and S; all other elements get a random color.
+CoffeeMol includes a built-in distance measurement tool:
+1. **Right-click** on the starting atom.
+2. Move the mouse to see the live distance preview.
+3. **Left-click** on the target atom to fix the measurement.
+4. **Click again** (anywhere or on either atom) to clear the measurement.
 
-## Known issues
+## Secondary Structure
 
-- Performance degrades on large structures; `cartoon` mode helps by drawing only backbone atoms
-- Rotation speed is clamped to avoid numerical drift on fast mouse movements
-- Tested on modern Chrome and Firefox
+CoffeeMol automatically parses HELIX and SHEET records from PDB/mmCIF files:
+- **Helices**: Magenta
+- **Sheets**: Yellow
+- **Loops**: Gray
+
+## API
+
+The `window.coffeemol` instance provides several methods for programmatic control:
+
+- `changeAllDrawMethods(method)`: Change the rendering style of all loaded structures.
+- `timedRotation(axis, ms)`: Start continuous rotation about 'X', 'Y', or 'Z'.
+- `stopRotation()`: Stop any active rotation.
+- `setBackgroundColor(color)`: Set the canvas background.
+- `clear()`: Clear the canvas.
+
+## Technical Details
+
+- **Language**: TypeScript
+- **Bundler**: esbuild
+- **Testing**: vitest
+- **Coordinate System**: Custom 3D-to-2D projection with Z-sorting for correct transparency and occlusion.
+
+## Known Issues
+
+- Performance degrades on large structures (>50,000 atoms); `cartoon` or `ribbon` modes are recommended for better performance.
+- Tested on modern Chrome, Firefox, and Safari.

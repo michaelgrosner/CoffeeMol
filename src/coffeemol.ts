@@ -252,6 +252,12 @@ export class CanvasContext {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    setBackgroundColor(color: string): void {
+        this.background_color = color;
+        this.canvas.style.backgroundColor = arrayToRGB(this.background_color);
+        this.drawAll();
+    }
+
     // ---- Interaction ----
 
     getAtomAt(x: number, y: number): Atom | null {
