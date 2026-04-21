@@ -5,8 +5,8 @@
   "main": "CoffeeMol.js",
   "scripts": {
     "type-check": "tsc --noEmit",
-    "build": "npm run type-check && esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife",
-    "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --watch --servedir=.",
+    "build": "npm run type-check && esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --minify --sourcemap",
+    "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --sourcemap --watch --servedir=.",
     "test": "vitest run"
   },
   "repository": {

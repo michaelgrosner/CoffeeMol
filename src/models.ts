@@ -458,8 +458,21 @@ export class Atom extends MolElement {
         const base = colorType === 'cpk' ? this.cpkColor() : (colorType === 'ss' ? this.ssColor() : this.chainColor());
         const extent = this.cc.z_extent ?? 1;
         const t = Math.max(0, Math.min(1, (this.z + extent) / (2 * extent)));
-        // Increase contrast: 0.1 to 1.1 range instead of 0.3 to 1.0
-        const factor = Math.max(0, Math.min(2, (0.1 + 1.0 * t) + brightnessOffset));
+        
+        // On dark background (isDarkBackground = true): 
+        //   t=1 (front) -> factor ~1.1
+        //   t=0 (back)  -> factor ~0.1
+        // On light background (isDarkBackground = false):
+        //   t=1 (front) -> factor ~1.0
+        //   t=0 (back)  -> factor ~1.8 (wash out to white)
+        
+        let factor: number;
+        if (this.cc.isDarkBackground) {
+            factor = Math.max(0, Math.min(2, (0.1 + 1.0 * t) + brightnessOffset));
+        } else {
+            factor = Math.max(0, Math.min(2, (1.8 - 0.8 * t) + brightnessOffset));
+        }
+
         const r = Math.round(base[0] * factor);
         const g = Math.round(base[1] * factor);
         const b = Math.round(base[2] * factor);

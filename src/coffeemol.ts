@@ -6,7 +6,8 @@ import {
 } from './types';
 import { 
     arrayToRGB, defaultInfo,
-    rotateVecX, rotateVecY, rotateVecZ
+    rotateVecX, rotateVecY, rotateVecZ,
+    hexToRGBArray
 } from './utils';
 import { 
     Structure, Chain, Residue, Atom, Bond, Selector,
@@ -41,10 +42,12 @@ export class CanvasContext {
     isMeasuring: boolean;
     measureStartAtom: Atom | null;
     measureEndAtom: Atom | null;
+    isDarkBackground: boolean;
 
     constructor(canvas_tag: string, background_color: string = "#ffffff") {
         this.canvas_tag       = canvas_tag;
         this.background_color = background_color;
+        this.isDarkBackground = this.checkIsDark(background_color);
         this.elements         = [];
         this.bonds            = [];
         this.grid             = {};
@@ -252,6 +255,12 @@ export class CanvasContext {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    private checkIsDark(color: string): boolean {
+        const rgb = hexToRGBArray(color);
+        // Simple luminance check
+        return (rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114) < 128;
+    }
+
     clear(): void {
         this.elements = [];
         this.bonds    = [];
@@ -261,6 +270,7 @@ export class CanvasContext {
 
     setBackgroundColor(color: string): void {
         this.background_color = color;
+        this.isDarkBackground = this.checkIsDark(color);
         this.canvas.style.backgroundColor = arrayToRGB(this.background_color);
         this.drawAll();
     }

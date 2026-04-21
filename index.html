@@ -97,7 +97,9 @@
 		}
 
 		function updateTitle(name) {
-			document.title = name ? `${name} — CoffeeMol` : "CoffeeMol — Molecular Visualizer";
+			const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+			const prefix = isLocal ? "[DEV] " : "";
+			document.title = name ? `${prefix}${name} — CoffeeMol` : `${prefix}CoffeeMol — Molecular Visualizer`;
 		}
 
 		// --- Persistence ---
