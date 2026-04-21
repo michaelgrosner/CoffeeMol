@@ -123,6 +123,6 @@
 		});
 
 		window.coffeemol.resizeToWindow();
-		fetchRandomPdbId().then(loadPdb);
+		fetchRandomPdbId().then(loadPdb).catch(e => alert('Failed to load structure: ' + e));
 	</script>
 </html>

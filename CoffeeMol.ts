@@ -183,6 +183,16 @@ function atomAtomDistance(a1: Atom, a2: Atom): number {
     return Math.sqrt((a1.x - a2.x) ** 2 + (a1.y - a2.y) ** 2 + (a1.z - a2.z) ** 2);
 }
 
+function rotateVecX(v: [number, number, number], sin: number, cos: number): [number, number, number] {
+    return [v[0], v[1] * cos - v[2] * sin, v[1] * sin + v[2] * cos];
+}
+function rotateVecY(v: [number, number, number], sin: number, cos: number): [number, number, number] {
+    return [v[0] * cos + v[2] * sin, v[1], -v[0] * sin + v[2] * cos];
+}
+function rotateVecZ(v: [number, number, number], sin: number, cos: number): [number, number, number] {
+    return [v[0] * cos - v[1] * sin, v[0] * sin + v[1] * cos, v[2]];
+}
+
 // Global helper used by the debug viewer's submit button
 function addNewStructure(_e: Event): void {
     const filepath = (document.querySelector('#add-new-structure .text') as HTMLInputElement)?.value;
@@ -351,7 +361,6 @@ class MolElement {
     rotateAboutZ(theta: number): void { const cos = Math.cos(theta), sin = Math.sin(theta); for (const a of this.atoms) a.applyRotationZ(sin, cos); }
     rotateAboutY(theta: number): void { const cos = Math.cos(theta), sin = Math.sin(theta); for (const a of this.atoms) a.applyRotationY(sin, cos); }
     rotateAboutX(theta: number): void { const cos = Math.cos(theta), sin = Math.sin(theta); for (const a of this.atoms) a.applyRotationX(sin, cos); }
-    rotateAboutXYZ(dx: number, dy: number, dz: number): void { for (const a of this.atoms) a.rotateAboutXYZ(dx, dy, dz); }
     restoreToOriginal(): void { for (const a of this.atoms) a.restoreToOriginal(); }
 
     avgCenter(): [number, number, number] {
@@ -483,13 +492,6 @@ class Atom extends MolElement {
     applyRotationX(sin: number, cos: number): void { const oy = this.y; this.y =  oy * cos - this.z * sin; this.z =  oy * sin + this.z * cos; }
     applyRotationZ(sin: number, cos: number): void { const ox = this.x; this.x =  ox * cos - this.y * sin; this.y =  ox * sin + this.y * cos; }
 
-    // Probably broken — preserved as-is from original
-    rotateAboutXYZ(j: number, k: number, l: number): void {
-        this.x = this.x * Math.cos(k) * Math.cos(l) + this.z * Math.sin(k) - this.y * Math.cos(k) * Math.sin(l);
-        this.y = -this.z * Math.cos(k) * Math.sin(j) + this.x * (Math.cos(l) * Math.sin(j) * Math.sin(k) + Math.cos(j) * Math.sin(l)) + this.y * (Math.cos(j) * Math.cos(l) - Math.sin(j) * Math.sin(k) * Math.sin(l));
-        this.z = this.z * Math.cos(j) * Math.cos(k) + this.x * (-Math.cos(j) * Math.cos(l) * Math.sin(k) + Math.sin(j) * Math.sin(l)) + this.y * (Math.cos(l) * Math.sin(j) + Math.cos(j) * Math.sin(k) * Math.sin(l));
-    }
-
     restoreToOriginal(): void { [this.x, this.y, this.z] = this.original_position; }
     asArray(): [number, number, number] { return [this.x, this.y, this.z]; }
 }
@@ -514,6 +516,9 @@ class CanvasContext {
     delayID: ReturnType<typeof setInterval> | null;
     a_prev: Atom | null;
     structures_left_to_load: number | null;
+    x_axis: [number, number, number];
+    y_axis: [number, number, number];
+    z_axis: [number, number, number];
 
     constructor(canvas_tag: string, background_color: string = "#ffffff") {
         this.canvas_tag       = canvas_tag;
@@ -531,6 +536,9 @@ class CanvasContext {
         this.delayID          = null;
         this.a_prev           = null;
         this.structures_left_to_load = null;
+        this.x_axis = [1, 0, 0];
+        this.y_axis = [0, 1, 0];
+        this.z_axis = [0, 0, 1];
 
         for (const method of [
             'init', 'loadNewStructure', 'writeContextInfo', 'addNewStructure', 'loadFromDict',
@@ -562,6 +570,13 @@ class CanvasContext {
         this.canvas.addEventListener('gesturestart', this.iOSChangeZoom as EventListener);
         this.canvas.addEventListener('dblclick',     this.translateOrigin);
         this.canvas.addEventListener('mousemove',    this.showAtomInfo);
+        window.addEventListener('resize', () => {
+            this.resizeToWindow();
+            this.x_origin = this.canvas.width  / 2;
+            this.y_origin = this.canvas.height / 2;
+            this.clear();
+            this.drawAll();
+        });
     }
 
     // ---- Loading ----
@@ -659,12 +674,20 @@ class CanvasContext {
     }
 
     drawGridLines(): void {
-        this.context.moveTo(0,                -this.canvas.height);
-        this.context.lineTo(0,                 this.canvas.height);
-        this.context.moveTo(-this.canvas.width, 0);
-        this.context.lineTo( this.canvas.width, 0);
-        this.context.strokeStyle = "#eee";
-        this.context.stroke();
+        const extent = Math.max(this.canvas.width, this.canvas.height);
+        const axes: Array<{ vec: [number, number, number]; color: string }> = [
+            { vec: this.x_axis, color: 'rgba(220, 80,  80,  0.45)' },
+            { vec: this.y_axis, color: 'rgba(80,  200, 80,  0.45)' },
+            { vec: this.z_axis, color: 'rgba(80,  80,  220, 0.45)' },
+        ];
+        for (const { vec, color } of axes) {
+            this.context.beginPath();
+            this.context.moveTo(-vec[0] * extent, -vec[1] * extent);
+            this.context.lineTo( vec[0] * extent,  vec[1] * extent);
+            this.context.strokeStyle = color;
+            this.context.lineWidth   = 1;
+            this.context.stroke();
+        }
     }
 
     changeAllDrawMethods(new_method: DrawMethod): void {
@@ -724,10 +747,12 @@ class CanvasContext {
         const dx = this.mouse_x_prev - e.clientX;
         const dy = this.mouse_y_prev - e.clientY;
         this.clear();
-        for (const el of this.elements) {
-            el.rotateAboutX(degToRad(dy));
-            el.rotateAboutY(degToRad(-dx));
-        }
+        const thetaX = degToRad(dy),  sinX = Math.sin(thetaX), cosX = Math.cos(thetaX);
+        const thetaY = degToRad(-dx), sinY = Math.sin(thetaY), cosY = Math.cos(thetaY);
+        for (const el of this.elements) { el.rotateAboutX(thetaX); el.rotateAboutY(thetaY); }
+        this.x_axis = rotateVecY(rotateVecX(this.x_axis, sinX, cosX), sinY, cosY);
+        this.y_axis = rotateVecY(rotateVecX(this.y_axis, sinX, cosX), sinY, cosY);
+        this.z_axis = rotateVecY(rotateVecX(this.z_axis, sinX, cosX), sinY, cosY);
         this.drawAll();
         this.mouse_x_prev = e.clientX;
         this.mouse_y_prev = e.clientY;
@@ -741,7 +766,11 @@ class CanvasContext {
             this.zoom = zoom_at_start * gesture.scale;
             const dRotation = gesture.rotation - rotation_prev;
             rotation_prev = gesture.rotation;
-            for (const el of this.elements) el.rotateAboutZ(degToRad(dRotation));
+            const thetaZ = degToRad(dRotation), sinZ = Math.sin(thetaZ), cosZ = Math.cos(thetaZ);
+            for (const el of this.elements) el.rotateAboutZ(thetaZ);
+            this.x_axis = rotateVecZ(this.x_axis, sinZ, cosZ);
+            this.y_axis = rotateVecZ(this.y_axis, sinZ, cosZ);
+            this.z_axis = rotateVecZ(this.z_axis, sinZ, cosZ);
             this.clear();
             if (this.zoom > 0) { this.drawAll(); this.zoom_prev = this.zoom; }
         };
@@ -756,6 +785,9 @@ class CanvasContext {
     }
 
     restoreToOriginal(): void {
+        this.x_axis = [1, 0, 0];
+        this.y_axis = [0, 1, 0];
+        this.z_axis = [0, 0, 1];
         for (const el of this.elements) el.restoreToOriginal();
         const center = this.avgCenterOfAllElements();
         for (const el of this.elements) el.translateTo(center);
@@ -806,11 +838,25 @@ class CanvasContext {
     }
 
     timedRotation(dim: 'X' | 'Y' | 'Z', dt: number): void {
+        const theta = degToRad(1), sin = Math.sin(theta), cos = Math.cos(theta);
         this.delayID = delay(dt, () => {
             this.clear();
-            if      (dim === 'X') for (const el of this.elements) el.rotateAboutX(degToRad(1));
-            else if (dim === 'Y') for (const el of this.elements) el.rotateAboutY(degToRad(1));
-            else if (dim === 'Z') for (const el of this.elements) el.rotateAboutZ(degToRad(1));
+            if (dim === 'X') {
+                for (const el of this.elements) el.rotateAboutX(theta);
+                this.x_axis = rotateVecX(this.x_axis, sin, cos);
+                this.y_axis = rotateVecX(this.y_axis, sin, cos);
+                this.z_axis = rotateVecX(this.z_axis, sin, cos);
+            } else if (dim === 'Y') {
+                for (const el of this.elements) el.rotateAboutY(theta);
+                this.x_axis = rotateVecY(this.x_axis, sin, cos);
+                this.y_axis = rotateVecY(this.y_axis, sin, cos);
+                this.z_axis = rotateVecY(this.z_axis, sin, cos);
+            } else if (dim === 'Z') {
+                for (const el of this.elements) el.rotateAboutZ(theta);
+                this.x_axis = rotateVecZ(this.x_axis, sin, cos);
+                this.y_axis = rotateVecZ(this.y_axis, sin, cos);
+                this.z_axis = rotateVecZ(this.z_axis, sin, cos);
+            }
             this.drawAll();
         });
     }
