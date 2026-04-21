@@ -210,7 +210,8 @@
 			COLOR: 'coffeemol_color_method',
 			COLLAPSED: 'coffeemol_meta_collapsed',
 			SETTINGS: 'coffeemol_custom_settings',
-			THEME: 'coffeemol_theme_name'
+			THEME: 'coffeemol_theme_name',
+			BACKGROUND: 'coffeemol_background_color'
 		};
 
 		function initPersistence() {
@@ -238,6 +239,11 @@
 				} catch (e) { console.error("Failed to load settings", e); }
 			}
 
+			const savedBG = localStorage.getItem(STORAGE_KEYS.BACKGROUND);
+			if (savedBG) {
+				viewer.setBackgroundColor(savedBG);
+			}
+
 			const isCollapsed = localStorage.getItem(STORAGE_KEYS.COLLAPSED) === 'true';
 			if (isCollapsed) {
 				document.getElementById('mol-info').classList.add('collapsed');
@@ -249,6 +255,7 @@
 		function saveColor(val) { localStorage.setItem(STORAGE_KEYS.COLOR, val); }
 		function saveCollapsed(val) { localStorage.setItem(STORAGE_KEYS.COLLAPSED, val); }
 		function saveTheme(val) { localStorage.setItem(STORAGE_KEYS.THEME, val); }
+		function saveBackground(val) { localStorage.setItem(STORAGE_KEYS.BACKGROUND, val); }
 		function saveSettings() {
 			localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(viewer.colorScheme));
 		}
@@ -472,8 +479,14 @@
 			}
 		});
 
-		document.getElementById('bg-light').addEventListener('click', () => viewer.setBackgroundColor('#ffffff'));
-		document.getElementById('bg-dark').addEventListener('click', () => viewer.setBackgroundColor('#111111'));
+		document.getElementById('bg-light').addEventListener('click', () => {
+			viewer.setBackgroundColor('#ffffff');
+			saveBackground('#ffffff');
+		});
+		document.getElementById('bg-dark').addEventListener('click', () => {
+			viewer.setBackgroundColor('#111111');
+			saveBackground('#111111');
+		});
 
 		document.querySelectorAll('#settings-panel input[type="color"]').forEach(input => {
 			input.addEventListener('input', e => {
