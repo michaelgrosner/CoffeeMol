@@ -7,6 +7,7 @@ import {
   DrawMethod,
   ColorScheme,
   defaultColorScheme,
+  colorSchemes,
 } from './types';
 import {
   arrayToRGB,
@@ -25,6 +26,7 @@ import {
 import { parsePDB, parseMmCIF } from './parser';
 
 export class CanvasContext {
+  static colorSchemes = colorSchemes;
   canvas_target: string | HTMLCanvasElement;
   background_color: string;
   elements: Structure[];

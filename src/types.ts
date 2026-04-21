@@ -127,37 +127,104 @@ export const defaultColorScheme: ColorScheme = {
     loop: [140, 140, 140], // Gray
   },
   chain_colors: [
-    [64, 64, 255], // Blue
-    [64, 255, 64], // Green
-    [255, 64, 64], // Red
-    [255, 255, 64], // Yellow
-    [255, 64, 255], // Magenta
-    [64, 255, 255], // Cyan
-    [255, 128, 64], // Orange
-    [128, 64, 255], // Purple
+    [64, 64, 255], [64, 255, 64], [255, 64, 64], [255, 255, 64],
+    [255, 64, 255], [64, 255, 255], [255, 128, 64], [128, 64, 255],
   ],
   hydrophobicity_scale: {
-    ILE: 4.5,
-    VAL: 4.2,
-    LEU: 3.8,
-    PHE: 2.8,
-    CYS: 2.5,
-    MET: 1.9,
-    ALA: 1.8,
-    GLY: -0.4,
-    THR: -0.7,
-    SER: -0.8,
-    TRP: -0.9,
-    TYR: -1.3,
-    PRO: -1.6,
-    HIS: -3.2,
-    GLU: -3.5,
-    GLN: -3.5,
-    ASP: -3.5,
-    ASN: -3.5,
-    LYS: -3.9,
-    ARG: -4.5,
+    ILE: 4.5, VAL: 4.2, LEU: 3.8, PHE: 2.8, CYS: 2.5, MET: 1.9, ALA: 1.8,
+    GLY: -0.4, THR: -0.7, SER: -0.8, TRP: -0.9, TYR: -1.3, PRO: -1.6,
+    HIS: -3.2, GLU: -3.5, GLN: -3.5, ASP: -3.5, ASN: -3.5, LYS: -3.9, ARG: -4.5,
   },
+};
+
+export const highContrastScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [255, 255, 255],
+    N: [255, 255, 0],
+    O: [255, 0, 0],
+    H: [0, 255, 255],
+  },
+  ss_colors: {
+    helix: [255, 0, 0],
+    sheet: [0, 255, 0],
+    loop: [255, 255, 255],
+  }
+};
+
+export const oceanScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [43, 101, 236],
+    N: [100, 149, 237],
+    O: [176, 224, 230],
+  },
+  ss_colors: {
+    helix: [0, 0, 128],
+    sheet: [0, 128, 128],
+    loop: [173, 216, 230],
+  },
+  chain_colors: [[0, 105, 148], [30, 144, 255], [72, 209, 204], [0, 206, 209]],
+};
+
+export const forestScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [34, 139, 34],
+    N: [144, 238, 144],
+    O: [210, 180, 140],
+  },
+  ss_colors: {
+    helix: [0, 100, 0],
+    sheet: [107, 142, 35],
+    loop: [245, 245, 220],
+  },
+  chain_colors: [[46, 139, 87], [60, 179, 113], [154, 205, 50], [85, 107, 47]],
+};
+
+export const monochromeScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    C: [100, 100, 100], N: [150, 150, 150], O: [200, 200, 200],
+    H: [230, 230, 230], S: [80, 80, 80], P: [120, 120, 120], _: [100, 100, 100]
+  },
+  ss_colors: {
+    helix: [60, 60, 60],
+    sheet: [120, 120, 120],
+    loop: [200, 200, 200],
+  },
+  chain_colors: [[50, 50, 50], [100, 100, 100], [150, 150, 150], [200, 200, 200]],
+};
+
+export const neonScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    C: [57, 255, 20],   // Neon Green
+    N: [255, 0, 255],   // Neon Magenta
+    O: [0, 255, 255],   // Neon Cyan
+    H: [255, 255, 255],
+    P: [255, 110, 199], // Neon Pink
+    S: [255, 211, 0],   // Neon Yellow
+    _: [150, 150, 150]
+  },
+  ss_colors: {
+    helix: [255, 0, 255],
+    sheet: [57, 255, 20],
+    loop: [0, 255, 255],
+  },
+  chain_colors: [[255, 0, 255], [57, 255, 20], [0, 255, 255], [255, 110, 199]],
+};
+
+export const colorSchemes: Record<string, ColorScheme> = {
+  default: defaultColorScheme,
+  highContrast: highContrastScheme,
+  ocean: oceanScheme,
+  forest: forestScheme,
+  monochrome: monochromeScheme,
+  neon: neonScheme,
 };
 
 // Van der Waals radii relative to C = 1.0

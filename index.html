@@ -110,6 +110,18 @@
 		</div>
 
 		<div class="control-group">
+			<label class="control-label">Presets</label>
+			<select id="settings-theme" class="action-button full-width">
+				<option value="default">Default (Jmol)</option>
+				<option value="highContrast">High Contrast</option>
+				<option value="ocean">Ocean</option>
+				<option value="forest">Forest</option>
+				<option value="monochrome">Monochrome</option>
+				<option value="neon">Neon</option>
+			</select>
+		</div>
+
+		<div class="control-group">
 			<label class="control-label">Element Colors</label>
 			<div class="color-picker-grid">
 				<div class="color-picker-item">
@@ -197,7 +209,8 @@
 			METHOD: 'coffeemol_draw_method',
 			COLOR: 'coffeemol_color_method',
 			COLLAPSED: 'coffeemol_meta_collapsed',
-			SETTINGS: 'coffeemol_custom_settings'
+			SETTINGS: 'coffeemol_custom_settings',
+			THEME: 'coffeemol_theme_name'
 		};
 
 		function initPersistence() {
@@ -209,6 +222,11 @@
 			const savedColor = localStorage.getItem(STORAGE_KEYS.COLOR);
 			if (savedColor) {
 				document.getElementById('mol-color-method').value = savedColor;
+			}
+
+			const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+			if (savedTheme) {
+				document.getElementById('settings-theme').value = savedTheme;
 			}
 
 			const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -230,6 +248,7 @@
 		function saveMethod(val) { localStorage.setItem(STORAGE_KEYS.METHOD, val); }
 		function saveColor(val) { localStorage.setItem(STORAGE_KEYS.COLOR, val); }
 		function saveCollapsed(val) { localStorage.setItem(STORAGE_KEYS.COLLAPSED, val); }
+		function saveTheme(val) { localStorage.setItem(STORAGE_KEYS.THEME, val); }
 		function saveSettings() {
 			localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(viewer.colorScheme));
 		}
@@ -440,6 +459,17 @@
 
 		document.getElementById('settings-close').addEventListener('click', () => {
 			document.getElementById('settings-panel').classList.add('hidden');
+		});
+
+		document.getElementById('settings-theme').addEventListener('change', e => {
+			const themeName = e.target.value;
+			const scheme = CoffeeMol.colorSchemes[themeName];
+			if (scheme) {
+				viewer.setScheme(scheme);
+				updateSettingsUI();
+				saveSettings();
+				saveTheme(themeName);
+			}
 		});
 
 		document.getElementById('bg-light').addEventListener('click', () => viewer.setBackgroundColor('#ffffff'));

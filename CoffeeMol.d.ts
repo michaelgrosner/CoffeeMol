@@ -62,6 +62,12 @@ declare module "src/types" {
     export const selector_delimiter = "/";
     export const atom_colors: Record<string, RGB>;
     export const defaultColorScheme: ColorScheme;
+    export const highContrastScheme: ColorScheme;
+    export const oceanScheme: ColorScheme;
+    export const forestScheme: ColorScheme;
+    export const monochromeScheme: ColorScheme;
+    export const neonScheme: ColorScheme;
+    export const colorSchemes: Record<string, ColorScheme>;
     export const atom_radii: Record<string, number>;
 }
 declare module "src/utils" {
@@ -209,6 +215,7 @@ declare module "src/coffeemol" {
     import { AtomInfo, StructureLoadInfo, ParsedStructure, DrawMethod, ColorScheme } from "src/types";
     import { Structure, Atom, Bond, Selector } from "src/models";
     export class CanvasContext {
+        static colorSchemes: Record<string, ColorScheme>;
         canvas_target: string | HTMLCanvasElement;
         background_color: string;
         elements: Structure[];
