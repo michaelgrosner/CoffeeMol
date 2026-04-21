@@ -31,6 +31,13 @@
 				<div id="reset" class="action-button">Reset</div>
 			</div>
 		</div>
+	<div id="rotation-panel">
+		<span id="rotation-label">Rotate</span>
+		<button class="action-button rot-axis" data-axis="X">X</button>
+		<button class="action-button rot-axis" data-axis="Y">Y</button>
+		<button class="action-button rot-axis" data-axis="Z">Z</button>
+		<button class="action-button" id="rot-stop">Stop</button>
+	</div>
 	</body>
 
 	<script src="CoffeeMol.js"></script>
@@ -121,6 +128,14 @@
 		document.getElementById('mol-draw-method').addEventListener('change', e => {
 			window.coffeemol.changeAllDrawMethods(e.target.value);
 		});
+
+		document.querySelectorAll('.rot-axis').forEach(btn => {
+			btn.addEventListener('click', () => {
+				window.coffeemol.stopRotation();
+				window.coffeemol.timedRotation(btn.getAttribute('data-axis'), 16);
+			});
+		});
+		document.getElementById('rot-stop').addEventListener('click', () => window.coffeemol.stopRotation());
 
 		window.coffeemol.resizeToWindow();
 		fetchRandomPdbId().then(loadPdb).catch(e => alert('Failed to load structure: ' + e));
