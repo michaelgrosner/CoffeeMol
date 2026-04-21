@@ -14,21 +14,19 @@ CoffeeMol brings a rich, 3D-like experience to any browser using a custom volume
 - **No runtime dependencies** — just a single bundled `CoffeeMol.js` file.
 - **Cross-platform**: Works on desktop and mobile (including touch/pinch gestures).
 
-## Running
+## Installation
 
-CoffeeMol uses TypeScript and `esbuild` for bundling.
-
-```bash
-# Install development dependencies
-npm install
-
-# Build the project
-npm run build
-
-# Start a development server
-npm run dev
-# then open http://localhost:8000
+### 1. CDN (Recommended)
+Include the library directly from the GitHub Pages deployment:
+```html
+<script src="https://michaelgrosner.github.io/CoffeeMol/CoffeeMol.js"></script>
 ```
+
+### 2. Manual Download
+You can download the latest pre-built `CoffeeMol.js` and `CoffeeMol.d.ts` files directly from the [GitHub Releases](https://github.com/michaelgrosner/CoffeeMol/releases) page.
+
+### 3. Build from Source
+If you want to modify the library, see the [Development](#development) section.
 
 ## Embedding
 
@@ -36,7 +34,7 @@ Add a `<canvas>` element and include `CoffeeMol.js`:
 
 ```html
 <canvas id="coffeemolCanvas" width="800" height="600">Canvas not supported</canvas>
-<script src="CoffeeMol.js"></script>
+<script src="https://michaelgrosner.github.io/CoffeeMol/CoffeeMol.js"></script>
 <script>
   // Initialize the viewer
   const viewer = CoffeeMol.create("#coffeemolCanvas").autoResize();
@@ -45,13 +43,6 @@ Add a `<canvas>` element and include `CoffeeMol.js`:
   viewer.loadNewStructure("path/to/structure.pdb", { drawMethod: "ribbon" });
 </script>
 ```
-
-### Resizing
-
-By default, CoffeeMol respects the `width` and `height` attributes of the `<canvas>`.
-
-- `viewer.resize(w, h)`: Manually resize the canvas. If no arguments are provided, it attempts to fill its CSS container.
-- `viewer.autoResize()`: Opt-in to automatic resizing whenever the window is resized (useful for full-screen applications).
 
 ### Loading Methods
 
@@ -65,6 +56,13 @@ viewer.addNewStructure("path/to/structure.cif");
 // Load from raw string data (useful for drag-and-drop)
 viewer.loadFromData(rawPdbText, "my_file.pdb", { drawMethod: "tube" });
 ```
+
+### Resizing
+
+By default, CoffeeMol respects the `width` and `height` attributes of the `<canvas>`.
+
+- `viewer.resize(w, h)`: Manually resize the canvas. If no arguments are provided, it attempts to fill its CSS container.
+- `viewer.autoResize()`: Opt-in to automatic resizing whenever the window is resized (useful for full-screen applications).
 
 ### Advanced Loading
 
@@ -131,6 +129,24 @@ The instance returned by `CoffeeMol.create()` provides several methods for progr
 - `setBackgroundColor(color)`: Set the canvas background.
 - `clear()`: Clear all structures from the scene.
 - `clearCanvas()`: Clear the pixels from the canvas without removing structures.
+- `resize(w, h)`: Resize the viewer.
+- `autoResize()`: Enable automatic resizing.
+
+## Development
+
+If you want to modify CoffeeMol or run the demo page locally:
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build the library
+npm run build
+
+# 3. Start the dev server
+npm run dev
+# then open http://localhost:8000
+```
 
 ## Technical Details
 

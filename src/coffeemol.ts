@@ -247,12 +247,18 @@ export class CanvasContext {
     }
 
     resize(width?: number, height?: number): void {
-        this.canvas.width  = width  || this.canvas.clientWidth  || window.innerWidth;
-        this.canvas.height = height || this.canvas.clientHeight || window.innerHeight;
+        // Use provided width/height, or client size if it's been set by CSS, 
+        // otherwise fallback to window dimensions for full-screen behavior.
+        this.canvas.width  = width  || (this.canvas.clientWidth > 300 ? this.canvas.clientWidth : window.innerWidth);
+        this.canvas.height = height || (this.canvas.clientHeight > 150 ? this.canvas.clientHeight : window.innerHeight);
+        
         this.x_origin = this.canvas.width / 2;
         this.y_origin = this.canvas.height / 2;
+        
         this.clearCanvas();
-        this.drawAll();
+        if (this.elements.length > 0) {
+            this.drawAll();
+        }
     }
 
     /**
