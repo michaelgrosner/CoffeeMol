@@ -57,9 +57,15 @@ html, body {
 	z-index: 10;
 }
 
-#mol-header .panel-title {
+.panel-title {
 	font-size: 18px;
 	font-weight: 600;
+}
+
+#mol-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 #mol-header .coffee { color: var(--accent); }
@@ -230,6 +236,78 @@ html, body {
 }
 
 /* ── Rotation panel ──────────────────────────────────── */
+
+#settings-panel {
+	position: absolute;
+	top: 16px; right: 16px;
+	width: 240px;
+	background: var(--panel-bg);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 14px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 13px;
+	color: var(--text);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	z-index: 100;
+	transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#settings-panel.hidden {
+	transform: translateX(20px);
+	opacity: 0;
+	pointer-events: none;
+}
+
+.settings-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+#mol-settings-toggle {
+	font-size: 16px;
+	padding: 4px 6px;
+}
+
+.color-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8px;
+}
+
+.color-picker-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.color-picker-item input[type="color"] {
+	width: 24px;
+	height: 24px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	background: none;
+	padding: 0;
+}
+
+.color-picker-item input[type="color"]::-webkit-color-swatch-wrapper {
+	padding: 0;
+}
+
+.color-picker-item input[type="color"]::-webkit-color-swatch {
+	border: 1px solid var(--border);
+	border-radius: 4px;
+}
 
 #rotation-panel {
 	position: absolute;

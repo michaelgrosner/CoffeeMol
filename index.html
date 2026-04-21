@@ -40,6 +40,7 @@
 		<div id="mol-panel">
 			<div id="mol-header">
 				<span class="panel-title"><span class="coffee">Coffee</span>Mol</span>
+				<div id="mol-settings-toggle" class="action-button" title="Settings">⚙</div>
 			</div>
 
 			<div id="mol-picker">
@@ -94,6 +95,73 @@
 	</div>
 	</body>
 
+	<div id="settings-panel" class="hidden">
+		<div class="settings-header">
+			<span class="panel-title">Settings</span>
+			<div id="settings-close" class="action-button">✕</div>
+		</div>
+
+		<div class="control-group">
+			<label class="control-label">Background</label>
+			<div class="controls-row">
+				<div id="bg-light" class="action-button secondary-button" style="flex: 1;">Light</div>
+				<div id="bg-dark" class="action-button secondary-button" style="flex: 1;">Dark</div>
+			</div>
+		</div>
+
+		<div class="control-group">
+			<label class="control-label">Element Colors</label>
+			<div class="color-picker-grid">
+				<div class="color-picker-item">
+					<label>C</label>
+					<input type="color" data-atom="C">
+				</div>
+				<div class="color-picker-item">
+					<label>N</label>
+					<input type="color" data-atom="N">
+				</div>
+				<div class="color-picker-item">
+					<label>O</label>
+					<input type="color" data-atom="O">
+				</div>
+				<div class="color-picker-item">
+					<label>S</label>
+					<input type="color" data-atom="S">
+				</div>
+				<div class="color-picker-item">
+					<label>P</label>
+					<input type="color" data-atom="P">
+				</div>
+				<div class="color-picker-item">
+					<label>H</label>
+					<input type="color" data-atom="H">
+				</div>
+			</div>
+		</div>
+
+		<div class="control-group">
+			<label class="control-label">Secondary Structure</label>
+			<div class="color-picker-grid">
+				<div class="color-picker-item">
+					<label>Helix</label>
+					<input type="color" data-ss="helix">
+				</div>
+				<div class="color-picker-item">
+					<label>Sheet</label>
+					<input type="color" data-ss="sheet">
+				</div>
+				<div class="color-picker-item">
+					<label>Loop</label>
+					<input type="color" data-ss="loop">
+				</div>
+			</div>
+		</div>
+
+		<div class="controls-row" style="margin-top: 8px;">
+			<div id="settings-reset" class="action-button secondary-button" style="flex: 1;">Reset to Defaults</div>
+		</div>
+	</div>
+
 	<script src="CoffeeMol.js"></script>
 	<script>
 		const MAX_ATOM_COUNT = 100_000;
@@ -128,7 +196,8 @@
 		const STORAGE_KEYS = {
 			METHOD: 'coffeemol_draw_method',
 			COLOR: 'coffeemol_color_method',
-			COLLAPSED: 'coffeemol_meta_collapsed'
+			COLLAPSED: 'coffeemol_meta_collapsed',
+			SETTINGS: 'coffeemol_custom_settings'
 		};
 
 		function initPersistence() {
@@ -142,6 +211,15 @@
 				document.getElementById('mol-color-method').value = savedColor;
 			}
 
+			const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+			if (savedSettings) {
+				try {
+					const settings = JSON.parse(savedSettings);
+					viewer.setScheme(settings);
+					updateSettingsUI();
+				} catch (e) { console.error("Failed to load settings", e); }
+			}
+
 			const isCollapsed = localStorage.getItem(STORAGE_KEYS.COLLAPSED) === 'true';
 			if (isCollapsed) {
 				document.getElementById('mol-info').classList.add('collapsed');
@@ -152,6 +230,35 @@
 		function saveMethod(val) { localStorage.setItem(STORAGE_KEYS.METHOD, val); }
 		function saveColor(val) { localStorage.setItem(STORAGE_KEYS.COLOR, val); }
 		function saveCollapsed(val) { localStorage.setItem(STORAGE_KEYS.COLLAPSED, val); }
+		function saveSettings() {
+			localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(viewer.colorScheme));
+		}
+
+		function rgbToHex(rgb) {
+			return "#" + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
+		}
+
+		function hexToRgb(hex) {
+			const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+			return result ? [
+				parseInt(result[1], 16),
+				parseInt(result[2], 16),
+				parseInt(result[3], 16)
+			] : null;
+		}
+
+		function updateSettingsUI() {
+			const scheme = viewer.colorScheme;
+			document.querySelectorAll('#settings-panel input[type="color"]').forEach(input => {
+				const atom = input.getAttribute('data-atom');
+				const ss = input.getAttribute('data-ss');
+				if (atom && scheme.atom_colors[atom]) {
+					input.value = rgbToHex(scheme.atom_colors[atom]);
+				} else if (ss && scheme.ss_colors[ss]) {
+					input.value = rgbToHex(scheme.ss_colors[ss]);
+				}
+			});
+		}
 
 		// --- RCSB Integration ---
 		async function fetchRandomPdbId() {
@@ -323,6 +430,39 @@
 			});
 		});
 		document.getElementById('rot-stop').addEventListener('click', () => viewer.stopRotation());
+
+		// --- Settings Panel ---
+		document.getElementById('mol-settings-toggle').addEventListener('click', () => {
+			const panel = document.getElementById('settings-panel');
+			panel.classList.toggle('hidden');
+			if (!panel.classList.contains('hidden')) updateSettingsUI();
+		});
+
+		document.getElementById('settings-close').addEventListener('click', () => {
+			document.getElementById('settings-panel').classList.add('hidden');
+		});
+
+		document.getElementById('bg-light').addEventListener('click', () => viewer.setBackgroundColor('#ffffff'));
+		document.getElementById('bg-dark').addEventListener('click', () => viewer.setBackgroundColor('#111111'));
+
+		document.querySelectorAll('#settings-panel input[type="color"]').forEach(input => {
+			input.addEventListener('input', e => {
+				const atom = input.getAttribute('data-atom');
+				const ss = input.getAttribute('data-ss');
+				const rgb = hexToRgb(e.target.value);
+				if (atom) {
+					viewer.setScheme({ atom_colors: { ...viewer.colorScheme.atom_colors, [atom]: rgb } });
+				} else if (ss) {
+					viewer.setScheme({ ss_colors: { ...viewer.colorScheme.ss_colors, [ss]: rgb } });
+				}
+				saveSettings();
+			});
+		});
+
+		document.getElementById('settings-reset').addEventListener('click', () => {
+			localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+			window.location.reload();
+		});
 
 		// --- Init ---
 		initPersistence();

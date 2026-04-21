@@ -5,6 +5,8 @@ import {
   StructureLoadInfo,
   ParsedStructure,
   DrawMethod,
+  ColorScheme,
+  defaultColorScheme,
 } from './types';
 import {
   arrayToRGB,
@@ -50,6 +52,7 @@ export class CanvasContext {
   measureStartAtom: Atom | null;
   measureEndAtom: Atom | null;
   isDarkBackground: boolean;
+  colorScheme: ColorScheme;
 
   constructor(
     canvas_target: string | HTMLCanvasElement,
@@ -58,6 +61,7 @@ export class CanvasContext {
     this.canvas_target = canvas_target;
     this.background_color = background_color;
     this.isDarkBackground = this.checkIsDark(background_color);
+    this.colorScheme = { ...defaultColorScheme };
     this.elements = [];
     this.bonds = [];
     this.grid = {};
@@ -872,6 +876,7 @@ export class CanvasContext {
       x_origin: this.x_origin,
       y_origin: this.y_origin,
       background_color: this.background_color,
+      colorScheme: this.colorScheme,
       structures: this.elements.map((s) => ({
         name: s.name,
         info: s.info,
@@ -890,6 +895,7 @@ export class CanvasContext {
     if (s.x_origin) this.x_origin = s.x_origin;
     if (s.y_origin) this.y_origin = s.y_origin;
     if (s.background_color) this.setBackgroundColor(s.background_color);
+    if (s.colorScheme) this.colorScheme = { ...s.colorScheme };
 
     if (s.structures) {
       for (let i = 0; i < s.structures.length; i++) {
@@ -953,6 +959,23 @@ export class CanvasContext {
     this.y_origin = originalY;
 
     return dataURL;
+  }
+
+  /**
+   * Apply a color scheme and redraw.
+   * @param scheme A complete or partial ColorScheme object.
+   */
+  setScheme(scheme: Partial<ColorScheme>): void {
+    this.colorScheme = { ...this.colorScheme, ...scheme };
+    // Re-assign chain colors if they changed
+    for (const s of this.elements) {
+      for (const c of s.children) {
+        if (c instanceof Chain) {
+          c.onAddedToParent();
+        }
+      }
+    }
+    this.drawAll();
   }
 
   /**

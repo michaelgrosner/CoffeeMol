@@ -49,12 +49,19 @@ declare module "src/types" {
         atoms: ParsedAtom[];
         secondary_structure?: SecondaryStructureRange[];
     }
+    export interface ColorScheme {
+        atom_colors: Record<string, RGB>;
+        ss_colors: Record<SecondaryStructureType, RGB>;
+        chain_colors: RGB[];
+        hydrophobicity_scale: Record<string, number>;
+    }
     export const ATOM_SIZE = 3;
     export const DEBUG = true;
     export const nuc_acids: string[];
     export const supported_draw_methods: DrawMethod[];
     export const selector_delimiter = "/";
     export const atom_colors: Record<string, RGB>;
+    export const defaultColorScheme: ColorScheme;
     export const atom_radii: Record<string, number>;
 }
 declare module "src/utils" {
@@ -199,7 +206,7 @@ declare module "src/parser" {
     export function parseMmCIF(data: string): ParsedStructure;
 }
 declare module "src/coffeemol" {
-    import { AtomInfo, StructureLoadInfo, ParsedStructure, DrawMethod } from "src/types";
+    import { AtomInfo, StructureLoadInfo, ParsedStructure, DrawMethod, ColorScheme } from "src/types";
     import { Structure, Atom, Bond, Selector } from "src/models";
     export class CanvasContext {
         canvas_target: string | HTMLCanvasElement;
@@ -228,6 +235,7 @@ declare module "src/coffeemol" {
         measureStartAtom: Atom | null;
         measureEndAtom: Atom | null;
         isDarkBackground: boolean;
+        colorScheme: ColorScheme;
         constructor(canvas_target: string | HTMLCanvasElement, background_color?: string);
         init(): void;
         addElement(el: Structure): void;
@@ -288,6 +296,11 @@ declare module "src/coffeemol" {
          * @param scale Factor to scale the output resolution (default: 2)
          */
         exportImage(scale?: number): string;
+        /**
+         * Apply a color scheme and redraw.
+         * @param scheme A complete or partial ColorScheme object.
+         */
+        setScheme(scheme: Partial<ColorScheme>): void;
         /**
          * Factory method to initialize a new visualizer on a canvas.
          */

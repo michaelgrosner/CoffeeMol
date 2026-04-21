@@ -8,27 +8,9 @@ import {
   SecondaryStructureType,
   ATOM_SIZE,
   nuc_acids,
-  atom_colors,
   atom_radii,
   selector_delimiter,
 } from './types';
-
-const ss_colors: Record<SecondaryStructureType, RGB> = {
-  helix: [255, 0, 255], // Magenta
-  sheet: [255, 255, 0], // Yellow
-  loop: [140, 140, 140], // Gray
-};
-
-const chain_colors: RGB[] = [
-  [64, 64, 255], // Blue
-  [64, 255, 64], // Green
-  [255, 64, 64], // Red
-  [255, 255, 64], // Yellow
-  [255, 64, 255], // Magenta
-  [64, 255, 255], // Cyan
-  [255, 128, 64], // Orange
-  [128, 64, 255], // Purple
-];
 import {
   deepCopy,
   hexToRGBArray,
@@ -586,7 +568,10 @@ export class Chain extends MolElement {
 
   onAddedToParent(): void {
     const idx = this.parent.children.indexOf(this);
-    this.color = chain_colors[idx % chain_colors.length];
+    const colors = this.cc.colorScheme?.chain_colors || [];
+    if (colors.length > 0) {
+      this.color = colors[idx % colors.length];
+    }
   }
 
   toString(): string {
@@ -633,30 +618,6 @@ export class Residue extends MolElement {
   }
 }
 
-// Kyte-Doolittle hydrophobicity scale
-const hydrophobicity_scale: Record<string, number> = {
-  ILE: 4.5,
-  VAL: 4.2,
-  LEU: 3.8,
-  PHE: 2.8,
-  CYS: 2.5,
-  MET: 1.9,
-  ALA: 1.8,
-  GLY: -0.4,
-  THR: -0.7,
-  SER: -0.8,
-  TRP: -0.9,
-  TYR: -1.3,
-  PRO: -1.6,
-  HIS: -3.2,
-  GLU: -3.5,
-  GLN: -3.5,
-  ASP: -3.5,
-  ASN: -3.5,
-  LYS: -3.9,
-  ARG: -4.5,
-};
-
 // ===== Atom =====
 
 export class Atom extends MolElement {
@@ -690,10 +651,12 @@ export class Atom extends MolElement {
     return `<Atom: ${this.name} [${this.x.toFixed(2)}, ${this.y.toFixed(2)}, ${this.z.toFixed(2)}]>`;
   }
   cpkColor(): RGB {
-    return this.info.drawColor ?? atom_colors[this.name] ?? atom_colors['_'];
+    const colors = this.cc.colorScheme?.atom_colors || {};
+    return this.info.drawColor ?? colors[this.name] ?? colors['_'];
   }
   ssColor(): RGB {
-    return ss_colors[this.parent.ss];
+    const colors = this.cc.colorScheme?.ss_colors || {};
+    return colors[this.parent.ss];
   }
   chainColor(): RGB {
     return this.parent.parent.color;
@@ -711,7 +674,8 @@ export class Atom extends MolElement {
 
   hydrophobicityColor(): RGB {
     // Hydrophobicity color ramp: Red (hydrophobic) to Blue (hydrophilic)
-    const val = hydrophobicity_scale[this.parent.name] || 0;
+    const scale = this.cc.colorScheme?.hydrophobicity_scale || {};
+    const val = scale[this.parent.name] || 0;
     // Normalize Kyte-Doolittle (-4.5 to 4.5) to 0 to 1
     const t = (val + 4.5) / 9.0;
     const r = Math.round(255 * t);

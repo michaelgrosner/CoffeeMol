@@ -248,4 +248,15 @@ describe('CanvasContext', () => {
     expect(mockOffCanvas.height).toBe(cc.canvas.height * 2);
     expect(mockToDataURL).toHaveBeenCalled();
   });
+
+  it('should apply color scheme', () => {
+    const cc = new CanvasContext('#target');
+    const customScheme = {
+      atom_colors: { C: [255, 0, 0] } as any,
+    };
+    cc.setScheme(customScheme);
+    expect(cc.colorScheme.atom_colors.C).toEqual([255, 0, 0]);
+    // redrawing check
+    expect(mockContext.clearRect).toHaveBeenCalled();
+  });
 });

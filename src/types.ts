@@ -70,6 +70,13 @@ export interface ParsedStructure {
   secondary_structure?: SecondaryStructureRange[];
 }
 
+export interface ColorScheme {
+  atom_colors: Record<string, RGB>;
+  ss_colors: Record<SecondaryStructureType, RGB>;
+  chain_colors: RGB[];
+  hydrophobicity_scale: Record<string, number>;
+}
+
 export const ATOM_SIZE = 3;
 export const DEBUG = true;
 
@@ -110,6 +117,47 @@ export const atom_colors: Record<string, RGB> = {
   I: [148, 0, 148],
   V: [166, 0, 255],
   _: [180, 180, 180],
+};
+
+export const defaultColorScheme: ColorScheme = {
+  atom_colors: { ...atom_colors },
+  ss_colors: {
+    helix: [255, 0, 255], // Magenta
+    sheet: [255, 255, 0], // Yellow
+    loop: [140, 140, 140], // Gray
+  },
+  chain_colors: [
+    [64, 64, 255], // Blue
+    [64, 255, 64], // Green
+    [255, 64, 64], // Red
+    [255, 255, 64], // Yellow
+    [255, 64, 255], // Magenta
+    [64, 255, 255], // Cyan
+    [255, 128, 64], // Orange
+    [128, 64, 255], // Purple
+  ],
+  hydrophobicity_scale: {
+    ILE: 4.5,
+    VAL: 4.2,
+    LEU: 3.8,
+    PHE: 2.8,
+    CYS: 2.5,
+    MET: 1.9,
+    ALA: 1.8,
+    GLY: -0.4,
+    THR: -0.7,
+    SER: -0.8,
+    TRP: -0.9,
+    TYR: -1.3,
+    PRO: -1.6,
+    HIS: -3.2,
+    GLU: -3.5,
+    GLN: -3.5,
+    ASP: -3.5,
+    ASN: -3.5,
+    LYS: -3.9,
+    ARG: -4.5,
+  },
 };
 
 // Van der Waals radii relative to C = 1.0

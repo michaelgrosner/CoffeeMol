@@ -7,6 +7,7 @@ import {
   atomAtomDistance,
   Selector,
 } from '../src/models';
+import { defaultColorScheme } from '../src/types';
 
 describe('Models', () => {
   it('should calculate distance between atoms', () => {
@@ -14,6 +15,7 @@ describe('Models', () => {
       addElement: () => {},
       canvas: { style: {} },
       context: {},
+      colorScheme: defaultColorScheme,
     } as any;
 
     const s = new Structure('test', dummyCC);
@@ -54,7 +56,7 @@ describe('Models', () => {
   });
 
   it('should handle hierarchy and child adding', () => {
-    const dummyCC = { addElement: () => {} } as any;
+    const dummyCC = { addElement: () => {}, colorScheme: defaultColorScheme } as any;
     const s = new Structure('test', dummyCC);
     const c = new Chain(s, 'A');
     s.addChild(c);
@@ -64,7 +66,7 @@ describe('Models', () => {
   });
 
   it('should find bonds', () => {
-    const dummyCC = { addElement: () => {} } as any;
+    const dummyCC = { addElement: () => {}, colorScheme: defaultColorScheme } as any;
     const s = new Structure('test', dummyCC);
     const c = new Chain(s, 'A');
     s.addChild(c);
@@ -86,7 +88,7 @@ describe('Models', () => {
   });
 
   it('should be symmetric in isBonded', () => {
-    const dummyCC = { addElement: () => {} } as any;
+    const dummyCC = { addElement: () => {}, colorScheme: defaultColorScheme } as any;
     const s = new Structure('test', dummyCC);
     const c = new Chain(s, 'A');
     s.addChild(c);
@@ -121,6 +123,7 @@ describe('Models', () => {
       context: {},
       z_extent: 10,
       isDarkBackground: true,
+      colorScheme: defaultColorScheme,
     } as any;
 
     const s = new Structure('test', dummyCC);
