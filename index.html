@@ -57,7 +57,18 @@
 					<option value="lines">Lines</option>
 					<option value="points">Points</option>
 				</select>
-				<div id="reset" class="action-button">Reset</div>
+				<select id="mol-color-method" class="action-button">
+					<option value="cpk">CPK (Element)</option>
+					<option value="chain">Chain</option>
+					<option value="ss">Secondary Structure</option>
+					<option value="b-factor">B-Factor (Temp)</option>
+					<option value="hydrophobicity">Hydrophobicity</option>
+				</select>
+			</div>
+
+			<div class="controls-row">
+				<div id="reset" class="action-button" style="flex: 1;">Reset View</div>
+				<div id="export-png" class="action-button" style="flex: 1;">Export PNG</div>
 			</div>
 
 			<div id="mol-info">
@@ -111,6 +122,7 @@
 		// --- Persistence ---
 		const STORAGE_KEYS = {
 			METHOD: 'coffeemol_draw_method',
+			COLOR: 'coffeemol_color_method',
 			COLLAPSED: 'coffeemol_meta_collapsed'
 		};
 
@@ -118,6 +130,11 @@
 			const savedMethod = localStorage.getItem(STORAGE_KEYS.METHOD);
 			if (savedMethod) {
 				document.getElementById('mol-draw-method').value = savedMethod;
+			}
+
+			const savedColor = localStorage.getItem(STORAGE_KEYS.COLOR);
+			if (savedColor) {
+				document.getElementById('mol-color-method').value = savedColor;
 			}
 
 			const isCollapsed = localStorage.getItem(STORAGE_KEYS.COLLAPSED) === 'true';
@@ -128,6 +145,7 @@
 		}
 
 		function saveMethod(val) { localStorage.setItem(STORAGE_KEYS.METHOD, val); }
+		function saveColor(val) { localStorage.setItem(STORAGE_KEYS.COLOR, val); }
 		function saveCollapsed(val) { localStorage.setItem(STORAGE_KEYS.COLLAPSED, val); }
 
 		// --- RCSB Integration ---
@@ -200,12 +218,13 @@
 			if (!pdbId) return;
 			document.getElementById('pdb-input').value = pdbId;
 			const drawMethod = document.getElementById('mol-draw-method').value;
+			const colorMethod = document.getElementById('mol-color-method').value;
 			
 			toggleSpinner(true);
 			updateTitle(pdbId);
 
 			// Prefer mmCIF (.cif)
-			viewer.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.cif`, { drawMethod });
+			viewer.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.cif`, { drawMethod, colorMethod });
 			fetchMeta(pdbId).finally(() => toggleSpinner(false));
 		}
 
@@ -232,10 +251,11 @@
 			reader.onload = event => {
 				const data = event.target.result;
 				const drawMethod = document.getElementById('mol-draw-method').value;
+				const colorMethod = document.getElementById('mol-color-method').value;
 				
 				toggleSpinner(true);
 				viewer.clear();
-				viewer.loadFromData(data, file.name, { drawMethod });
+				viewer.loadFromData(data, file.name, { drawMethod, colorMethod });
 				
 				document.getElementById('mol-title-display').textContent = file.name;
 				document.getElementById('mol-meta').textContent = `Local file: ${(file.size / 1024).toFixed(1)} KB`;
@@ -264,8 +284,23 @@
 			saveMethod(val);
 		});
 
+		document.getElementById('mol-color-method').addEventListener('change', e => {
+			const val = e.target.value;
+			viewer.changeInfoFromSelectors('all', 'colorMethod', val);
+			saveColor(val);
+		});
+
 		document.getElementById('reset').addEventListener('click', () => {
 			viewer.restoreToOriginal();
+		});
+
+		document.getElementById('export-png').addEventListener('click', () => {
+			const dataURL = viewer.exportImage(2);
+			const link = document.createElement('a');
+			const title = document.getElementById('mol-title-display').textContent || 'coffeemol';
+			link.download = `${title.replace(/\s+/g, '_')}.png`;
+			link.href = dataURL;
+			link.click();
 		});
 
 		document.getElementById('mol-info-header').addEventListener('click', () => {
