@@ -4,7 +4,9 @@
   "description": "An embeddable molecular visualizer for HTML5 browsers, written in vanilla JavaScript. Renders PDB files on a `<canvas>` element using 2D drawing APIs — no WebGL required, no build step, no dependencies.",
   "main": "CoffeeMol.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife",
+    "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --watch --servedir=.",
+    "test": "vitest run"
   },
   "repository": {
     "type": "git",
@@ -18,6 +20,8 @@
   },
   "homepage": "https://github.com/michaelgrosner/CoffeeMol#readme",
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
   }
 }

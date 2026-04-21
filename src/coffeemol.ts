@@ -1,0 +1,470 @@
+'use strict';
+
+import { 
+    AtomInfo, StructureLoadInfo, ParsedStructure, 
+    supported_draw_methods 
+} from './types';
+import { 
+    arrayToRGB, defaultInfo,
+    rotateVecX, rotateVecY, rotateVecZ
+} from './utils';
+import { 
+    Structure, Chain, Residue, Atom, Bond, Selector 
+} from './models';
+import { parsePDB, parseMmCIF } from './parser';
+
+export class CanvasContext {
+    canvas_tag: string;
+    background_color: string;
+    elements: Structure[];
+    bonds: Bond[];
+    grid: Record<number, Record<number, Atom | null>>;
+    canvas: HTMLCanvasElement;
+    context: CanvasRenderingContext2D;
+    zoom: number;
+    zoom_prev: number;
+    x_origin: number;
+    y_origin: number;
+    z_extent: number;
+    mouse_x_prev: number;
+    mouse_y_prev: number;
+    delayID: ReturnType<typeof setInterval> | null;
+    a_prev: Atom | null;
+    structures_left_to_load: number | null;
+    x_axis: [number, number, number];
+    y_axis: [number, number, number];
+    z_axis: [number, number, number];
+
+    constructor(canvas_tag: string, background_color: string = "#ffffff") {
+        this.canvas_tag       = canvas_tag;
+        this.background_color = background_color;
+        this.elements         = [];
+        this.bonds            = [];
+        this.grid             = {};
+        this.zoom             = 1;
+        this.zoom_prev        = 1;
+        this.x_origin         = 0;
+        this.y_origin         = 0;
+        this.z_extent         = 1;
+        this.mouse_x_prev     = 0;
+        this.mouse_y_prev     = 0;
+        this.delayID          = null;
+        this.a_prev           = null;
+        this.structures_left_to_load = null;
+        this.x_axis = [1, 0, 0];
+        this.y_axis = [0, 1, 0];
+        this.z_axis = [0, 0, 1];
+
+        for (const method of [
+            'init', 'loadNewStructure', 'writeContextInfo', 'addNewStructure', 'loadFromDict',
+            'drawAll', 'findBestZoom', 'drawGridLines', 'changeAllDrawMethods', 'resizeToWindow', 'clear',
+            'touchstart', 'mousedown', 'mouseup', 'touchend', 'touchmove', 'mousemove',
+            'iOSChangeZoom', 'changeZoom', 'restoreToOriginal', 'computeZExtent', 'findBonds',
+            'translateOrigin', 'avgCenterOfAllElements', 'timedRotation', 'stopRotation',
+            'determinePointGrid', 'showAtomInfo', 'assignSelectors',
+            'handleSelectorArg', 'childFromSelector', 'changeInfoFromSelectors',
+        ]) { (this as any)[method] = (this as any)[method].bind(this); }
+
+        try {
+            this.canvas  = document.querySelector(this.canvas_tag) as HTMLCanvasElement;
+            this.context = this.canvas.getContext('2d')!;
+        } catch (error) {
+            alert(error);
+            throw error;
+        }
+
+        this.canvas.style.userSelect                = 'none';
+        (this.canvas.style as any).MozUserSelect    = 'none';
+        (this.canvas.style as any).webkitUserSelect = 'none';
+        this.canvas.style.backgroundColor           = arrayToRGB(this.background_color);
+
+        document.getElementById('reset')?.addEventListener('click', this.restoreToOriginal);
+        this.canvas.addEventListener('mousedown',    this.mousedown);
+        this.canvas.addEventListener('touchstart',   this.touchstart, { passive: false });
+        this.canvas.addEventListener('wheel',        this.changeZoom, { passive: false });
+        this.canvas.addEventListener('gesturestart', this.iOSChangeZoom as EventListener);
+        this.canvas.addEventListener('dblclick',     this.translateOrigin);
+        this.canvas.addEventListener('mousemove',    this.showAtomInfo);
+        window.addEventListener('resize', () => {
+            this.resizeToWindow();
+            this.x_origin = this.canvas.width  / 2;
+            this.y_origin = this.canvas.height / 2;
+            this.clear();
+            this.drawAll();
+        });
+    }
+
+    // ---- Loading ----
+
+    init(): void {
+        for (const el of this.elements) el.init();
+        this.findBonds();
+        this.assignSelectors();
+        this.restoreToOriginal();
+        this.computeZExtent();
+        this.determinePointGrid();
+        this.writeContextInfo();
+    }
+
+    addElement(el: Structure): void { this.elements.push(el); }
+
+    loadNewStructure(filepath: string, info: AtomInfo | null = null): void {
+        this.elements = [];
+        this.bonds    = [];
+        this.grid     = {};
+        this.addNewStructure(filepath, info);
+    }
+
+    buildStructure(parsed: ParsedStructure, filepath: string, info: StructureLoadInfo | AtomInfo | null = null): void {
+        const s = new Structure(null, filepath, this);
+        if (parsed.title) s.attachTitle(parsed.title);
+        
+        let chain_id_prev: string | null = null;
+        let resi_id_prev:  number | null = null;
+        let c!: Chain;
+        let r!: Residue;
+        let atom_count = 0;
+
+        for (const d of parsed.atoms) {
+            if (chain_id_prev == null || d.chain_id !== chain_id_prev) c = new Chain(s, d.chain_id);
+            if (resi_id_prev  == null || d.resi_id  !== resi_id_prev)  r = new Residue(c, d.resi_name, d.resi_id);
+            new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name);
+            chain_id_prev = d.chain_id;
+            resi_id_prev  = d.resi_id;
+            atom_count++;
+        }
+
+        let resolvedInfo: AtomInfo;
+        if (info != null) {
+            resolvedInfo = info as AtomInfo;
+        } else {
+            resolvedInfo = defaultInfo();
+            if (atom_count > 2000) {
+                resolvedInfo.drawMethod = 'cartoon';
+            } else if (atom_count > 500) {
+                resolvedInfo.drawMethod = 'lines';
+            } else {
+                resolvedInfo.drawMethod = 'both';
+            }
+        }
+        s.propogateInfo(resolvedInfo);
+        if (this.structures_left_to_load != null) {
+            if (--this.structures_left_to_load === 0) this.init();
+        } else {
+            this.init();
+        }
+    }
+
+    addNewStructure(filepath: string, info: StructureLoadInfo | AtomInfo | null = null): void {
+        const extension = filepath.split('.').pop()?.toLowerCase();
+        fetch(filepath)
+            .then(r => r.text())
+            .then(data => {
+                let parsed: ParsedStructure;
+                if (extension === 'cif' || extension === 'mmcif') {
+                    parsed = parseMmCIF(data);
+                } else {
+                    parsed = parsePDB(data);
+                }
+                this.buildStructure(parsed, filepath, info);
+            })
+            .catch(err => {
+                console.error(`Failed to load structure from ${filepath}:`, err);
+                alert(`Failed to load structure from ${filepath}`);
+            });
+    }
+
+    loadFromDict(structuresToLoad: Record<string, StructureLoadInfo>): void {
+        this.structures_left_to_load = 0;
+        for (const _ in structuresToLoad) this.structures_left_to_load++;
+        for (const [filepath, info] of Object.entries(structuresToLoad)) this.addNewStructure(filepath, info);
+    }
+
+    // ---- Drawing ----
+
+    drawAll(): void {
+        this.clear();
+        this.context.save();
+        this.context.translate(this.x_origin, this.y_origin);
+        this.context.scale(this.zoom, this.zoom);
+        for (const el of this.elements) el.draw();
+        this.context.restore();
+    }
+
+    findBestZoom(): void {
+        const avgs = this.avgCenterOfAllElements();
+        for (const el of this.elements) el.translateTo(avgs);
+        
+        let max_dist = 0;
+        for (const el of this.elements) {
+            for (const a of el.atoms) {
+                const d = Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2);
+                if (d > max_dist) max_dist = d;
+            }
+        }
+        const dim = Math.min(this.canvas.width, this.canvas.height);
+        this.zoom = (dim / 2.0) / (max_dist * 1.1);
+        this.zoom_prev = this.zoom;
+    }
+
+    drawGridLines(): void { /* Optional: implement if needed */ }
+
+    changeAllDrawMethods(method: DrawMethod): void {
+        for (const el of this.elements) el.propogateInfo({ drawMethod: method });
+        this.clear();
+        if (method !== 'points') this.findBonds();
+        this.drawAll();
+    }
+
+    resizeToWindow(): void {
+        this.canvas.width  = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    clear(): void {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    // ---- Interaction ----
+
+    mousedown(e: MouseEvent): void {
+        this.mouse_x_prev = e.clientX;
+        this.mouse_y_prev = e.clientY;
+        const moveHandler = (ee: MouseEvent) => {
+            const dx = ee.clientX - this.mouse_x_prev;
+            const dy = ee.clientY - this.mouse_y_prev;
+            for (const el of this.elements) {
+                el.rotateAboutY(dx * 0.01);
+                el.rotateAboutX(dy * 0.01);
+            }
+            this.mouse_x_prev = ee.clientX;
+            this.mouse_y_prev = ee.clientY;
+            this.drawAll();
+        };
+        const upHandler = () => {
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup',   upHandler);
+            this.determinePointGrid();
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup',   upHandler);
+    }
+
+    touchstart(e: TouchEvent): void {
+        if (e.touches.length !== 1) return;
+        e.preventDefault();
+        this.mouse_x_prev = e.touches[0].clientX;
+        this.mouse_y_prev = e.touches[0].clientY;
+        const moveHandler = (ee: TouchEvent) => {
+            const dx = ee.touches[0].clientX - this.mouse_x_prev;
+            const dy = ee.touches[0].clientY - this.mouse_y_prev;
+            for (const el of this.elements) {
+                el.rotateAboutY(dx * 0.01);
+                el.rotateAboutX(dy * 0.01);
+            }
+            this.mouse_x_prev = ee.touches[0].clientX;
+            this.mouse_y_prev = ee.touches[0].clientY;
+            this.drawAll();
+        };
+        const endHandler = () => {
+            document.removeEventListener('touchmove', moveHandler);
+            document.removeEventListener('touchend',  endHandler);
+            this.determinePointGrid();
+        };
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('touchend',  endHandler);
+    }
+
+    mouseup(_e: MouseEvent): void {}
+    touchend(_e: TouchEvent): void {}
+    touchmove(_e: TouchEvent): void {}
+    mousemove(_e: MouseEvent): void {}
+
+    iOSChangeZoom(e: any): void {
+        e.preventDefault();
+        const startZoom = this.zoom;
+        const moveHandler = (ee: any) => {
+            this.zoom = startZoom * ee.scale;
+            this.drawAll();
+        };
+        const endHandler = () => {
+            this.canvas.removeEventListener('gesturechange', moveHandler);
+            this.canvas.removeEventListener('gestureend',    endHandler);
+            this.determinePointGrid();
+        };
+        this.canvas.addEventListener('gesturechange', moveHandler);
+        this.canvas.addEventListener('gestureend',    endHandler);
+    }
+
+    changeZoom(e: WheelEvent): void {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        this.zoom *= delta;
+        this.drawAll();
+        this.determinePointGrid();
+    }
+
+    restoreToOriginal(): void {
+        for (const el of this.elements) el.restoreToOriginal();
+        this.findBestZoom();
+        this.x_origin = this.canvas.width  / 2;
+        this.y_origin = this.canvas.height / 2;
+        this.drawAll();
+    }
+
+    computeZExtent(): void {
+        let min_z = Infinity, max_z = -Infinity;
+        for (const el of this.elements) {
+            for (const a of el.atoms) {
+                if (a.z < min_z) min_z = a.z;
+                if (a.z > max_z) max_z = a.z;
+            }
+        }
+        this.z_extent = Math.max(Math.abs(min_z), Math.abs(max_z));
+    }
+
+    findBonds(): void {
+        for (const el of this.elements) el.findBonds();
+    }
+
+    translateOrigin(e: MouseEvent): void {
+        this.x_origin = e.clientX;
+        this.y_origin = e.clientY;
+        this.drawAll();
+    }
+
+    avgCenterOfAllElements(): [number, number, number] {
+        const avgs: [number, number, number] = [0.0, 0.0, 0.0];
+        let total_atoms = 0;
+        for (const el of this.elements) {
+            for (const a of el.atoms) {
+                avgs[0] += a.x; avgs[1] += a.y; avgs[2] += a.z;
+                total_atoms++;
+            }
+        }
+        return avgs.map(v => v / total_atoms) as [number, number, number];
+    }
+
+    timedRotation(axis: string, ms: number): void {
+        this.stopRotation();
+        this.delayID = setInterval(() => {
+            for (const el of this.elements) {
+                if (axis === "X") el.rotateAboutX(0.05);
+                if (axis === "Y") el.rotateAboutY(0.05);
+                if (axis === "Z") el.rotateAboutZ(0.05);
+            }
+            this.drawAll();
+        }, ms);
+    }
+
+    stopRotation(): void {
+        if (this.delayID) {
+            clearInterval(this.delayID);
+            this.delayID = null;
+            this.determinePointGrid();
+        }
+    }
+
+    determinePointGrid(): void {
+        this.grid = {};
+        for (const el of this.elements) {
+            for (const a of el.atoms) {
+                const gx = Math.round((a.x * this.zoom + this.x_origin) / 5);
+                const gy = Math.round((a.y * this.zoom + this.y_origin) / 5);
+                if (this.grid[gx] == null) this.grid[gx] = {};
+                const existing = this.grid[gx][gy];
+                if (existing == null || a.z > existing.z) this.grid[gx][gy] = a;
+            }
+        }
+    }
+
+    showAtomInfo(e: MouseEvent): void {
+        const gx = Math.round(e.clientX / 5);
+        const gy = Math.round(e.clientY / 5);
+        const a  = this.grid[gx]?.[gy];
+        if (a && a !== this.a_prev) {
+            const infoEl = document.getElementById('mol-info-display');
+            if (infoEl) infoEl.textContent = `${a.parent.name} ${a.parent.resid}: ${a.original_atom_name}`;
+            this.a_prev = a;
+        } else if (!a) {
+            const infoEl = document.getElementById('mol-info-display');
+            if (infoEl) infoEl.textContent = '';
+            this.a_prev = null;
+        }
+    }
+
+    assignSelectors(): void {
+        for (let ne = 0; ne < this.elements.length; ne++) {
+            const el = this.elements[ne];
+            el.selector = new Selector([ne]);
+            for (let nc = 0; nc < el.children.length; nc++) {
+                const c = el.children[nc];
+                c.selector = new Selector([ne, nc]);
+                for (let nr = 0; nr < c.children.length; nr++) {
+                    const r = c.children[nr];
+                    r.selector = new Selector([ne, nc, nr]);
+                    for (let na = 0; na < r.children.length; na++) {
+                        r.children[na].selector = new Selector([ne, nc, nr, na]);
+                    }
+                }
+            }
+        }
+    }
+
+    handleSelectorArg(s: string | Selector): Selector { return typeof s === "string" ? new Selector(s) : s; }
+
+    childFromSelector(selector: string | Selector): any {
+        selector = this.handleSelectorArg(selector);
+        let c: any = this;
+        for (const i of (selector as Selector).array) c = c.elements != null ? c.elements[i] : c.children[i];
+        return c;
+    }
+
+    changeInfoFromSelectors(selectors: string | Selector | Array<string | Selector>, info_key: keyof AtomInfo, info_value: string): void {
+        if (selectors === "all") {
+            selectors = this.elements.map(el => el.selector!);
+        } else if (!(selectors instanceof Array) || typeof selectors === 'string') {
+            selectors = [selectors as string | Selector];
+        }
+        let last_c: any;
+        for (let selector of selectors as Array<string | Selector>) {
+            selector = this.handleSelectorArg(selector);
+            try { 
+                const c = this.childFromSelector(selector); 
+                (c.info as any)[info_key] = info_value.toLowerCase();
+                c.propogateInfo(c.info);
+                last_c = c;
+            } catch (_) { console.warn(`Child from selector ${(selector as Selector).str} does not exist`); }
+        }
+        this.clear();
+        if (last_c && last_c.info.drawMethod !== 'points') this.findBonds();
+        this.drawAll();
+    }
+
+    writeContextInfo(): void {
+        const el = document.getElementById('ctx-info');
+        if (el) el.innerHTML = this.elements.map(e => e.writeContextInfo()).join("");
+    }
+}
+
+// ===== Initialization =====
+
+function fromSplashLink(filename: string): void {
+    (window as any).coffeemol.addNewStructure(filename, { drawMethod: 'cartoon' });
+}
+
+const isDark    = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const coffeemol = new CanvasContext("#coffeemolCanvas", isDark ? "#111111" : "#ffffff");
+(window as any).coffeemol      = coffeemol;
+(window as any).fromSplashLink = fromSplashLink;
+(window as any).addNewStructure = (_e: Event) => {
+    const filepath = (document.querySelector('#add-new-structure .text') as HTMLInputElement)?.value;
+    coffeemol.addNewStructure(filepath);
+};
+
+// ===== Debug viewer =====
+
+if (document.getElementById('debug-info')) {
+    document.querySelector('#add-new-structure .submit')?.addEventListener('click', (window as any).addNewStructure);
+    // ... rest of debug viewer logic if needed ...
+}
