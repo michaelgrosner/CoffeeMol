@@ -84,6 +84,10 @@
 		const RCSB_META_BASE = 'https://data.rcsb.org/rest/v1/core/entry';
 		const RCSB_WWW_BASE  = 'https://www.rcsb.org/structure';
 
+		// --- Initialization ---
+		const viewer = CoffeeMol.create("#coffeemolCanvas").autoResize();
+		viewer.resize(); // Initial resize to fill screen
+
 		// --- Service Worker ---
 		if ('serviceWorker' in navigator) {
 			window.addEventListener('load', () => {
@@ -199,7 +203,7 @@
 			updateTitle(pdbId);
 
 			// Prefer mmCIF (.cif)
-			window.coffeemol.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.cif`, { drawMethod });
+			viewer.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.cif`, { drawMethod });
 			fetchMeta(pdbId).finally(() => toggleSpinner(false));
 		}
 
@@ -228,8 +232,8 @@
 				const drawMethod = document.getElementById('mol-draw-method').value;
 				
 				toggleSpinner(true);
-				window.coffeemol.clear();
-				window.coffeemol.loadFromData(data, file.name, { drawMethod });
+				viewer.clear();
+				viewer.loadFromData(data, file.name, { drawMethod });
 				
 				document.getElementById('mol-title-display').textContent = file.name;
 				document.getElementById('mol-meta').textContent = `Local file: ${(file.size / 1024).toFixed(1)} KB`;
@@ -254,12 +258,12 @@
 
 		document.getElementById('mol-draw-method').addEventListener('change', e => {
 			const val = e.target.value;
-			window.coffeemol.changeAllDrawMethods(val);
+			viewer.changeAllDrawMethods(val);
 			saveMethod(val);
 		});
 
 		document.getElementById('reset').addEventListener('click', () => {
-			window.coffeemol.restoreToOriginal();
+			viewer.restoreToOriginal();
 		});
 
 		document.getElementById('mol-info-header').addEventListener('click', () => {
@@ -272,15 +276,14 @@
 
 		document.querySelectorAll('.rot-axis').forEach(btn => {
 			btn.addEventListener('click', () => {
-				window.coffeemol.stopRotation();
-				window.coffeemol.timedRotation(btn.getAttribute('data-axis'), 16);
+				viewer.stopRotation();
+				viewer.timedRotation(btn.getAttribute('data-axis'), 16);
 			});
 		});
-		document.getElementById('rot-stop').addEventListener('click', () => window.coffeemol.stopRotation());
+		document.getElementById('rot-stop').addEventListener('click', () => viewer.stopRotation());
 
 		// --- Init ---
 		initPersistence();
-		window.coffeemol.resizeToWindow();
 		fetchRandomPdbId().then(loadPdb).catch(e => alert('Failed to load structure: ' + e));
 	</script>
 </html>

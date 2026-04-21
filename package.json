@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "An embeddable molecular visualizer for HTML5 browsers, written in TypeScript. Renders PDB and mmCIF files on a `<canvas>` element using 2D drawing APIs — no WebGL required, no runtime dependencies.",
   "main": "CoffeeMol.js",
+  "types": "CoffeeMol.d.ts",
   "scripts": {
     "type-check": "tsc --noEmit",
-    "build": "npm run type-check && esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --minify --sourcemap",
+    "build": "npm run type-check && esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --minify --sourcemap && tsc --declaration --emitDeclarationOnly --outFile CoffeeMol.d.ts",
     "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --sourcemap --watch --servedir=.",
     "test": "vitest run"
   },

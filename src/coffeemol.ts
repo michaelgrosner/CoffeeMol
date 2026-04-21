@@ -16,13 +16,13 @@ import {
 import { parsePDB, parseMmCIF } from './parser';
 
 export class CanvasContext {
-    canvas_tag: string;
+    canvas_target: string | HTMLCanvasElement;
     background_color: string;
     elements: Structure[];
     bonds: Bond[];
     grid: Record<number, Record<number, Atom | null>>;
-    canvas: HTMLCanvasElement;
-    context: CanvasRenderingContext2D;
+    canvas!: HTMLCanvasElement;
+    context!: CanvasRenderingContext2D;
     zoom: number;
     zoom_prev: number;
     x_origin: number;
@@ -44,8 +44,8 @@ export class CanvasContext {
     measureEndAtom: Atom | null;
     isDarkBackground: boolean;
 
-    constructor(canvas_tag: string, background_color: string = "#ffffff") {
-        this.canvas_tag       = canvas_tag;
+    constructor(canvas_target: string | HTMLCanvasElement, background_color: string = "#ffffff") {
+        this.canvas_target    = canvas_target;
         this.background_color = background_color;
         this.isDarkBackground = this.checkIsDark(background_color);
         this.elements         = [];
@@ -73,7 +73,7 @@ export class CanvasContext {
 
         for (const method of [
             'init', 'loadNewStructure', 'writeContextInfo', 'addNewStructure', 'loadFromDict',
-            'drawAll', 'findBestZoom', 'drawGridLines', 'changeAllDrawMethods', 'resizeToWindow', 'clear',
+            'drawAll', 'findBestZoom', 'drawGridLines', 'changeAllDrawMethods', 'resize', 'clear',
             'touchstart', 'mousedown', 'mouseup', 'touchend', 'touchmove', 'mousemove',
             'iOSChangeZoom', 'changeZoom', 'restoreToOriginal', 'computeZExtent', 'findBonds',
             'translateOrigin', 'avgCenterOfAllElements', 'timedRotation', 'stopRotation',
@@ -83,10 +83,14 @@ export class CanvasContext {
         ]) { (this as any)[method] = (this as any)[method].bind(this); }
 
         try {
-            this.canvas  = document.querySelector(this.canvas_tag) as HTMLCanvasElement;
+            if (typeof this.canvas_target === 'string') {
+                this.canvas = document.querySelector(this.canvas_target) as HTMLCanvasElement;
+            } else {
+                this.canvas = this.canvas_target;
+            }
             this.context = this.canvas.getContext('2d')!;
         } catch (error) {
-            alert(error);
+            alert(`Failed to initialize CoffeeMol: ${error}`);
             throw error;
         }
 
@@ -95,7 +99,6 @@ export class CanvasContext {
         (this.canvas.style as any).webkitUserSelect = 'none';
         this.canvas.style.backgroundColor           = arrayToRGB(this.background_color);
 
-        document.getElementById('reset')?.addEventListener('click', this.restoreToOriginal);
         this.canvas.addEventListener('mousedown',    this.mousedown);
         this.canvas.addEventListener('touchstart',   this.touchstart, { passive: false });
         this.canvas.addEventListener('wheel',        this.changeZoom, { passive: false });
@@ -104,13 +107,10 @@ export class CanvasContext {
         this.canvas.addEventListener('mousemove',    this.showAtomInfo);
         this.canvas.addEventListener('contextmenu',  this.handleContextMenu);
         this.canvas.addEventListener('click',        this.handleClick);
-        window.addEventListener('resize', () => {
-            this.resizeToWindow();
-            this.x_origin = this.canvas.width  / 2;
-            this.y_origin = this.canvas.height / 2;
-            this.clearCanvas();
-            this.drawAll();
-        });
+        
+        // Initial origins
+        this.x_origin = this.canvas.width / 2;
+        this.y_origin = this.canvas.height / 2;
     }
 
     // ---- Loading ----
@@ -246,9 +246,21 @@ export class CanvasContext {
         this.drawAll();
     }
 
-    resizeToWindow(): void {
-        this.canvas.width  = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+    resize(width?: number, height?: number): void {
+        this.canvas.width  = width  || this.canvas.clientWidth  || window.innerWidth;
+        this.canvas.height = height || this.canvas.clientHeight || window.innerHeight;
+        this.x_origin = this.canvas.width / 2;
+        this.y_origin = this.canvas.height / 2;
+        this.clearCanvas();
+        this.drawAll();
+    }
+
+    /**
+     * Opt-in to automatic resizing based on the window size.
+     */
+    autoResize(): CanvasContext {
+        window.addEventListener('resize', () => this.resize());
+        return this;
     }
 
     clearCanvas(): void {
@@ -580,26 +592,19 @@ export class CanvasContext {
         const el = document.getElementById('ctx-info');
         if (el) el.innerHTML = this.elements.map(e => e.writeContextInfo()).join("");
     }
+
+    /**
+     * Factory method to initialize a new visualizer on a canvas.
+     */
+    static create(canvas_target: string | HTMLCanvasElement, background_color?: string): CanvasContext {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const defaultBg = isDark ? "#111111" : "#ffffff";
+        const cc = new CanvasContext(canvas_target, background_color || defaultBg);
+        return cc;
+    }
 }
 
-// ===== Initialization =====
-
-function fromSplashLink(filename: string): void {
-    (window as any).coffeemol.addNewStructure(filename, { drawMethod: 'cartoon' });
-}
-
-const isDark    = window.matchMedia('(prefers-color-scheme: dark)').matches;
-const coffeemol = new CanvasContext("#coffeemolCanvas", isDark ? "#111111" : "#ffffff");
-(window as any).coffeemol      = coffeemol;
-(window as any).fromSplashLink = fromSplashLink;
-(window as any).addNewStructure = (_e: Event) => {
-    const filepath = (document.querySelector('#add-new-structure .text') as HTMLInputElement)?.value;
-    coffeemol.addNewStructure(filepath);
-};
-
-// ===== Debug viewer =====
-
-if (document.getElementById('debug-info')) {
-    document.querySelector('#add-new-structure .submit')?.addEventListener('click', (window as any).addNewStructure);
-    // ... rest of debug viewer logic if needed ...
+// Export for module systems if needed
+if (typeof window !== 'undefined') {
+    (window as any).CoffeeMol = CanvasContext;
 }
