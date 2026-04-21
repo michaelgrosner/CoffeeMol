@@ -124,6 +124,7 @@ export abstract class MolElement {
   cc: any; // CanvasContext (circular dependency handled by 'any' or interface)
   atoms: Atom[];
   bonds: Bond[];
+  isHighlighted: boolean = false;
 
   constructor(parent: MolElement | null, name: string, cc: any = null) {
     this.parent = parent;
@@ -137,8 +138,15 @@ export abstract class MolElement {
   }
 
   abstract toString(): string;
+  abstract drawHighlight(): void;
+
   constructorName(): string {
     return this.constructor.name;
+  }
+
+  setHighlighted(val: boolean): void {
+    this.isHighlighted = val;
+    for (const c of this.children) c.setHighlighted(val);
   }
 
   /**
@@ -196,6 +204,8 @@ export abstract class MolElement {
 
   init(): void {
     this.atoms = this.getOfType(Atom);
+    this.findBonds();
+    for (const c of this.children) c.init();
   }
 
   addChild(child: MolElement): void {
@@ -306,6 +316,22 @@ export abstract class MolElement {
         { width: 0.3, opacity: 0.5, color: 'rgba(255,255,255,0.6)' },
       ];
 
+      // Highlight pass for entire chain or residue
+      if (
+        this.isHighlighted ||
+        b.a1.isHighlighted ||
+        b.a1.parent.isHighlighted ||
+        b.a2.isHighlighted ||
+        b.a2.parent.isHighlighted
+      ) {
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+        ctx.lineWidth = lw * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(b.a1.x, b.a1.y);
+        ctx.lineTo(b.a2.x, b.a2.y);
+        ctx.stroke();
+      }
+
       for (const pass of passes2) {
         ctx.strokeStyle = pass.color;
         ctx.lineWidth = lw * pass.width;
@@ -320,7 +346,10 @@ export abstract class MolElement {
   drawRibbons(): void {
     const ribbonAtoms = this.atoms.filter(
       (a) =>
-        a.info.drawMethod === 'ribbon' &&
+        (this.isHighlighted ||
+          a.isHighlighted ||
+          a.parent.isHighlighted ||
+          a.info.drawMethod === 'ribbon') &&
         ((a.parent.isProtein() && a.original_atom_name === 'CA') ||
           (a.parent.isDNA() && a.original_atom_name === 'P'))
     );
@@ -436,6 +465,9 @@ export abstract class MolElement {
       };
 
       // Multi-pass volumetric shading
+      if (this.isHighlighted || a1.isHighlighted || a1.parent.isHighlighted) {
+        drawPath(lw * 1.5, 'rgba(255, 255, 0, 0.7)'); // Segment highlight
+      }
       drawPath(lw * 1.3, shadow); // Shadow
       drawPath(lw * 1.0, color); // Body
       drawPath(lw * 0.6, 'rgba(255,255,255,0.25)'); // Soft glow
@@ -529,6 +561,10 @@ export class Structure extends MolElement {
     return `<Structure ${n} with ${this.children.length} chains>`;
   }
 
+  drawHighlight(): void {
+    for (const c of this.children) c.drawHighlight();
+  }
+
   attachTitle(title: string): void {
     this.title = title;
   }
@@ -552,6 +588,15 @@ export class Chain extends MolElement {
   toString(): string {
     return `<Chain ${this.name} with ${this.children.length} residues>`;
   }
+
+  drawHighlight(): void {
+    // For entire chain highlight, we set isHighlighted then draw
+    // This allows drawRibbons and drawLines to draw highlights
+    this.isHighlighted = true;
+    this.drawRibbons();
+    this.drawLines();
+    this.isHighlighted = false;
+  }
 }
 
 // ===== Residue =====
@@ -568,6 +613,10 @@ export class Residue extends MolElement {
 
   toString(): string {
     return `<Residue ${this.name} with ${this.children.length} atoms>`;
+  }
+
+  drawHighlight(): void {
+    for (const c of this.children) c.drawHighlight();
   }
   isDNA(): boolean {
     return nuc_acids.includes(this.name);
@@ -684,6 +733,25 @@ export class Atom extends MolElement {
       false
     );
     ctx.fill();
+  }
+
+  drawHighlight(): void {
+    const ctx = this.cc.context;
+    const relR = atom_radii[this.name] ?? 1.0;
+    const zz = (ATOM_SIZE * relR * 1.5) / this.cc.zoom;
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, zz, 0, 2 * Math.PI, false);
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+    ctx.lineWidth = 3 / this.cc.zoom;
+    ctx.stroke();
+
+    // Outer faint glow
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, zz + 2 / this.cc.zoom, 0, 2 * Math.PI, false);
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+    ctx.lineWidth = 1 / this.cc.zoom;
+    ctx.stroke();
   }
 
   applyRotationY(sin: number, cos: number): void {

@@ -5,6 +5,7 @@ import {
   StructureLoadInfo,
   ParsedStructure,
   DrawMethod,
+  DEBUG,
 } from './types';
 import {
   arrayToRGB,
@@ -289,6 +290,28 @@ export class CanvasContext {
     this.context.save();
     this.context.translate(this.x_origin, this.y_origin);
     this.context.scale(this.zoom, this.zoom);
+
+    // Clear all highlights
+    for (const el of this.elements) {
+      const clear = (m: any) => {
+        m.isHighlighted = false;
+        for (const c of m.children) clear(c);
+      };
+      clear(el);
+    }
+
+    // Set active highlight
+    if (this.a_prev) {
+      const isPointsMode = ['points', 'both'].includes(
+        this.a_prev.info.drawMethod
+      );
+      if (isPointsMode) {
+        this.a_prev.isHighlighted = true;
+      } else {
+        this.a_prev.parent.isHighlighted = true; // Highlight residue
+      }
+    }
+
     for (const el of this.elements) el.draw();
     this.drawMeasureLine();
     this.context.restore();
@@ -384,7 +407,30 @@ export class CanvasContext {
     const y = clientY - rect.top;
     const gx = Math.round(x / 5);
     const gy = Math.round(y / 5);
-    return this.grid[gx]?.[gy] || null;
+
+    // Search a 3x3 grid area (15x15 pixels) for the closest atom
+    let closestAtom: Atom | null = null;
+    let minSqDist = Infinity;
+
+    for (let ix = gx - 1; ix <= gx + 1; ix++) {
+      for (let iy = gy - 1; iy <= gy + 1; iy++) {
+        const a = this.grid[ix]?.[iy];
+        if (a) {
+          const ax = a.x * this.zoom + this.x_origin;
+          const ay = a.y * this.zoom + this.y_origin;
+          const sqDist = (x - ax) ** 2 + (y - ay) ** 2;
+          if (sqDist < minSqDist) {
+            minSqDist = sqDist;
+            closestAtom = a;
+          }
+        }
+      }
+    }
+
+    // Limit hit distance to ~25 pixels for ribbons
+    if (minSqDist > 625) return null;
+
+    return closestAtom;
   }
 
   handleContextMenu(e: MouseEvent): void {
@@ -604,34 +650,99 @@ export class CanvasContext {
 
   determinePointGrid(): void {
     this.grid = {};
+    const addToGrid = (a: Atom, x: number, y: number, z: number) => {
+      const gx = Math.round(x / 5);
+      const gy = Math.round(y / 5);
+      if (this.grid[gx] == null) this.grid[gx] = {};
+      const existing = this.grid[gx][gy];
+      if (existing == null || z > existing.z) this.grid[gx][gy] = a;
+    };
+
     for (const el of this.elements) {
+      // Add all atoms
       for (const a of el.atoms) {
-        const gx = Math.round((a.x * this.zoom + this.x_origin) / 5);
-        const gy = Math.round((a.y * this.zoom + this.y_origin) / 5);
-        if (this.grid[gx] == null) this.grid[gx] = {};
-        const existing = this.grid[gx][gy];
-        if (existing == null || a.z > existing.z) this.grid[gx][gy] = a;
+        const ax = a.x * this.zoom + this.x_origin;
+        const ay = a.y * this.zoom + this.y_origin;
+        addToGrid(a, ax, ay, a.z);
+      }
+
+      // Add points along bonds to fill gaps for ribbons/lines
+      for (const b of el.bonds) {
+        const x1 = b.a1.x * this.zoom + this.x_origin;
+        const y1 = b.a1.y * this.zoom + this.y_origin;
+        const x2 = b.a2.x * this.zoom + this.x_origin;
+        const y2 = b.a2.y * this.zoom + this.y_origin;
+
+        const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        const steps = Math.ceil(dist / 2); // Sample every 2 pixels
+        for (let i = 1; i < steps; i++) {
+          const t = i / steps;
+          const px = x1 + (x2 - x1) * t;
+          const py = y1 + (y2 - y1) * t;
+          const pz = b.a1.z + (b.a2.z - b.a1.z) * t;
+
+          // Assign to the closer atom for better residue info
+          const atom = t < 0.5 ? b.a1 : b.a2;
+          addToGrid(atom, px, py, pz);
+
+          // Add offset points perpendicular to backbone for wide ribbons
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            const nx = -dy / len;
+            const ny = dx / len;
+            // Widths are ~20px, so sample 5px and 10px out
+            for (const offset of [-10, -5, 5, 10]) {
+              addToGrid(atom, px + nx * offset, py + ny * offset, pz);
+            }
+          }
+        }
       }
     }
   }
 
   showAtomInfo(e: MouseEvent): void {
-    this.mouseX = (e.clientX - this.x_origin) / this.zoom;
-    this.mouseY = (e.clientY - this.y_origin) / this.zoom;
+    const rect = this.canvas.getBoundingClientRect();
+    const canvasX = e.clientX - rect.left;
+    const canvasY = e.clientY - rect.top;
+
+    this.mouseX = (canvasX - this.x_origin) / this.zoom;
+    this.mouseY = (canvasY - this.y_origin) / this.zoom;
 
     const a = this.getAtomAt(e.clientX, e.clientY);
+    const infoEl = document.getElementById('mol-info-display');
+
     if (a && a !== this.a_prev) {
-      const infoEl = document.getElementById('mol-info-display');
-      if (infoEl)
-        infoEl.textContent = `${a.parent.name} ${a.parent.resid}: ${a.original_atom_name}`;
+      if (infoEl) {
+        const res = a.parent;
+        const chain = res.parent;
+        const ssInfo = res.ss !== 'loop' ? ` (${res.ss})` : '';
+
+        // Check the draw method from the atom to determine if we should show atom info
+        const isPointsMode = ['points', 'both'].includes(a.info.drawMethod);
+
+        let html = `Chain ${chain.name}: ${res.name} ${res.resid}${ssInfo}`;
+        if (isPointsMode) {
+          html += `<br>Atom: ${a.original_atom_name}`;
+        }
+        infoEl.innerHTML = html;
+        infoEl.style.left = `${e.clientX + 15}px`;
+        infoEl.style.top = `${e.clientY + 15}px`;
+      }
       this.a_prev = a;
-      if (this.isMeasuring) this.drawAll();
+      this.drawAll();
+    }
+ else if (a && a === this.a_prev) {
+      if (infoEl) {
+        infoEl.style.left = `${e.clientX + 15}px`;
+        infoEl.style.top = `${e.clientY + 15}px`;
+      }
     } else if (!a) {
-      const infoEl = document.getElementById('mol-info-display');
-      if (infoEl) infoEl.textContent = '';
+      if (infoEl) infoEl.innerHTML = '';
       if (this.a_prev !== null) {
         this.a_prev = null;
-        if (this.isMeasuring) this.drawAll();
+        this.drawAll();
       }
     }
   }

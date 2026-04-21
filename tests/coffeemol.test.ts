@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CanvasContext } from '../src/coffeemol';
-import { Structure } from '../src/models';
+import { Structure, Chain, Residue, Atom } from '../src/models';
 
 describe('CanvasContext', () => {
   let mockCanvas: any;
@@ -32,9 +32,10 @@ describe('CanvasContext', () => {
       clientHeight: 600,
     };
 
+    const mockInfoEl = { style: {}, textContent: '', innerHTML: '' };
     vi.stubGlobal('document', {
       querySelector: vi.fn(() => mockCanvas),
-      getElementById: vi.fn(),
+      getElementById: vi.fn((id) => (id === 'mol-info-display' ? mockInfoEl : null)),
       addEventListener: vi.fn(),
     });
 
@@ -81,5 +82,110 @@ describe('CanvasContext', () => {
     cc.changeZoom(mockEvent);
     expect(cc.zoom).toBeCloseTo(0.9);
     expect(mockEvent.preventDefault).toHaveBeenCalled();
+  });
+
+  it('should show atom info on hover', () => {
+    const cc = new CanvasContext('#target');
+    const s = new Structure('test', cc);
+    s.attachTitle('Test Structure');
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    r.ss = 'helix';
+    c.addChild(r);
+    const a = new Atom(r, 'CA', 0, 0, 0, 'CA');
+    a.info.drawMethod = 'ribbon'; // Explicitly set ribbon mode
+    r.addChild(a);
+    cc.addElement(s);
+    s.init();
+    cc.x_origin = 0;
+    cc.y_origin = 0;
+    cc.zoom = 1;
+    cc.determinePointGrid();
+
+    // Mock getBoundingClientRect for getAtomAt
+    mockCanvas.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 0 }));
+
+    const mockEvent = { clientX: 0, clientY: 0 } as any;
+    cc.showAtomInfo(mockEvent);
+
+    const infoEl = document.getElementById('mol-info-display') as any;
+    expect(infoEl.innerHTML).not.toContain('Test Structure');
+    expect(infoEl.innerHTML).toContain('Chain A: ALA 1 (helix)');
+    expect(infoEl.innerHTML).not.toContain('Atom: CA');
+    expect(infoEl.style.left).toBe('15px');
+  });
+
+  it('should pick atom with slight offset', () => {
+    const cc = new CanvasContext('#target');
+    const s = new Structure('test', cc);
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
+    const a = new Atom(r, 'CA', 0, 0, 0, 'CA');
+    r.addChild(a);
+    cc.addElement(s);
+    s.init();
+    cc.x_origin = 0;
+    cc.y_origin = 0;
+    cc.zoom = 1;
+    cc.determinePointGrid();
+
+    mockCanvas.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 0 }));
+
+    // Offset by 4 pixels (should still pick it because of 3x3 search and radius check)
+    expect(cc.getAtomAt(4, 4)).toBe(a);
+    // Offset by 20 pixels (should NOT pick it)
+    expect(cc.getAtomAt(20, 20)).toBeNull();
+  });
+
+  it('should initialize atoms and bonds recursively', () => {
+    const cc = new CanvasContext('#target');
+    const s = new Structure('test', cc);
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
+    const a1 = new Atom(r, 'N', 0, 0, 0, 'N');
+    const a2 = new Atom(r, 'CA', 1, 1, 1, 'CA');
+    r.addChild(a1);
+    r.addChild(a2);
+    cc.addElement(s);
+
+    s.init();
+
+    expect(s.atoms.length).toBe(2);
+    expect(c.atoms.length).toBe(2);
+    expect(r.atoms.length).toBe(2);
+
+    expect(s.bonds.length).toBe(1);
+    expect(c.bonds.length).toBe(1);
+    expect(r.bonds.length).toBe(1);
+  });
+
+  it('should pick atom when hovering over a bond', () => {
+    const cc = new CanvasContext('#target');
+    const s = new Structure('test', cc);
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
+    // Atoms 10 pixels apart
+    const a1 = new Atom(r, 'CA', 0, 0, 0, 'CA');
+    const a2 = new Atom(r, 'CA', 10, 0, 0, 'CA');
+    r.addChild(a1);
+    r.addChild(a2);
+    cc.addElement(s);
+    s.init();
+    cc.x_origin = 0;
+    cc.y_origin = 0;
+    cc.zoom = 1;
+    cc.determinePointGrid();
+
+    mockCanvas.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 0 }));
+
+    // Hover at (5, 0) - exactly between atoms
+    expect(cc.getAtomAt(5, 0)).not.toBeNull();
   });
 });
