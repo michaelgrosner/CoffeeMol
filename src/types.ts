@@ -218,6 +218,27 @@ export const neonScheme: ColorScheme = {
   chain_colors: [[255, 0, 255], [57, 255, 20], [0, 255, 255], [255, 110, 199]],
 };
 
+export const molokaiScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [248, 248, 242], // Foreground
+    N: [102, 217, 239], // Cyan
+    O: [249, 38, 114],  // Magenta
+    S: [253, 151, 31],  // Orange
+    P: [174, 129, 255], // Purple
+    H: [230, 219, 116], // Yellow
+  },
+  ss_colors: {
+    helix: [249, 38, 114], // Magenta
+    sheet: [166, 226, 46],  // Green
+    loop: [117, 113, 94],   // Gray (Comments)
+  },
+  chain_colors: [
+    [102, 217, 239], [166, 226, 46], [253, 151, 31], [174, 129, 255],
+  ],
+};
+
 export const colorSchemes: Record<string, ColorScheme> = {
   default: defaultColorScheme,
   highContrast: highContrastScheme,
@@ -225,6 +246,7 @@ export const colorSchemes: Record<string, ColorScheme> = {
   forest: forestScheme,
   monochrome: monochromeScheme,
   neon: neonScheme,
+  molokai: molokaiScheme,
 };
 
 // Van der Waals radii relative to C = 1.0

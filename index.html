@@ -106,6 +106,7 @@
 			<div class="controls-row">
 				<div id="bg-light" class="action-button secondary-button" style="flex: 1;">Light</div>
 				<div id="bg-dark" class="action-button secondary-button" style="flex: 1;">Dark</div>
+				<div id="bg-molokai" class="action-button secondary-button" style="flex: 1;">Molokai</div>
 			</div>
 		</div>
 
@@ -118,6 +119,7 @@
 				<option value="forest">Forest</option>
 				<option value="monochrome">Monochrome</option>
 				<option value="neon">Neon</option>
+				<option value="molokai">Molokai</option>
 			</select>
 		</div>
 
@@ -486,6 +488,10 @@
 		document.getElementById('bg-dark').addEventListener('click', () => {
 			viewer.setBackgroundColor('#111111');
 			saveBackground('#111111');
+		});
+		document.getElementById('bg-molokai').addEventListener('click', () => {
+			viewer.setBackgroundColor('#272822');
+			saveBackground('#272822');
 		});
 
 		document.querySelectorAll('#settings-panel input[type="color"]').forEach(input => {

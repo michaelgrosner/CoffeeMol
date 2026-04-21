@@ -67,6 +67,7 @@ declare module "src/types" {
     export const forestScheme: ColorScheme;
     export const monochromeScheme: ColorScheme;
     export const neonScheme: ColorScheme;
+    export const molokaiScheme: ColorScheme;
     export const colorSchemes: Record<string, ColorScheme>;
     export const atom_radii: Record<string, number>;
 }
