@@ -149,15 +149,36 @@ export abstract class MolElement {
 
     drawLines(): void {
         this.bonds.sort(sortBondsByZ);
+        const ctx = this.cc.context;
+        ctx.lineWidth = 2 / this.cc.zoom;
+        
+        const batches: Map<string, Array<{x1: number, y1: number, x2: number, y2: number}>> = new Map();
+        
         for (const b of this.bonds) {
-            if (b.a1.info.drawMethod === 'points') continue;
-            this.cc.context.beginPath();
-            this.cc.context.moveTo(b.a1.x, b.a1.y);
-            this.cc.context.lineTo(b.a2.x, b.a2.y);
-            this.cc.context.strokeStyle = arrayToRGB(b.a1.depthShadedColor());
-            this.cc.context.lineWidth   = 2 / this.cc.zoom;
-            this.cc.context.closePath();
-            this.cc.context.stroke();
+            if (b.a1.info.drawMethod === 'points' && b.a2.info.drawMethod === 'points') continue;
+            
+            const midX = (b.a1.x + b.a2.x) / 2;
+            const midY = (b.a1.y + b.a2.y) / 2;
+            
+            // Segment 1: Atom 1 to Midpoint
+            const c1 = b.a1.depthShadedColorString();
+            if (!batches.has(c1)) batches.set(c1, []);
+            batches.get(c1)!.push({ x1: b.a1.x, y1: b.a1.y, x2: midX, y2: midY });
+            
+            // Segment 2: Atom 2 to Midpoint
+            const c2 = b.a2.depthShadedColorString();
+            if (!batches.has(c2)) batches.set(c2, []);
+            batches.get(c2)!.push({ x1: b.a2.x, y1: b.a2.y, x2: midX, y2: midY });
+        }
+        
+        for (const [color, segments] of batches) {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            for (const s of segments) {
+                ctx.moveTo(s.x1, s.y1);
+                ctx.lineTo(s.x2, s.y2);
+            }
+            ctx.stroke();
         }
     }
 
@@ -265,11 +286,15 @@ export class Atom extends MolElement {
     toString(): string  { return `<Atom: ${this.name} [${this.x.toFixed(2)}, ${this.y.toFixed(2)}, ${this.z.toFixed(2)}]>`; }
     cpkColor(): RGB     { return this.info.drawColor ?? atom_colors[this.name] ?? atom_colors['_']; }
 
-    depthShadedColor(): RGB {
-        const base   = this.cpkColor();
+    depthShadedColorString(): string {
+        const base = this.cpkColor();
         const extent = this.cc.z_extent ?? 1;
-        const t      = Math.max(0, Math.min(1, (this.z + extent) / (2 * extent)));
-        return base.map(c => Math.round(c * (0.3 + 0.7 * t))) as RGB;
+        const t = Math.max(0, Math.min(1, (this.z + extent) / (2 * extent)));
+        const factor = 0.3 + 0.7 * t;
+        const r = Math.round(base[0] * factor);
+        const g = Math.round(base[1] * factor);
+        const b = Math.round(base[2] * factor);
+        return `rgb(${r},${g},${b})`;
     }
 
     drawPoint(): void {
@@ -280,19 +305,21 @@ export class Atom extends MolElement {
         const t      = Math.max(0, Math.min(1, (this.z + extent) / (2 * extent)));
         const factor = 0.3 + 0.7 * t;
 
-        const shaded    = base.map(c => Math.round(c * factor)) as RGB;
-        const highlight = base.map(c => Math.min(255, Math.round(c * 0.4 + 160))) as RGB;
+        const r = Math.round(base[0] * factor);
+        const g = Math.round(base[1] * factor);
+        const b = Math.round(base[2] * factor);
 
-        const grad = this.cc.context.createRadialGradient(
-            this.x - zz * 0.35, this.y - zz * 0.35, 0,
-            this.x,              this.y,              zz);
-        grad.addColorStop(0, arrayToRGB(highlight));
-        grad.addColorStop(1, arrayToRGB(shaded));
+        const ctx = this.cc.context;
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, zz, 0, 2 * Math.PI, false);
+        ctx.fill();
 
-        this.cc.context.beginPath();
-        this.cc.context.arc(this.x, this.y, zz, 0, 2 * Math.PI, false);
-        this.cc.context.fillStyle = grad;
-        this.cc.context.fill();
+        // Faster highlight: a small offset white circle with low opacity
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.beginPath();
+        ctx.arc(this.x - zz * 0.3, this.y - zz * 0.3, zz * 0.3, 0, 2 * Math.PI, false);
+        ctx.fill();
     }
 
     applyRotationY(sin: number, cos: number): void { const ox = this.x; this.x =  ox * cos + this.z * sin; this.z = -ox * sin + this.z * cos; }

@@ -39,9 +39,11 @@ export function arrayToRGB(a: RGB | string | null): string {
         if (DEBUG) console.warn(`No color defined for ${(a as RGB).toString()}. Using a random color`);
     }
     if ((a as RGB).length !== 3) alert(`Array To RGB must be of length 3, it is length ${(a as RGB).length}: ${a}`);
-    const fixer = (c: number) => Math.round(c > 255 ? 255 : c < 0 ? 0 : c);
-    const rgb = (a as RGB).map(fixer) as RGB;
-    return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    
+    const r = Math.round(a[0] > 255 ? 255 : a[0] < 0 ? 0 : a[0]);
+    const g = Math.round(a[1] > 255 ? 255 : a[1] < 0 ? 0 : a[1]);
+    const b = Math.round(a[2] > 255 ? 255 : a[2] < 0 ? 0 : a[2]);
+    return `rgb(${r},${g},${b})`;
 }
 
 export function degToRad(deg: number): number { return deg * 0.0174532925; }
