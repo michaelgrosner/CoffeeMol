@@ -9,7 +9,8 @@ import {
     rotateVecX, rotateVecY, rotateVecZ
 } from './utils';
 import { 
-    Structure, Chain, Residue, Atom, Bond, Selector 
+    Structure, Chain, Residue, Atom, Bond, Selector,
+    atomAtomDistance 
 } from './models';
 import { parsePDB, parseMmCIF } from './parser';
 
@@ -30,10 +31,16 @@ export class CanvasContext {
     mouse_y_prev: number;
     delayID: ReturnType<typeof setInterval> | null;
     a_prev: Atom | null;
+    mouseX: number;
+    mouseY: number;
     structures_left_to_load: number | null;
     x_axis: [number, number, number];
     y_axis: [number, number, number];
     z_axis: [number, number, number];
+
+    isMeasuring: boolean;
+    measureStartAtom: Atom | null;
+    measureEndAtom: Atom | null;
 
     constructor(canvas_tag: string, background_color: string = "#ffffff") {
         this.canvas_tag       = canvas_tag;
@@ -50,10 +57,16 @@ export class CanvasContext {
         this.mouse_y_prev     = 0;
         this.delayID          = null;
         this.a_prev           = null;
+        this.mouseX           = 0;
+        this.mouseY           = 0;
         this.structures_left_to_load = null;
         this.x_axis = [1, 0, 0];
         this.y_axis = [0, 1, 0];
         this.z_axis = [0, 0, 1];
+
+        this.isMeasuring      = false;
+        this.measureStartAtom = null;
+        this.measureEndAtom   = null;
 
         for (const method of [
             'init', 'loadNewStructure', 'writeContextInfo', 'addNewStructure', 'loadFromDict',
@@ -63,6 +76,7 @@ export class CanvasContext {
             'translateOrigin', 'avgCenterOfAllElements', 'timedRotation', 'stopRotation',
             'determinePointGrid', 'showAtomInfo', 'assignSelectors',
             'handleSelectorArg', 'childFromSelector', 'changeInfoFromSelectors',
+            'handleContextMenu', 'handleClick'
         ]) { (this as any)[method] = (this as any)[method].bind(this); }
 
         try {
@@ -85,6 +99,8 @@ export class CanvasContext {
         this.canvas.addEventListener('gesturestart', this.iOSChangeZoom as EventListener);
         this.canvas.addEventListener('dblclick',     this.translateOrigin);
         this.canvas.addEventListener('mousemove',    this.showAtomInfo);
+        this.canvas.addEventListener('contextmenu',  this.handleContextMenu);
+        this.canvas.addEventListener('click',        this.handleClick);
         window.addEventListener('resize', () => {
             this.resizeToWindow();
             this.x_origin = this.canvas.width  / 2;
@@ -198,6 +214,7 @@ export class CanvasContext {
         this.context.translate(this.x_origin, this.y_origin);
         this.context.scale(this.zoom, this.zoom);
         for (const el of this.elements) el.draw();
+        this.drawMeasureLine();
         this.context.restore();
     }
 
@@ -236,6 +253,86 @@ export class CanvasContext {
     }
 
     // ---- Interaction ----
+
+    getAtomAt(x: number, y: number): Atom | null {
+        const gx = Math.round(x / 5);
+        const gy = Math.round(y / 5);
+        return this.grid[gx]?.[gy] || null;
+    }
+
+    handleContextMenu(e: MouseEvent): void {
+        e.preventDefault();
+        const a = this.getAtomAt(e.clientX, e.clientY);
+        if (a) {
+            this.isMeasuring = true;
+            this.measureStartAtom = a;
+            this.measureEndAtom = null;
+        } else {
+            this.isMeasuring = false;
+            this.measureStartAtom = null;
+            this.measureEndAtom = null;
+        }
+        this.drawAll();
+    }
+
+    handleClick(e: MouseEvent): void {
+        if (!this.isMeasuring) return;
+        const a = this.getAtomAt(e.clientX, e.clientY);
+        if (a) {
+            if (a === this.measureStartAtom) {
+                this.isMeasuring = false;
+                this.measureStartAtom = null;
+                this.measureEndAtom = null;
+            } else {
+                this.measureEndAtom = a;
+            }
+        } else {
+            this.isMeasuring = false;
+            this.measureStartAtom = null;
+            this.measureEndAtom = null;
+        }
+        this.drawAll();
+    }
+
+    drawMeasureLine(): void {
+        if (!this.measureStartAtom) return;
+
+        const endAtom = this.measureEndAtom || this.a_prev;
+        const targetX = endAtom ? endAtom.x : this.mouseX;
+        const targetY = endAtom ? endAtom.y : this.mouseY;
+
+        // Don't draw if target is exactly on start atom (initial state)
+        if (endAtom === this.measureStartAtom) return;
+
+        const ctx = this.context;
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([5 / this.zoom, 5 / this.zoom]);
+        ctx.moveTo(this.measureStartAtom.x, this.measureStartAtom.y);
+        ctx.lineTo(targetX, targetY);
+        ctx.strokeStyle = "#ff3333";
+        ctx.lineWidth = 2 / this.zoom;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (endAtom) {
+            const dist = atomAtomDistance(this.measureStartAtom, endAtom);
+            const midX = (this.measureStartAtom.x + targetX) / 2;
+            const midY = (this.measureStartAtom.y + targetY) / 2;
+
+            ctx.fillStyle = "#ff3333";
+            ctx.font = `bold ${14 / this.zoom}px sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 4 / this.zoom;
+            ctx.strokeText(`${dist.toFixed(2)} Å`, midX, midY);
+            ctx.fillText(`${dist.toFixed(2)} Å`, midX, midY);
+        }
+        
+        ctx.restore();
+    }
 
     mousedown(e: MouseEvent): void {
         this.mouse_x_prev = e.clientX;
@@ -389,17 +486,22 @@ export class CanvasContext {
     }
 
     showAtomInfo(e: MouseEvent): void {
-        const gx = Math.round(e.clientX / 5);
-        const gy = Math.round(e.clientY / 5);
-        const a  = this.grid[gx]?.[gy];
+        this.mouseX = (e.clientX - this.x_origin) / this.zoom;
+        this.mouseY = (e.clientY - this.y_origin) / this.zoom;
+
+        const a = this.getAtomAt(e.clientX, e.clientY);
         if (a && a !== this.a_prev) {
             const infoEl = document.getElementById('mol-info-display');
             if (infoEl) infoEl.textContent = `${a.parent.name} ${a.parent.resid}: ${a.original_atom_name}`;
             this.a_prev = a;
+            if (this.isMeasuring) this.drawAll();
         } else if (!a) {
             const infoEl = document.getElementById('mol-info-display');
             if (infoEl) infoEl.textContent = '';
-            this.a_prev = null;
+            if (this.a_prev !== null) {
+                this.a_prev = null;
+                if (this.isMeasuring) this.drawAll();
+            }
         }
     }
 
