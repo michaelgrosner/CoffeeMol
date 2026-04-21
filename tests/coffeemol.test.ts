@@ -20,6 +20,10 @@ describe('CanvasContext', () => {
       fill: vi.fn(),
       arc: vi.fn(),
       setLineDash: vi.fn(),
+      createRadialGradient: vi.fn(() => ({
+        addColorStop: vi.fn(),
+      })),
+      fillRect: vi.fn(),
     };
 
     mockCanvas = {

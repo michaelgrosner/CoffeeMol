@@ -315,6 +315,25 @@ export class CanvasContext {
     for (const el of this.elements) el.draw();
     this.drawMeasureLine();
     this.context.restore();
+
+    // Draw vignette
+    if (this.isDarkBackground) {
+      const ctx = this.context;
+      const w = this.canvas.width;
+      const h = this.canvas.height;
+      const vGradient = ctx.createRadialGradient(
+        w / 2,
+        h / 2,
+        Math.min(w, h) * 0.2,
+        w / 2,
+        h / 2,
+        Math.max(w, h) * 0.9
+      );
+      vGradient.addColorStop(0, 'rgba(0,0,0,0)');
+      vGradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+      ctx.fillStyle = vGradient;
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 
   findBestZoom(): void {
@@ -376,7 +395,32 @@ export class CanvasContext {
   }
 
   clearCanvas(): void {
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const ctx = this.context;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw cinematic radial gradient background
+    const gradient = ctx.createRadialGradient(
+      w / 2,
+      h / 2,
+      0,
+      w / 2,
+      h / 2,
+      Math.max(w, h) * 0.8
+    );
+
+    if (this.isDarkBackground) {
+      gradient.addColorStop(0, '#1a1a1a');
+      gradient.addColorStop(1, '#050505');
+    } else {
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(1, '#f0f0f0');
+    }
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
   }
 
   private checkIsDark(color: string): boolean {
