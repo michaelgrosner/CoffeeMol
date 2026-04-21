@@ -34,6 +34,18 @@
 - **Test**: `npm run test` (executes Vitest suite)
 - **Type-Check**: `npm run type-check`
 
+## Releasing
+Releases are automated via GitHub Actions (`.github/workflows/release.yml`). To trigger a release:
+1. **Update Version**: Update the `version` in `package.json`.
+2. **Commit and Tag**:
+   ```bash
+   git add .
+   git commit -m "chore: release vX.Y.Z"
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   ```
+3. **Push Tag**: `git push origin vX.Y.Z`.
+4. **Automated Assets**: The workflow will build the project and attach `CoffeeMol.js`, `CoffeeMol.d.ts`, and `CoffeeMol.js.map` to the GitHub Release.
+
 ## Development Conventions
 - **Rendering Logic**:
   - Uses Z-sorting for correct transparency and occlusion.
