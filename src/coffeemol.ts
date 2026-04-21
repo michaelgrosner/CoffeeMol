@@ -378,7 +378,10 @@ export class CanvasContext {
 
   // ---- Interaction ----
 
-  getAtomAt(x: number, y: number): Atom | null {
+  getAtomAt(clientX: number, clientY: number): Atom | null {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     const gx = Math.round(x / 5);
     const gy = Math.round(y / 5);
     return this.grid[gx]?.[gy] || null;
@@ -681,7 +684,7 @@ export class CanvasContext {
         (c.info as any)[info_key] = info_value.toLowerCase();
         c.propogateInfo(c.info);
         last_c = c;
-      } catch (_) {
+      } catch {
         console.warn(
           `Child from selector ${(selector as Selector).str} does not exist`
         );

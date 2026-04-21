@@ -31,10 +31,6 @@ const chain_colors: RGB[] = [
 import {
   deepCopy,
   hexToRGBArray,
-  arrayToRGB,
-  rotateVecX,
-  rotateVecY,
-  rotateVecZ,
   genIFSLink,
 } from './utils';
 
@@ -87,9 +83,9 @@ export class Selector {
   }
 
   up(): Selector | null {
+    if (this.array.length <= 1) return null;
     const a = this.array.slice(0, -1);
-    const n = new Selector(a);
-    return n.str === this.str ? null : n;
+    return new Selector(a);
   }
 }
 
@@ -344,7 +340,7 @@ export abstract class MolElement {
 
     const atomPrev: Map<Atom, Atom> = new Map();
     const atomNext: Map<Atom, Atom> = new Map();
-    for (const [chain, chainAtoms] of chains) {
+    for (const [_chain, chainAtoms] of chains) {
       for (let i = 0; i < chainAtoms.length; i++) {
         if (i > 0) atomPrev.set(chainAtoms[i], chainAtoms[i - 1]);
         if (i < chainAtoms.length - 1)
@@ -718,15 +714,23 @@ function isBonded(a1: Atom, a2: Atom): boolean {
   if (a1.parent.typeName() !== a2.parent.typeName()) return false;
   const aad = atomAtomDistance(a1, a2);
 
-  // Backbone modes (cartoon, ribbon, tube)
-  if (['cartoon', 'ribbon', 'tube'].includes(a1.info.drawMethod)) {
-    if (a1.parent.isProtein()) {
+  const isBackbone1 = ['cartoon', 'ribbon', 'tube'].includes(
+    a1.info.drawMethod
+  );
+  const isBackbone2 = ['cartoon', 'ribbon', 'tube'].includes(
+    a2.info.drawMethod
+  );
+
+  // If either is in backbone mode, use backbone logic
+  if (isBackbone1 || isBackbone2) {
+    if (a1.parent.isProtein() && a2.parent.isProtein()) {
       if (a1.original_atom_name === 'CA' && a2.original_atom_name === 'CA')
         return aad < 4.0;
-    } else if (a1.parent.isDNA()) {
+    } else if (a1.parent.isDNA() && a2.parent.isDNA()) {
       if (a1.original_atom_name === 'P' && a2.original_atom_name === 'P')
         return aad < 10.0;
     }
+    // If one is backbone and other isn't, or different atoms, no bond in backbone mode
     return false;
   }
 

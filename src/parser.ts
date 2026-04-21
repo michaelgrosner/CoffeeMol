@@ -79,13 +79,13 @@ export function parseMmCIF(data: string): ParsedStructure {
     }
 
     if (line.startsWith('_struct.title')) {
-      // ... (title parsing remains the same)
       const t = line.substring(13).trim();
       if (t) {
         if (t.startsWith("'") || t.startsWith('"')) {
           const quote = t[0];
           if (t.endsWith(quote) && t.length > 1) {
             title = t.substring(1, t.length - 1);
+            i++;
           } else {
             title = t.substring(1);
             i++;
@@ -93,6 +93,7 @@ export function parseMmCIF(data: string): ParsedStructure {
               const nextLine = lines[i].trim();
               if (nextLine.endsWith(quote)) {
                 title += ' ' + nextLine.substring(0, nextLine.length - 1);
+                i++;
                 break;
               }
               title += ' ' + nextLine;
@@ -101,6 +102,7 @@ export function parseMmCIF(data: string): ParsedStructure {
           }
         } else {
           title = t;
+          i++;
         }
       } else {
         // Multi-line semicolon string
@@ -110,7 +112,10 @@ export function parseMmCIF(data: string): ParsedStructure {
           i++;
           while (i < lines.length) {
             const nextLine = lines[i].trim();
-            if (nextLine.startsWith(';')) break;
+            if (nextLine.startsWith(';')) {
+              i++;
+              break;
+            }
             title += ' ' + nextLine;
             i++;
           }
@@ -248,8 +253,9 @@ export function parseMmCIF(data: string): ParsedStructure {
           }
         }
       }
+    } else {
+      i++;
     }
-    i++;
   }
 
   return { title, atoms, secondary_structure };

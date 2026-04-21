@@ -38,6 +38,7 @@ export function encodeHTML(s: string): string {
 export function hexToRGBArray(h: RGB | string): RGB {
   if (Array.isArray(h)) return h as RGB;
   if (h.startsWith('0x')) h = h.substring(2);
+  if (h.startsWith('#')) h = h.substring(1);
   return [0, 2, 4].map((i) => parseInt(h.substring(i, i + 2), 16)) as RGB;
 }
 
