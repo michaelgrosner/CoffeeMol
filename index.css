@@ -121,11 +121,44 @@ html, body {
 	gap: 4px;
 }
 
+#mol-info-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	cursor: pointer;
+	user-select: none;
+	padding-top: 4px;
+	border-top: 1px solid var(--border);
+}
+
+#mol-info-header:hover {
+	color: var(--accent);
+}
+
+#mol-info-header .toggle-icon {
+	font-size: 10px;
+	color: var(--text-muted);
+}
+
+#mol-info.collapsed #mol-title-display,
+#mol-info.collapsed #mol-meta {
+	display: none;
+}
+
 .meta-row {
 	display: flex;
 	justify-content: space-between;
 	gap: 8px;
 	font-size: 11px;
+}
+
+.meta-link {
+	color: var(--accent);
+	text-decoration: none;
+}
+
+.meta-link:hover {
+	text-decoration: underline;
 }
 
 .meta-key {

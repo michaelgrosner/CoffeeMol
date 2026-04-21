@@ -1,7 +1,7 @@
 'use strict';
 
 export type RGB = [number, number, number];
-export type DrawMethod = 'both' | 'lines' | 'points' | 'cartoon';
+export type DrawMethod = 'both' | 'lines' | 'points' | 'cartoon' | 'ribbon' | 'tube';
 
 export interface AtomInfo {
     drawMethod: DrawMethod;
@@ -38,16 +38,26 @@ export interface ParsedAtom {
     z: number;
 }
 
+export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';
+
+export interface SecondaryStructureRange {
+    type: SecondaryStructureType;
+    chain_id: string;
+    start_resi_id: number;
+    end_resi_id: number;
+}
+
 export interface ParsedStructure {
     title: string;
     atoms: ParsedAtom[];
+    secondary_structure?: SecondaryStructureRange[];
 }
 
 export const ATOM_SIZE = 3;
 export const DEBUG = true;
 
 export const nuc_acids: string[] = ["A", "C", "G", "T", "DA", "DC", "DG", "DT", "RA", "RC", "RG", "RT"];
-export const supported_draw_methods: DrawMethod[] = ["both", "lines", "points", "cartoon"];
+export const supported_draw_methods: DrawMethod[] = ["both", "lines", "points", "cartoon", "ribbon", "tube"];
 export const selector_delimiter = "/";
 
 // Jmol CPK colors — http://jmol.sourceforge.net/jscolors/

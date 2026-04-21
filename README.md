@@ -45,7 +45,7 @@ To load multiple structures with specific display options:
 ```js
 window.coffeemol.loadFromDict({
   "path/to/protein.pdb": {
-    drawMethod: "lines",    // "points", "lines", "both", or "cartoon"
+    drawMethod: "lines",    // "points", "lines", "both", "cartoon", "ribbon", or "tube"
     drawColor: [255, 0, 0]  // RGB array
   },
   "path/to/dna.pdb": {
@@ -71,6 +71,8 @@ window.coffeemol.loadFromDict({
 - **`lines`** — bonds only
 - **`both`** — atoms and bonds
 - **`cartoon`** — simplified backbone trace: Cα–Cα for proteins, P–P for DNA
+- **`ribbon`** — smooth spline representation of the tertiary structure
+- **`tube`** — thick depth-shaded cylindrical segments for the backbone
 
 ## Structure hierarchy
 

@@ -125,13 +125,29 @@ export class CanvasContext {
         let r!: Residue;
         let atom_count = 0;
 
+        const residues: Residue[] = [];
+
         for (const d of parsed.atoms) {
             if (chain_id_prev == null || d.chain_id !== chain_id_prev) c = new Chain(s, d.chain_id);
-            if (resi_id_prev  == null || d.resi_id  !== resi_id_prev)  r = new Residue(c, d.resi_name, d.resi_id);
+            if (resi_id_prev  == null || d.resi_id  !== resi_id_prev)  {
+                r = new Residue(c, d.resi_name, d.resi_id);
+                residues.push(r);
+            }
             new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name);
             chain_id_prev = d.chain_id;
             resi_id_prev  = d.resi_id;
             atom_count++;
+        }
+
+        // Assign secondary structure
+        if (parsed.secondary_structure) {
+            for (const ss of parsed.secondary_structure) {
+                for (const res of residues) {
+                    if (res.parent.name === ss.chain_id && res.resid >= ss.start_resi_id && res.resid <= ss.end_resi_id) {
+                        res.ss = ss.type;
+                    }
+                }
+            }
         }
 
         let resolvedInfo: AtomInfo;
@@ -139,13 +155,7 @@ export class CanvasContext {
             resolvedInfo = info as AtomInfo;
         } else {
             resolvedInfo = defaultInfo();
-            if (atom_count > 2000) {
-                resolvedInfo.drawMethod = 'cartoon';
-            } else if (atom_count > 500) {
-                resolvedInfo.drawMethod = 'lines';
-            } else {
-                resolvedInfo.drawMethod = 'both';
-            }
+            resolvedInfo.drawMethod = 'ribbon';
         }
         s.propogateInfo(resolvedInfo);
         if (this.structures_left_to_load != null) {
@@ -349,9 +359,9 @@ export class CanvasContext {
         this.stopRotation();
         this.delayID = setInterval(() => {
             for (const el of this.elements) {
-                if (axis === "X") el.rotateAboutX(0.05);
-                if (axis === "Y") el.rotateAboutY(0.05);
-                if (axis === "Z") el.rotateAboutZ(0.05);
+                if (axis === "X") el.rotateAboutX(0.025);
+                if (axis === "Y") el.rotateAboutY(0.025);
+                if (axis === "Z") el.rotateAboutZ(0.025);
             }
             this.drawAll();
         }, ms);

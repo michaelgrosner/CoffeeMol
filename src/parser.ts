@@ -4,6 +4,7 @@ import { ParsedStructure, ParsedAtom, nuc_acids } from './types';
 
 export function parsePDB(data: string): ParsedStructure {
     const atoms: ParsedAtom[] = [];
+    const secondary_structure: SecondaryStructureRange[] = [];
     let title = '';
 
     const handleResiName = (r: string) => nuc_acids.slice(4).includes(r) ? r.substring(1, 3) : r;
@@ -14,6 +15,24 @@ export function parsePDB(data: string): ParsedStructure {
             const t = line.substring(6).trim();
             if (!title) title = t;
             else title += " " + t;
+            continue;
+        }
+        if (line.startsWith("HELIX")) {
+            secondary_structure.push({
+                type: 'helix',
+                chain_id: line.substring(19, 20).trim(),
+                start_resi_id: parseInt(line.substring(21, 25).trim()),
+                end_resi_id: parseInt(line.substring(33, 37).trim()),
+            });
+            continue;
+        }
+        if (line.startsWith("SHEET")) {
+            secondary_structure.push({
+                type: 'sheet',
+                chain_id: line.substring(21, 22).trim(),
+                start_resi_id: parseInt(line.substring(22, 26).trim()),
+                end_resi_id: parseInt(line.substring(33, 37).trim()),
+            });
             continue;
         }
         if (!line.startsWith("ATOM") && !line.startsWith("HETATM")) continue;
@@ -31,11 +50,12 @@ export function parsePDB(data: string): ParsedStructure {
         });
     }
 
-    return { title, atoms };
+    return { title, atoms, secondary_structure };
 }
 
 export function parseMmCIF(data: string): ParsedStructure {
     const atoms: ParsedAtom[] = [];
+    const secondary_structure: SecondaryStructureRange[] = [];
     let title = '';
 
     const handleResiName = (r: string) => nuc_acids.slice(4).includes(r) ? r.substring(1, 3) : r;
@@ -52,6 +72,7 @@ export function parseMmCIF(data: string): ParsedStructure {
         }
 
         if (line.startsWith('_struct.title')) {
+            // ... (title parsing remains the same)
             let t = line.substring(13).trim();
             if (t) {
                 if (t.startsWith("'") || t.startsWith('"')) {
@@ -97,13 +118,9 @@ export function parseMmCIF(data: string): ParsedStructure {
             }
 
             if (attributes.some(a => a.startsWith('_atom_site.'))) {
-                // Parse atom_site loop
                 const attrMap: Record<string, number> = {};
                 attributes.forEach((attr, idx) => attrMap[attr] = idx);
-
                 const getAttr = (key: string) => attrMap[`_atom_site.${key}`];
-
-                const groupIdx = getAttr('group_PDB');
                 const atomIdIdx = getAttr('auth_atom_id') ?? getAttr('label_atom_id');
                 const compIdIdx = getAttr('auth_comp_id') ?? getAttr('label_comp_id');
                 const seqIdIdx = getAttr('auth_seq_id') ?? getAttr('label_seq_id');
@@ -114,11 +131,9 @@ export function parseMmCIF(data: string): ParsedStructure {
 
                 if (atomIdIdx !== undefined && compIdIdx !== undefined && seqIdIdx !== undefined &&
                     asymIdIdx !== undefined && xIdx !== undefined && yIdx !== undefined && zIdx !== undefined) {
-                    
                     while (i < lines.length) {
                         const rowLine = lines[i].trim();
                         if (!rowLine || rowLine.startsWith('#') || rowLine.startsWith('loop_') || rowLine.startsWith('_')) break;
-                        
                         const values = tokenizeCifLine(rowLine);
                         if (values.length >= attributes.length) {
                             const raw = values[atomIdIdx];
@@ -135,21 +150,62 @@ export function parseMmCIF(data: string): ParsedStructure {
                         }
                         i++;
                     }
-                } else {
-                    // Skip this loop if attributes are missing
+                }
+            } else if (attributes.some(a => a.startsWith('_struct_conf.'))) {
+                const attrMap: Record<string, number> = {};
+                attributes.forEach((attr, idx) => attrMap[attr] = idx);
+                const getAttr = (key: string) => attrMap[`_struct_conf.${key}`];
+                const typeIdx = getAttr('conf_type_id');
+                const startAsymIdx = getAttr('beg_auth_asym_id') ?? getAttr('beg_label_asym_id');
+                const startSeqIdx = getAttr('beg_auth_seq_id') ?? getAttr('beg_label_seq_id');
+                const endSeqIdx = getAttr('end_auth_seq_id') ?? getAttr('end_label_seq_id');
+
+                if (typeIdx !== undefined && startAsymIdx !== undefined && startSeqIdx !== undefined && endSeqIdx !== undefined) {
                     while (i < lines.length) {
                         const rowLine = lines[i].trim();
                         if (!rowLine || rowLine.startsWith('#') || rowLine.startsWith('loop_') || rowLine.startsWith('_')) break;
+                        const v = tokenizeCifLine(rowLine);
+                        if (v.length >= attributes.length && v[typeIdx].includes('HELX')) {
+                            secondary_structure.push({
+                                type: 'helix',
+                                chain_id: v[startAsymIdx],
+                                start_resi_id: parseInt(v[startSeqIdx]),
+                                end_resi_id: parseInt(v[endSeqIdx]),
+                            });
+                        }
                         i++;
                     }
                 }
-                continue; // loop_ already advanced i
+            } else if (attributes.some(a => a.startsWith('_struct_sheet_range.'))) {
+                const attrMap: Record<string, number> = {};
+                attributes.forEach((attr, idx) => attrMap[attr] = idx);
+                const getAttr = (key: string) => attrMap[`_struct_sheet_range.${key}`];
+                const startAsymIdx = getAttr('beg_auth_asym_id') ?? getAttr('beg_label_asym_id');
+                const startSeqIdx = getAttr('beg_auth_seq_id') ?? getAttr('beg_label_seq_id');
+                const endSeqIdx = getAttr('end_auth_seq_id') ?? getAttr('end_label_seq_id');
+
+                if (startAsymIdx !== undefined && startSeqIdx !== undefined && endSeqIdx !== undefined) {
+                    while (i < lines.length) {
+                        const rowLine = lines[i].trim();
+                        if (!rowLine || rowLine.startsWith('#') || rowLine.startsWith('loop_') || rowLine.startsWith('_')) break;
+                        const v = tokenizeCifLine(rowLine);
+                        if (v.length >= attributes.length) {
+                            secondary_structure.push({
+                                type: 'sheet',
+                                chain_id: v[startAsymIdx],
+                                start_resi_id: parseInt(v[startSeqIdx]),
+                                end_resi_id: parseInt(v[endSeqIdx]),
+                            });
+                        }
+                        i++;
+                    }
+                }
             }
         }
         i++;
     }
 
-    return { title, atoms };
+    return { title, atoms, secondary_structure };
 }
 
 function tokenizeCifLine(line: string): string[] {
