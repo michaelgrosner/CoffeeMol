@@ -192,4 +192,60 @@ describe('CanvasContext', () => {
     // Hover at (5, 0) - exactly between atoms
     expect(cc.getAtomAt(5, 0)).not.toBeNull();
   });
+
+  it('should export and load scene state', () => {
+    const cc = new CanvasContext('#target');
+    const s = new Structure('test', cc);
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
+    const a = new Atom(r, 'CA', 1, 2, 3, 'CA');
+    r.addChild(a);
+    cc.addElement(s);
+    s.init();
+
+    cc.zoom = 5.0;
+    cc.x_origin = 100;
+    cc.y_origin = 200;
+    s.info.colorMethod = 'b-factor';
+
+    const stateStr = cc.getState();
+    const state = JSON.parse(stateStr);
+
+    expect(state.zoom).toBe(5.0);
+    expect(state.x_origin).toBe(100);
+    expect(state.structures[0].info.colorMethod).toBe('b-factor');
+    expect(state.structures[0].atomPositions[0]).toEqual([1, 2, 3]);
+
+    // Change something and load back
+    cc.zoom = 1.0;
+    a.x = 0;
+    cc.loadState(stateStr);
+
+    expect(cc.zoom).toBe(5.0);
+    expect(a.x).toBe(1);
+    expect(s.info.colorMethod).toBe('b-factor');
+  });
+
+  it('should export high-resolution image', () => {
+    const cc = new CanvasContext('#target');
+    const mockToDataURL = vi.fn(() => 'data:image/png;base64,test');
+    const mockOffCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockContext),
+      toDataURL: mockToDataURL,
+    };
+    vi.stubGlobal('document', {
+      ...document,
+      createElement: vi.fn((tag) => (tag === 'canvas' ? mockOffCanvas : {})),
+    });
+
+    const dataURL = cc.exportImage(2);
+    expect(dataURL).toBe('data:image/png;base64,test');
+    expect(mockOffCanvas.width).toBe(cc.canvas.width * 2);
+    expect(mockOffCanvas.height).toBe(cc.canvas.height * 2);
+    expect(mockToDataURL).toHaveBeenCalled();
+  });
 });

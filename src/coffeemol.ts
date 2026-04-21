@@ -5,6 +5,7 @@ import {
   StructureLoadInfo,
   ParsedStructure,
   DrawMethod,
+  ColorMethod,
   DEBUG,
 } from './types';
 import {
@@ -212,7 +213,15 @@ export class CanvasContext {
         residues.push(r);
       }
       r.addChild(
-        new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name)
+        new Atom(
+          r,
+          d.atom_name,
+          d.x,
+          d.y,
+          d.z,
+          d.original_atom_name,
+          d.tempFactor
+        )
       );
       chain_id_prev = d.chain_id;
       resi_id_prev = d.resi_id;
@@ -854,6 +863,98 @@ export class CanvasContext {
     const el = document.getElementById('ctx-info');
     if (el)
       el.innerHTML = this.elements.map((e) => e.writeContextInfo()).join('');
+  }
+
+  /**
+   * Export the current scene state as a JSON string.
+   */
+  getState(): string {
+    const state = {
+      zoom: this.zoom,
+      x_origin: this.x_origin,
+      y_origin: this.y_origin,
+      background_color: this.background_color,
+      structures: this.elements.map((s) => ({
+        name: s.name,
+        info: s.info,
+        atomPositions: s.atoms.map((a) => [a.x, a.y, a.z]),
+      })),
+    };
+    return JSON.stringify(state);
+  }
+
+  /**
+   * Load a scene state from a JSON string or object.
+   */
+  loadState(state: string | any): void {
+    const s = typeof state === 'string' ? JSON.parse(state) : state;
+    if (s.zoom) this.zoom = s.zoom;
+    if (s.x_origin) this.x_origin = s.x_origin;
+    if (s.y_origin) this.y_origin = s.y_origin;
+    if (s.background_color) this.setBackgroundColor(s.background_color);
+
+    if (s.structures) {
+      for (let i = 0; i < s.structures.length; i++) {
+        if (this.elements[i]) {
+          const structState = s.structures[i];
+          if (structState.info) {
+            this.elements[i].propogateInfo(structState.info);
+          }
+          if (structState.atomPositions) {
+            for (let j = 0; j < structState.atomPositions.length; j++) {
+              if (this.elements[i].atoms[j]) {
+                const pos = structState.atomPositions[j];
+                this.elements[i].atoms[j].x = pos[0];
+                this.elements[i].atoms[j].y = pos[1];
+                this.elements[i].atoms[j].z = pos[2];
+              }
+            }
+          }
+        }
+      }
+    }
+    this.drawAll();
+    this.determinePointGrid();
+    this.writeContextInfo();
+  }
+
+  /**
+   * Export the current canvas as a high-resolution image.
+   * @param scale Factor to scale the output resolution (default: 2)
+   */
+  exportImage(scale: number = 2): string {
+    const originalCanvas = this.canvas;
+    const originalContext = this.context;
+    const originalZoom = this.zoom;
+    const originalX = this.x_origin;
+    const originalY = this.y_origin;
+
+    // Create offscreen canvas
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = originalCanvas.width * scale;
+    offCanvas.height = originalCanvas.height * scale;
+    const offCtx = offCanvas.getContext('2d')!;
+
+    // Temporarily point to offscreen canvas
+    this.canvas = offCanvas;
+    this.context = offCtx;
+    this.zoom = originalZoom * scale;
+    this.x_origin = originalX * scale;
+    this.y_origin = originalY * scale;
+
+    // Render
+    this.drawAll();
+
+    const dataURL = offCanvas.toDataURL('image/png');
+
+    // Restore
+    this.canvas = originalCanvas;
+    this.context = originalContext;
+    this.zoom = originalZoom;
+    this.x_origin = originalX;
+    this.y_origin = originalY;
+
+    return dataURL;
   }
 
   /**

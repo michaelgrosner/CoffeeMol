@@ -9,8 +9,16 @@ export type DrawMethod =
   | 'ribbon'
   | 'tube';
 
+export type ColorMethod =
+  | 'cpk'
+  | 'ss'
+  | 'chain'
+  | 'b-factor'
+  | 'hydrophobicity';
+
 export interface AtomInfo {
   drawMethod: DrawMethod;
+  colorMethod?: ColorMethod;
   drawColor?: RGB | null;
   borderColor?: RGB | null;
   prevDrawColor?: RGB | null;
@@ -26,10 +34,12 @@ export interface PDBAtomData {
   x: number;
   y: number;
   z: number;
+  tempFactor: number;
 }
 
 export interface StructureLoadInfo {
   drawMethod?: DrawMethod;
+  colorMethod?: ColorMethod;
   drawColor?: RGB | number[] | string | null;
 }
 
@@ -42,6 +52,7 @@ export interface ParsedAtom {
   x: number;
   y: number;
   z: number;
+  tempFactor: number;
 }
 
 export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';

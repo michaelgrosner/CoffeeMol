@@ -53,6 +53,7 @@ export function parsePDB(data: string): ParsedStructure {
       x: parseFloat(line.substring(30, 38).trim()),
       y: parseFloat(line.substring(38, 46).trim()),
       z: parseFloat(line.substring(46, 54).trim()),
+      tempFactor: parseFloat(line.substring(60, 66).trim()) || 0,
     });
   }
 
@@ -140,6 +141,7 @@ export function parseMmCIF(data: string): ParsedStructure {
         const xIdx = getAttr('Cartn_x');
         const yIdx = getAttr('Cartn_y');
         const zIdx = getAttr('Cartn_z');
+        const tempIdx = getAttr('B_iso_or_equiv');
 
         if (
           atomIdIdx !== undefined &&
@@ -171,6 +173,8 @@ export function parseMmCIF(data: string): ParsedStructure {
                 x: parseFloat(values[xIdx]),
                 y: parseFloat(values[yIdx]),
                 z: parseFloat(values[zIdx]),
+                tempFactor:
+                  tempIdx !== undefined ? parseFloat(values[tempIdx]) : 0,
               });
             }
             i++;

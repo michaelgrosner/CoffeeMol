@@ -113,4 +113,46 @@ describe('Models', () => {
 
     expect(count1).toBe(count2);
   });
+
+  it('should calculate B-factor and hydrophobicity colors', () => {
+    const dummyCC = {
+      addElement: () => {},
+      canvas: { style: {} },
+      context: {},
+      z_extent: 10,
+      isDarkBackground: true,
+    } as any;
+
+    const s = new Structure('test', dummyCC);
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
+
+    const a = new Atom(r, 'CA', 0, 0, 0, 'CA', 50);
+    r.addChild(a);
+    a.cc = dummyCC;
+
+    const bColor = a.bFactorColor();
+    // 50/100 -> t=0.5 -> r=128, b=128
+    expect(bColor[0]).toBe(128);
+    expect(bColor[2]).toBe(128);
+
+    const hColor = a.hydrophobicityColor();
+    // ALA hydrophobicity = 1.8. Normalize (-4.5 to 4.5) -> (1.8+4.5)/9 = 0.7
+    // r = 255 * 0.7 = 179
+    // b = 255 * 0.3 = 77
+    expect(hColor[0]).toBe(179);
+    expect(hColor[1]).toBe(Math.round(255 * 0.3 * 0.5));
+    expect(hColor[2]).toBe(Math.round(255 * 0.3));
+
+    // Test depthShadedColorString with different methods
+    a.info.colorMethod = 'b-factor';
+    const shadedB = a.depthShadedColorString();
+    expect(shadedB).toContain('rgb');
+
+    a.info.colorMethod = 'hydrophobicity';
+    const shadedH = a.depthShadedColorString();
+    expect(shadedH).toContain('rgb');
+  });
 });

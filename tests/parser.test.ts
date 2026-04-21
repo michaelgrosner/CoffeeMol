@@ -15,6 +15,7 @@ describe('Parsers', () => {
     const atom = parsed.atoms[0];
     expect(atom.original_atom_name).toBe('N');
     expect(atom.x).toBe(24.364);
+    expect(atom.tempFactor).toBe(24.11);
   });
 
   it('should parse PDB secondary structure', () => {
@@ -96,5 +97,22 @@ A 11 20
     expect(parsed.secondary_structure!.length).toBe(2);
     expect(parsed.secondary_structure![0].type).toBe('helix');
     expect(parsed.secondary_structure![1].type).toBe('sheet');
+  });
+
+  it('should parse mmCIF B-factor', () => {
+    const cifData = `
+loop_
+_atom_site.auth_atom_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.B_iso_or_equiv
+N ALA A 1 24.364 26.685 14.285 24.11
+`;
+    const parsed = parseMmCIF(cifData);
+    expect(parsed.atoms[0].tempFactor).toBe(24.11);
   });
 });
