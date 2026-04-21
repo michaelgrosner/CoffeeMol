@@ -48,8 +48,9 @@
 				<button id="mol-random" class="action-button" title="Random molecule">?</button>
 			</div>
 
-			<div class="controls-row">
-				<select id="mol-draw-method" class="action-button">
+			<div class="control-group">
+				<label class="control-label">Representation</label>
+				<select id="mol-draw-method" class="action-button full-width">
 					<option value="ribbon">Ribbon</option>
 					<option value="cartoon">Cartoon</option>
 					<option value="tube">Tube</option>
@@ -57,7 +58,11 @@
 					<option value="lines">Lines</option>
 					<option value="points">Points</option>
 				</select>
-				<select id="mol-color-method" class="action-button">
+			</div>
+
+			<div class="control-group">
+				<label class="control-label">Color Mode</label>
+				<select id="mol-color-method" class="action-button full-width">
 					<option value="cpk">CPK (Element)</option>
 					<option value="chain">Chain</option>
 					<option value="ss">Secondary Structure</option>
@@ -66,9 +71,9 @@
 				</select>
 			</div>
 
-			<div class="controls-row">
-				<div id="reset" class="action-button" style="flex: 1;">Reset View</div>
-				<div id="export-png" class="action-button" style="flex: 1;">Export PNG</div>
+			<div class="controls-row buttons-row">
+				<div id="reset" class="action-button secondary-button" style="flex: 1;">Reset View</div>
+				<div id="export-png" class="action-button secondary-button" style="flex: 1;">Export PNG</div>
 			</div>
 
 			<div id="mol-info">

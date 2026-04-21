@@ -176,29 +176,55 @@ html, body {
 }
 
 /* ── Controls ────────────────────────────────────────── */
+.control-group {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.control-label {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-muted);
+	font-weight: 600;
+	margin-left: 2px;
+}
+
+.full-width {
+	width: 100%;
+}
 
 .controls-row {
 	display: flex;
 	gap: 6px;
+	width: 100%;
 }
 
-#mol-draw-method {
-	flex: 1;
-	padding: 5px 8px;
-	border-radius: 6px;
-	border: 1px solid var(--border);
+.buttons-row {
+	margin-top: 4px;
+}
+
+.secondary-button {
+	font-size: 11px;
+	padding: 4px 8px;
+	background: transparent;
+	opacity: 0.8;
+}
+
+.secondary-button:hover {
+	opacity: 1;
 	background: var(--btn-bg);
-	color: var(--text);
-	font-size: 13px;
-	font-family: inherit;
-	cursor: pointer;
 }
 
-#mol-draw-method:hover {
-	background: var(--btn-hover);
+.controls-row select.action-button {
+	flex: 1;
+	min-width: 0;
+	padding: 5px 8px;
+	text-overflow: ellipsis;
 }
 
-#mol-draw-method:focus {
+#mol-draw-method:focus, #mol-color-method:focus {
 	outline: none;
 	border-color: var(--accent);
 }

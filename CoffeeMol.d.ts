@@ -1,8 +1,10 @@
 declare module "src/types" {
     export type RGB = [number, number, number];
     export type DrawMethod = 'both' | 'lines' | 'points' | 'cartoon' | 'ribbon' | 'tube';
+    export type ColorMethod = 'cpk' | 'ss' | 'chain' | 'b-factor' | 'hydrophobicity';
     export interface AtomInfo {
         drawMethod: DrawMethod;
+        colorMethod?: ColorMethod;
         drawColor?: RGB | null;
         borderColor?: RGB | null;
         prevDrawColor?: RGB | null;
@@ -17,9 +19,11 @@ declare module "src/types" {
         x: number;
         y: number;
         z: number;
+        tempFactor: number;
     }
     export interface StructureLoadInfo {
         drawMethod?: DrawMethod;
+        colorMethod?: ColorMethod;
         drawColor?: RGB | number[] | string | null;
     }
     export interface ParsedAtom {
@@ -31,6 +35,7 @@ declare module "src/types" {
         x: number;
         y: number;
         z: number;
+        tempFactor: number;
     }
     export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';
     export interface SecondaryStructureRange {
@@ -76,7 +81,7 @@ declare module "src/utils" {
     };
 }
 declare module "src/models" {
-    import { RGB, AtomInfo, SecondaryStructureType } from "src/types";
+    import { RGB, AtomInfo, ColorMethod, SecondaryStructureType } from "src/types";
     export function sortBondsByZ(b1: Bond, b2: Bond): number;
     export function sortByZ(a1: Atom, a2: Atom): number;
     export function atomAtomDistance(a1: Atom, a2: Atom): number;
@@ -107,9 +112,12 @@ declare module "src/models" {
         cc: any;
         atoms: Atom[];
         bonds: Bond[];
+        isHighlighted: boolean;
         constructor(parent: MolElement | null, name: string, cc?: any);
         abstract toString(): string;
+        abstract drawHighlight(): void;
         constructorName(): string;
+        setHighlighted(val: boolean): void;
         /**
          * Lifecycle hook called when this element is added to a parent.
          */
@@ -138,6 +146,7 @@ declare module "src/models" {
         parent: null;
         constructor(name: string, cc: any);
         toString(): string;
+        drawHighlight(): void;
         attachTitle(title: string): void;
     }
     export class Chain extends MolElement {
@@ -146,6 +155,7 @@ declare module "src/models" {
         constructor(parent: Structure, name: string);
         onAddedToParent(): void;
         toString(): string;
+        drawHighlight(): void;
     }
     export class Residue extends MolElement {
         resid: number;
@@ -153,6 +163,7 @@ declare module "src/models" {
         parent: Chain;
         constructor(parent: Chain, name: string, id: number);
         toString(): string;
+        drawHighlight(): void;
         isDNA(): boolean;
         isProtein(): boolean;
         typeName(): string;
@@ -161,16 +172,20 @@ declare module "src/models" {
         x: number;
         y: number;
         z: number;
+        tempFactor: number;
         original_atom_name: string;
         original_position: [number, number, number];
         parent: Residue;
-        constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string);
+        constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string, tempFactor?: number);
         toString(): string;
         cpkColor(): RGB;
         ssColor(): RGB;
         chainColor(): RGB;
-        depthShadedColorString(colorType?: 'cpk' | 'ss' | 'chain', brightnessOffset?: number): string;
+        bFactorColor(): RGB;
+        hydrophobicityColor(): RGB;
+        depthShadedColorString(colorType?: ColorMethod, brightnessOffset?: number): string;
         drawPoint(): void;
+        drawHighlight(): void;
         applyRotationY(sin: number, cos: number): void;
         applyRotationX(sin: number, cos: number): void;
         applyRotationZ(sin: number, cos: number): void;
@@ -234,7 +249,7 @@ declare module "src/coffeemol" {
         private checkIsDark;
         clear(): void;
         setBackgroundColor(color: string): void;
-        getAtomAt(x: number, y: number): Atom | null;
+        getAtomAt(clientX: number, clientY: number): Atom | null;
         handleContextMenu(e: MouseEvent): void;
         handleClick(e: MouseEvent): void;
         drawMeasureLine(): void;
@@ -261,10 +276,26 @@ declare module "src/coffeemol" {
         changeInfoFromSelectors(selectors: string | Selector | Array<string | Selector>, info_key: keyof AtomInfo, info_value: string): void;
         writeContextInfo(): void;
         /**
+         * Export the current scene state as a JSON string.
+         */
+        getState(): string;
+        /**
+         * Load a scene state from a JSON string or object.
+         */
+        loadState(state: string | any): void;
+        /**
+         * Export the current canvas as a high-resolution image.
+         * @param scale Factor to scale the output resolution (default: 2)
+         */
+        exportImage(scale?: number): string;
+        /**
          * Factory method to initialize a new visualizer on a canvas.
          */
         static create(canvas_target: string | HTMLCanvasElement, background_color?: string): CanvasContext;
     }
 }
+declare module "tests/coffeemol.test" { }
+declare module "tests/interaction.test" { }
 declare module "tests/models.test" { }
 declare module "tests/parser.test" { }
+declare module "tests/utils.test" { }
