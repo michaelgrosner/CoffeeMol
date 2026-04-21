@@ -137,7 +137,6 @@ export abstract class MolElement {
     this.selector = null;
     this.atoms = [];
     this.bonds = [];
-    if (this.parent != null) this.parent.addChild(this);
     this.cc = cc != null ? cc : this.parent!.cc;
   }
 
@@ -145,6 +144,11 @@ export abstract class MolElement {
   constructorName(): string {
     return this.constructor.name;
   }
+
+  /**
+   * Lifecycle hook called when this element is added to a parent.
+   */
+  onAddedToParent(): void {}
 
   writeContextInfo(): string {
     if (this.constructorName() === 'Atom') return '';
@@ -197,8 +201,10 @@ export abstract class MolElement {
   init(): void {
     this.atoms = this.getOfType(Atom);
   }
+
   addChild(child: MolElement): void {
     this.children.push(child);
+    child.onAddedToParent();
   }
 
   propogateInfo(info: AtomInfo): void {
@@ -511,7 +517,7 @@ export class Structure extends MolElement {
   title: string | null = null;
   declare parent: null;
 
-  constructor(parent: null, name: string, cc: any) {
+  constructor(name: string, cc: any) {
     if (name.includes('/')) name = name.split('/').slice(-1)[0];
     if (
       name.endsWith('.pdb') ||
@@ -519,8 +525,7 @@ export class Structure extends MolElement {
       name.endsWith('.mmcif')
     )
       name = name.split('.')[0];
-    super(parent, name, cc);
-    cc.addElement(this);
+    super(null, name, cc);
   }
 
   toString(): string {
@@ -537,12 +542,17 @@ export class Structure extends MolElement {
 
 export class Chain extends MolElement {
   declare parent: Structure;
-  color: RGB;
+  color: RGB = [128, 128, 128];
+
   constructor(parent: Structure, name: string) {
     super(parent, name);
-    const idx = parent.children.indexOf(this);
+  }
+
+  onAddedToParent(): void {
+    const idx = this.parent.children.indexOf(this);
     this.color = chain_colors[idx % chain_colors.length];
   }
+
   toString(): string {
     return `<Chain ${this.name} with ${this.children.length} residues>`;
   }

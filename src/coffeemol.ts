@@ -4,15 +4,11 @@ import {
   AtomInfo,
   StructureLoadInfo,
   ParsedStructure,
-  supported_draw_methods,
   DrawMethod,
 } from './types';
 import {
   arrayToRGB,
   defaultInfo,
-  rotateVecX,
-  rotateVecY,
-  rotateVecZ,
   hexToRGBArray,
 } from './utils';
 import {
@@ -193,7 +189,8 @@ export class CanvasContext {
     filepath: string,
     info: StructureLoadInfo | AtomInfo | null = null
   ): void {
-    const s = new Structure(null, filepath, this);
+    const s = new Structure(filepath, this);
+    this.addElement(s);
     if (parsed.title) s.attachTitle(parsed.title);
 
     let chain_id_prev: string | null = null;
@@ -204,13 +201,18 @@ export class CanvasContext {
     const residues: Residue[] = [];
 
     for (const d of parsed.atoms) {
-      if (chain_id_prev == null || d.chain_id !== chain_id_prev)
+      if (chain_id_prev == null || d.chain_id !== chain_id_prev) {
         c = new Chain(s, d.chain_id);
+        s.addChild(c);
+      }
       if (resi_id_prev == null || d.resi_id !== resi_id_prev) {
         r = new Residue(c, d.resi_name, d.resi_id);
+        c.addChild(r);
         residues.push(r);
       }
-      new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name);
+      r.addChild(
+        new Atom(r, d.atom_name, d.x, d.y, d.z, d.original_atom_name)
+      );
       chain_id_prev = d.chain_id;
       resi_id_prev = d.resi_id;
     }

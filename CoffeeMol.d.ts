@@ -110,6 +110,10 @@ declare module "src/models" {
         constructor(parent: MolElement | null, name: string, cc?: any);
         abstract toString(): string;
         constructorName(): string;
+        /**
+         * Lifecycle hook called when this element is added to a parent.
+         */
+        onAddedToParent(): void;
         writeContextInfo(): string;
         init(): void;
         addChild(child: MolElement): void;
@@ -132,7 +136,7 @@ declare module "src/models" {
     export class Structure extends MolElement {
         title: string | null;
         parent: null;
-        constructor(parent: null, name: string, cc: any);
+        constructor(name: string, cc: any);
         toString(): string;
         attachTitle(title: string): void;
     }
@@ -140,6 +144,7 @@ declare module "src/models" {
         parent: Structure;
         color: RGB;
         constructor(parent: Structure, name: string);
+        onAddedToParent(): void;
         toString(): string;
     }
     export class Residue extends MolElement {

@@ -20,12 +20,17 @@ describe('Models', () => {
       context: {},
     } as any;
 
-    const s = new Structure(null, 'test', dummyCC);
+    const s = new Structure('test', dummyCC);
+    dummyCC.addElement(s);
     const c = new Chain(s, 'A');
+    s.addChild(c);
     const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
 
     const a1 = new Atom(r, 'N', 0, 0, 0, 'N');
     const a2 = new Atom(r, 'CA', 3, 4, 0, 'CA');
+    r.addChild(a1);
+    r.addChild(a2);
 
     expect(atomAtomDistance(a1, a2)).toBe(5);
   });
