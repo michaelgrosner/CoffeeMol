@@ -5,8 +5,6 @@ import {
   StructureLoadInfo,
   ParsedStructure,
   DrawMethod,
-  ColorMethod,
-  DEBUG,
 } from './types';
 import {
   arrayToRGB,
