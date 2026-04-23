@@ -263,12 +263,12 @@ export abstract class MolElement {
         b.a2.info.drawMethod === 'cartoon';
       const colorType = isTube || isCartoon ? 'chain' : 'cpk';
 
-      let width = 2;
+      let width = 0.4;
       if (isTube) {
         width =
-          b.a1.parent.ss === 'helix' ? 12 : b.a1.parent.ss === 'sheet' ? 8 : 5;
+          b.a1.parent.ss === 'helix' ? 2.0 : b.a1.parent.ss === 'sheet' ? 1.5 : 1.0;
       }
-      const lw = width; // Constant screen-space width
+      const lw = width; // Scaling world-space width
 
       // Segment 1: a1 to mid
       const color1 = b.a1.depthShadedColorString(colorType);
@@ -376,11 +376,11 @@ export abstract class MolElement {
       const color = a1.depthShadedColorString('chain');
       const shadow = a1.depthShadedColorString('chain', -0.3);
 
-      let width = 6;
-      if (a1.parent.ss === 'helix') width = 20;
-      else if (a1.parent.ss === 'sheet') width = 16;
+      let width = 1.2;
+      if (a1.parent.ss === 'helix') width = 3.0;
+      else if (a1.parent.ss === 'sheet') width = 2.5;
 
-      const lw = width; // Constant screen-space width
+      const lw = width; // Scaling world-space width
 
       if (!prevA && !nextA) continue;
 
