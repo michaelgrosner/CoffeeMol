@@ -263,10 +263,10 @@ export abstract class MolElement {
         b.a2.info.drawMethod === 'cartoon';
       const colorType = isTube || isCartoon ? 'chain' : 'cpk';
 
-      let width = 0.4;
+      let width = 0.15;
       if (isTube) {
         width =
-          b.a1.parent.ss === 'helix' ? 2.0 : b.a1.parent.ss === 'sheet' ? 1.5 : 1.0;
+          b.a1.parent.ss === 'helix' ? 0.8 : b.a1.parent.ss === 'sheet' ? 0.6 : 0.4;
       }
       const lw = width; // Scaling world-space width
 
@@ -376,9 +376,9 @@ export abstract class MolElement {
       const color = a1.depthShadedColorString('chain');
       const shadow = a1.depthShadedColorString('chain', -0.3);
 
-      let width = 1.2;
-      if (a1.parent.ss === 'helix') width = 3.0;
-      else if (a1.parent.ss === 'sheet') width = 2.5;
+      let width = 0.6;
+      if (a1.parent.ss === 'helix') width = 1.5;
+      else if (a1.parent.ss === 'sheet') width = 1.2;
 
       const lw = width; // Scaling world-space width
 
@@ -450,14 +450,13 @@ export abstract class MolElement {
         }
       };
 
-      // Multi-pass volumetric shading
+      // Multi-pass "flat" shading
       if (this.isHighlighted || a1.isHighlighted || a1.parent.isHighlighted) {
-        drawPath(lw * 1.5, 'rgba(255, 255, 0, 0.7)'); // Segment highlight
+        drawPath(lw * 1.4, 'rgba(255, 255, 0, 0.7)'); // Segment highlight
       }
-      drawPath(lw * 1.3, shadow); // Shadow
-      drawPath(lw * 1.0, color); // Body
-      drawPath(lw * 0.6, 'rgba(255,255,255,0.25)'); // Soft glow
-      drawPath(lw * 0.2, 'rgba(255,255,255,0.5)'); // Sharp highlight
+      drawPath(lw * 1.1, shadow); // Thin border
+      drawPath(lw * 1.0, color); // Flat body
+      drawPath(lw * 0.4, 'rgba(255,255,255,0.15)'); // Very subtle center highlight
     }
   }
 
