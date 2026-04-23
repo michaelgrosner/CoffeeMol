@@ -143,11 +143,13 @@ describe('Models', () => {
 
     const hColor = a.hydrophobicityColor();
     // ALA hydrophobicity = 1.8. Normalize (-4.5 to 4.5) -> (1.8+4.5)/9 = 0.7
-    // r = 255 * 0.7 = 179
-    // b = 255 * 0.3 = 77
+    // Default ramp: low [0, 0, 255], high [255, 0, 0]
+    // r = 0 + (255-0)*0.7 = 179
+    // g = 0 + (0-0)*0.7 = 0
+    // b = 255 + (0-255)*0.7 = 77
     expect(hColor[0]).toBe(179);
-    expect(hColor[1]).toBe(Math.round(255 * 0.3 * 0.5));
-    expect(hColor[2]).toBe(Math.round(255 * 0.3));
+    expect(hColor[1]).toBe(0);
+    expect(hColor[2]).toBe(77);
 
     // Test depthShadedColorString with different methods
     a.info.colorMethod = 'b-factor';

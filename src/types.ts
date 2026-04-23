@@ -75,6 +75,8 @@ export interface ColorScheme {
   ss_colors: Record<SecondaryStructureType, RGB>;
   chain_colors: RGB[];
   hydrophobicity_scale: Record<string, number>;
+  ramp_low?: RGB;
+  ramp_high?: RGB;
   background?: string;
 }
 
@@ -136,6 +138,8 @@ export const defaultColorScheme: ColorScheme = {
     GLY: -0.4, THR: -0.7, SER: -0.8, TRP: -0.9, TYR: -1.3, PRO: -1.6,
     HIS: -3.2, GLU: -3.5, GLN: -3.5, ASP: -3.5, ASN: -3.5, LYS: -3.9, ARG: -4.5,
   },
+  ramp_low: [0, 0, 255],
+  ramp_high: [255, 0, 0],
 };
 
 export const highContrastScheme: ColorScheme = {
@@ -152,6 +156,8 @@ export const highContrastScheme: ColorScheme = {
     sheet: [0, 255, 0],
     loop: [255, 255, 255],
   },
+  ramp_low: [0, 0, 255],
+  ramp_high: [255, 0, 0],
   background: '#000000',
 };
 
@@ -169,6 +175,8 @@ export const nordScheme: ColorScheme = {
     loop: [216, 222, 233],
   },
   chain_colors: [[136, 192, 208], [129, 161, 193], [180, 142, 173], [163, 190, 140]],
+  ramp_low: [129, 161, 193],
+  ramp_high: [191, 97, 106],
   background: '#2E3440',
 };
 
@@ -186,6 +194,8 @@ export const solarizedDarkScheme: ColorScheme = {
     loop: [131, 148, 150],
   },
   chain_colors: [[38, 139, 210], [133, 153, 0], [181, 137, 0], [211, 54, 130]],
+  ramp_low: [38, 139, 210],
+  ramp_high: [220, 50, 47],
   background: '#002B36',
 };
 
@@ -203,6 +213,8 @@ export const draculaScheme: ColorScheme = {
     loop: [248, 248, 242],
   },
   chain_colors: [[189, 147, 249], [255, 121, 198], [139, 233, 253], [80, 250, 123]],
+  ramp_low: [139, 233, 253],
+  ramp_high: [255, 85, 85],
   background: '#282A36',
 };
 
@@ -220,6 +232,8 @@ export const synthwave84Scheme: ColorScheme = {
     loop: [254, 250, 115],
   },
   chain_colors: [[255, 126, 219], [54, 249, 246], [254, 250, 115], [114, 248, 154]],
+  ramp_low: [54, 249, 246],
+  ramp_high: [255, 126, 219],
   background: '#262335',
 };
 
@@ -237,6 +251,8 @@ export const gruvboxDarkScheme: ColorScheme = {
     loop: [235, 219, 178],
   },
   chain_colors: [[251, 73, 52], [184, 187, 38], [250, 189, 47], [131, 165, 152]],
+  ramp_low: [131, 165, 152],
+  ramp_high: [251, 73, 52],
   background: '#282828',
 };
 
@@ -254,6 +270,8 @@ export const tokyoNightScheme: ColorScheme = {
     loop: [192, 202, 245],
   },
   chain_colors: [[122, 162, 247], [158, 206, 106], [187, 154, 247], [42, 195, 222]],
+  ramp_low: [122, 162, 247],
+  ramp_high: [247, 118, 142],
   background: '#1A1B26',
 };
 
@@ -271,6 +289,8 @@ export const oneDarkScheme: ColorScheme = {
     loop: [171, 178, 191],
   },
   chain_colors: [[97, 175, 239], [152, 195, 121], [198, 120, 221], [209, 154, 102]],
+  ramp_low: [97, 175, 239],
+  ramp_high: [224, 108, 117],
   background: '#282C34',
 };
 
@@ -288,6 +308,8 @@ export const coffeeScheme: ColorScheme = {
     loop: [160, 82, 45],
   },
   chain_colors: [[210, 180, 140], [245, 245, 220], [160, 82, 45], [139, 69, 19]],
+  ramp_low: [245, 245, 220],
+  ramp_high: [139, 69, 19],
   background: '#3C2F2F',
 };
 
@@ -303,6 +325,8 @@ export const monochromeScheme: ColorScheme = {
     loop: [200, 200, 200],
   },
   chain_colors: [[50, 50, 50], [100, 100, 100], [150, 150, 150], [200, 200, 200]],
+  ramp_low: [50, 50, 50],
+  ramp_high: [200, 200, 200],
 };
 
 export const neonScheme: ColorScheme = {
@@ -322,6 +346,8 @@ export const neonScheme: ColorScheme = {
     loop: [0, 255, 255],
   },
   chain_colors: [[255, 0, 255], [57, 255, 20], [0, 255, 255], [255, 110, 199]],
+  ramp_low: [0, 255, 255],
+  ramp_high: [255, 0, 255],
   background: '#000000',
 };
 
@@ -344,6 +370,8 @@ export const molokaiScheme: ColorScheme = {
   chain_colors: [
     [102, 217, 239], [166, 226, 46], [253, 151, 31], [174, 129, 255],
   ],
+  ramp_low: [102, 217, 239],
+  ramp_high: [249, 38, 114],
   background: '#272822',
 };
 

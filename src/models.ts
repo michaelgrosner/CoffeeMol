@@ -662,25 +662,33 @@ export class Atom extends MolElement {
   }
 
   bFactorColor(): RGB {
-    // Blue-to-Red color ramp for B-factor
+    // Blue-to-Red color ramp for B-factor (standard)
     // Typical B-factors range from 0 to 100
     const t = Math.max(0, Math.min(100, this.tempFactor)) / 100;
-    const r = Math.round(255 * t);
-    const g = 0;
-    const b = Math.round(255 * (1 - t));
-    return [r, g, b];
+    const low = this.cc.colorScheme?.ramp_low || [0, 0, 255];
+    const high = this.cc.colorScheme?.ramp_high || [255, 0, 0];
+
+    return [
+      Math.round(low[0] + (high[0] - low[0]) * t),
+      Math.round(low[1] + (high[1] - low[1]) * t),
+      Math.round(low[2] + (high[2] - low[2]) * t),
+    ];
   }
 
   hydrophobicityColor(): RGB {
-    // Hydrophobicity color ramp: Red (hydrophobic) to Blue (hydrophilic)
+    // Hydrophobicity color ramp: Hydrophilic (low) to Hydrophobic (high)
     const scale = this.cc.colorScheme?.hydrophobicity_scale || {};
     const val = scale[this.parent.name] || 0;
     // Normalize Kyte-Doolittle (-4.5 to 4.5) to 0 to 1
     const t = (val + 4.5) / 9.0;
-    const r = Math.round(255 * t);
-    const g = Math.round(255 * (1 - t) * 0.5); // some green for contrast
-    const b = Math.round(255 * (1 - t));
-    return [r, g, b];
+    const low = this.cc.colorScheme?.ramp_low || [0, 127, 255];
+    const high = this.cc.colorScheme?.ramp_high || [255, 0, 0];
+
+    return [
+      Math.round(low[0] + (high[0] - low[0]) * t),
+      Math.round(low[1] + (high[1] - low[1]) * t),
+      Math.round(low[2] + (high[2] - low[2]) * t),
+    ];
   }
 
   depthShadedColorString(
