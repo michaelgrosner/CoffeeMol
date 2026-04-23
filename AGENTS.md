@@ -66,3 +66,6 @@ Releases are automated via GitHub Actions (`.github/workflows/release.yml`). To 
 - `parsePDB`, `parseMmCIF`: Core parsing functions in `parser.ts`.
 - `MolElement`: Abstract base class for all structural units in `models.ts`.
 - `Atom.depthShadedColorString()`: Handles the depth-aware color calculation for the 3D effect.
+
+## Source Control
+- NEVER commit without explicit permission
