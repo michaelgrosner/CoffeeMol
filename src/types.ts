@@ -136,7 +136,6 @@ export const defaultColorScheme: ColorScheme = {
     GLY: -0.4, THR: -0.7, SER: -0.8, TRP: -0.9, TYR: -1.3, PRO: -1.6,
     HIS: -3.2, GLU: -3.5, GLN: -3.5, ASP: -3.5, ASN: -3.5, LYS: -3.9, ARG: -4.5,
   },
-  background: '#ffffff',
 };
 
 export const highContrastScheme: ColorScheme = {
@@ -202,7 +201,6 @@ export const monochromeScheme: ColorScheme = {
     loop: [200, 200, 200],
   },
   chain_colors: [[50, 50, 50], [100, 100, 100], [150, 150, 150], [200, 200, 200]],
-  background: '#ffffff',
 };
 
 export const neonScheme: ColorScheme = {
