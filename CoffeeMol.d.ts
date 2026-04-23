@@ -64,8 +64,14 @@ declare module "src/types" {
     export const atom_colors: Record<string, RGB>;
     export const defaultColorScheme: ColorScheme;
     export const highContrastScheme: ColorScheme;
-    export const oceanScheme: ColorScheme;
-    export const forestScheme: ColorScheme;
+    export const nordScheme: ColorScheme;
+    export const solarizedDarkScheme: ColorScheme;
+    export const draculaScheme: ColorScheme;
+    export const synthwave84Scheme: ColorScheme;
+    export const gruvboxDarkScheme: ColorScheme;
+    export const tokyoNightScheme: ColorScheme;
+    export const oneDarkScheme: ColorScheme;
+    export const coffeeScheme: ColorScheme;
     export const monochromeScheme: ColorScheme;
     export const neonScheme: ColorScheme;
     export const molokaiScheme: ColorScheme;

@@ -155,38 +155,140 @@ export const highContrastScheme: ColorScheme = {
   background: '#000000',
 };
 
-export const oceanScheme: ColorScheme = {
+export const nordScheme: ColorScheme = {
   ...defaultColorScheme,
   atom_colors: {
     ...atom_colors,
-    C: [43, 101, 236],
-    N: [100, 149, 237],
-    O: [176, 224, 230],
+    C: [216, 222, 233],
+    N: [129, 161, 193],
+    O: [191, 97, 106],
   },
   ss_colors: {
-    helix: [0, 0, 128],
-    sheet: [0, 128, 128],
-    loop: [173, 216, 230],
+    helix: [136, 192, 208],
+    sheet: [163, 190, 140],
+    loop: [216, 222, 233],
   },
-  chain_colors: [[0, 105, 148], [30, 144, 255], [72, 209, 204], [0, 206, 209]],
-  background: '#000814',
+  chain_colors: [[136, 192, 208], [129, 161, 193], [180, 142, 173], [163, 190, 140]],
+  background: '#2E3440',
 };
 
-export const forestScheme: ColorScheme = {
+export const solarizedDarkScheme: ColorScheme = {
   ...defaultColorScheme,
   atom_colors: {
     ...atom_colors,
-    C: [34, 139, 34],
-    N: [144, 238, 144],
-    O: [210, 180, 140],
+    C: [147, 161, 161],
+    N: [38, 139, 210],
+    O: [220, 50, 47],
   },
   ss_colors: {
-    helix: [0, 100, 0],
-    sheet: [107, 142, 35],
-    loop: [245, 245, 220],
+    helix: [38, 139, 210],
+    sheet: [133, 153, 0],
+    loop: [131, 148, 150],
   },
-  chain_colors: [[46, 139, 87], [60, 179, 113], [154, 205, 50], [85, 107, 47]],
-  background: '#0d1a0d',
+  chain_colors: [[38, 139, 210], [133, 153, 0], [181, 137, 0], [211, 54, 130]],
+  background: '#002B36',
+};
+
+export const draculaScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [248, 248, 242],
+    N: [139, 233, 253],
+    O: [255, 85, 85],
+  },
+  ss_colors: {
+    helix: [189, 147, 249],
+    sheet: [80, 250, 123],
+    loop: [248, 248, 242],
+  },
+  chain_colors: [[189, 147, 249], [255, 121, 198], [139, 233, 253], [80, 250, 123]],
+  background: '#282A36',
+};
+
+export const synthwave84Scheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [254, 250, 115],
+    N: [54, 249, 246],
+    O: [255, 126, 219],
+  },
+  ss_colors: {
+    helix: [255, 126, 219],
+    sheet: [54, 249, 246],
+    loop: [254, 250, 115],
+  },
+  chain_colors: [[255, 126, 219], [54, 249, 246], [254, 250, 115], [114, 248, 154]],
+  background: '#262335',
+};
+
+export const gruvboxDarkScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [235, 219, 178],
+    N: [131, 165, 152],
+    O: [251, 73, 52],
+  },
+  ss_colors: {
+    helix: [251, 73, 52],
+    sheet: [184, 187, 38],
+    loop: [235, 219, 178],
+  },
+  chain_colors: [[251, 73, 52], [184, 187, 38], [250, 189, 47], [131, 165, 152]],
+  background: '#282828',
+};
+
+export const tokyoNightScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [192, 202, 245],
+    N: [122, 162, 247],
+    O: [247, 118, 142],
+  },
+  ss_colors: {
+    helix: [122, 162, 247],
+    sheet: [158, 206, 106],
+    loop: [192, 202, 245],
+  },
+  chain_colors: [[122, 162, 247], [158, 206, 106], [187, 154, 247], [42, 195, 222]],
+  background: '#1A1B26',
+};
+
+export const oneDarkScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [171, 178, 191],
+    N: [97, 175, 239],
+    O: [224, 108, 117],
+  },
+  ss_colors: {
+    helix: [97, 175, 239],
+    sheet: [152, 195, 121],
+    loop: [171, 178, 191],
+  },
+  chain_colors: [[97, 175, 239], [152, 195, 121], [198, 120, 221], [209, 154, 102]],
+  background: '#282C34',
+};
+
+export const coffeeScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [210, 180, 140],
+    N: [245, 245, 220],
+    O: [160, 82, 45],
+  },
+  ss_colors: {
+    helix: [210, 180, 140],
+    sheet: [245, 245, 220],
+    loop: [160, 82, 45],
+  },
+  chain_colors: [[210, 180, 140], [245, 245, 220], [160, 82, 45], [139, 69, 19]],
+  background: '#3C2F2F',
 };
 
 export const monochromeScheme: ColorScheme = {
@@ -248,8 +350,14 @@ export const molokaiScheme: ColorScheme = {
 export const colorSchemes: Record<string, ColorScheme> = {
   default: defaultColorScheme,
   highContrast: highContrastScheme,
-  ocean: oceanScheme,
-  forest: forestScheme,
+  nord: nordScheme,
+  solarizedDark: solarizedDarkScheme,
+  dracula: draculaScheme,
+  synthwave84: synthwave84Scheme,
+  gruvboxDark: gruvboxDarkScheme,
+  tokyoNight: tokyoNightScheme,
+  oneDark: oneDarkScheme,
+  coffee: coffeeScheme,
   monochrome: monochromeScheme,
   neon: neonScheme,
   molokai: molokaiScheme,
