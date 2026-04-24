@@ -43,6 +43,7 @@ export function parsePDB(data: string): ParsedStructure {
     }
     if (!line.startsWith('ATOM') && !line.startsWith('HETATM')) continue;
 
+    const isHetatm = line.startsWith('HETATM');
     const raw = line.substring(12, 16).trim();
     atoms.push({
       original_atom_name: raw,
@@ -54,6 +55,7 @@ export function parsePDB(data: string): ParsedStructure {
       y: parseFloat(line.substring(38, 46).trim()),
       z: parseFloat(line.substring(46, 54).trim()),
       tempFactor: parseFloat(line.substring(60, 66).trim()) || 0,
+      isHetatm,
     });
   }
 
@@ -142,6 +144,7 @@ export function parseMmCIF(data: string): ParsedStructure {
         const yIdx = getAttr('Cartn_y');
         const zIdx = getAttr('Cartn_z');
         const tempIdx = getAttr('B_iso_or_equiv');
+        const groupIdx = getAttr('group_PDB');
 
         if (
           atomIdIdx !== undefined &&
@@ -164,6 +167,7 @@ export function parseMmCIF(data: string): ParsedStructure {
             const values = tokenizeCifLine(rowLine);
             if (values.length >= attributes.length) {
               const raw = values[atomIdIdx];
+              const isHetatm = groupIdx !== undefined && values[groupIdx] === 'HETATM';
               atoms.push({
                 original_atom_name: raw,
                 atom_name: handleAtomName(raw),
@@ -175,6 +179,7 @@ export function parseMmCIF(data: string): ParsedStructure {
                 z: parseFloat(values[zIdx]),
                 tempFactor:
                   tempIdx !== undefined ? parseFloat(values[tempIdx]) : 0,
+                isHetatm,
               });
             }
             i++;

@@ -215,6 +215,9 @@ export class CanvasContext {
         c.addChild(r);
         residues.push(r);
       }
+      if (d.isHetatm) {
+        r.isHetatm = true;
+      }
       r.addChild(
         new Atom(
           r,
@@ -223,7 +226,8 @@ export class CanvasContext {
           d.y,
           d.z,
           d.original_atom_name,
-          d.tempFactor
+          d.tempFactor,
+          d.isHetatm
         )
       );
       chain_id_prev = d.chain_id;
@@ -253,6 +257,13 @@ export class CanvasContext {
       resolvedInfo.drawMethod = 'ribbon';
     }
     s.propogateInfo(resolvedInfo);
+
+    // Default HETATM residues to 'both' (points+lines) mode
+    for (const res of residues) {
+      if (res.isHetatm) {
+        res.propogateInfo({ drawMethod: 'both' });
+      }
+    }
     if (this.structures_left_to_load != null) {
       if (--this.structures_left_to_load === 0) this.init();
     } else {

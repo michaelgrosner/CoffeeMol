@@ -53,6 +53,7 @@ export interface ParsedAtom {
   y: number;
   z: number;
   tempFactor: number;
+  isHetatm: boolean;
 }
 
 export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';

@@ -614,6 +614,7 @@ export class Chain extends MolElement {
 export class Residue extends MolElement {
   resid: number;
   ss: SecondaryStructureType = 'loop';
+  isHetatm: boolean = false;
   declare parent: Chain;
 
   constructor(parent: Chain, name: string, id: number) {
@@ -646,6 +647,7 @@ export class Atom extends MolElement {
   y: number;
   z: number;
   tempFactor: number;
+  isHetatm: boolean;
   original_atom_name: string;
   original_position: [number, number, number];
   declare parent: Residue;
@@ -657,13 +659,15 @@ export class Atom extends MolElement {
     y: number,
     z: number,
     original_atom_name: string,
-    tempFactor: number = 0
+    tempFactor: number = 0,
+    isHetatm: boolean = false
   ) {
     super(parent, name);
     this.x = x;
     this.y = y;
     this.z = z;
     this.tempFactor = tempFactor;
+    this.isHetatm = isHetatm;
     this.original_atom_name = original_atom_name;
     this.original_position = [x, y, z];
   }
