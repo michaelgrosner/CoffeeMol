@@ -56,6 +56,8 @@ declare module "src/types" {
         hydrophobicity_scale: Record<string, number>;
         ramp_low?: RGB;
         ramp_high?: RGB;
+        outline_weight?: number;
+        glow_intensity?: number;
         background?: string;
     }
     export const ATOM_SIZE = 3;

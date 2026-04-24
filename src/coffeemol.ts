@@ -304,6 +304,8 @@ export class CanvasContext {
     this.context.translate(this.x_origin, this.y_origin);
     this.context.scale(this.zoom, this.zoom);
 
+    this.drawGridLines();
+
     // Clear all highlights
     for (const el of this.elements) {
       const clear = (m: any) => {
@@ -366,7 +368,55 @@ export class CanvasContext {
   }
 
   drawGridLines(): void {
-    /* Optional: implement if needed */
+    const ctx = this.context;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    ctx.save();
+    // Grid stays in screen space, or moves slightly with origin
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const isNeon = (this.colorScheme.glow_intensity ?? 0) > 10;
+    const isIllustrator = (this.colorScheme.outline_weight ?? 1) > 1.3;
+
+    if (isNeon) {
+      // Cyberpunk grid
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      const spacing = 40;
+      for (let x = this.x_origin % spacing; x < w; x += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = this.y_origin % spacing; y < h; y += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    } else if (isIllustrator) {
+      // Subtle technical blueprint grid
+      ctx.strokeStyle = this.isDarkBackground
+        ? 'rgba(255, 255, 255, 0.03)'
+        : 'rgba(0, 0, 0, 0.03)';
+      ctx.lineWidth = 0.5;
+      const spacing = 20;
+      for (let x = this.x_origin % spacing; x < w; x += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = this.y_origin % spacing; y < h; y += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 
   changeAllDrawMethods(method: DrawMethod): void {

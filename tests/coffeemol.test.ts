@@ -13,6 +13,7 @@ describe('CanvasContext', () => {
       restore: vi.fn(),
       translate: vi.fn(),
       scale: vi.fn(),
+      setTransform: vi.fn(),
       beginPath: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),

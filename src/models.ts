@@ -395,24 +395,33 @@ export abstract class MolElement {
         if (isLastOfSheet && prevA) {
           const dx = a1.x - prevA.x;
           const dy = a1.y - prevA.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const ux = dx / dist;
-          const uy = dy / dist;
+          const dz = a1.z - prevA.z;
+          // Use 3D distance for stable normalization
+          const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (dist3d < 0.1) return;
+
+          const ux = dx / dist3d;
+          const uy = dy / dist3d;
           const px = -uy;
           const py = ux;
+
           const startX = (prevA.x + a1.x) / 2;
           const startY = (prevA.y + a1.y) / 2;
-          const headW = w * 1.5;
 
-          ctx.moveTo(startX - (px * w) / 2, startY - (py * w) / 2);
-          ctx.lineTo(startX + (px * w) / 2, startY + (py * w) / 2);
-          ctx.lineTo(a1.x + px * headW, a1.y + py * headW);
+          // Arrowhead geometry
+          const headW = w * 1.6;
+          const headL = headW * 1.4;
+
+          // Draw the stem from the start point to the base of the triangle
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(a1.x, a1.y);
           ctx.stroke();
 
+          // Draw the arrowhead triangle
           ctx.beginPath();
           ctx.moveTo(a1.x - px * headW, a1.y - py * headW);
           ctx.lineTo(a1.x + px * headW, a1.y + py * headW);
-          ctx.lineTo(a1.x + ux * headW * 1.5, a1.y + uy * headW * 1.5);
+          ctx.lineTo(a1.x + ux * headL, a1.y + uy * headL);
           ctx.closePath();
           ctx.fill();
         } else {
@@ -450,11 +459,24 @@ export abstract class MolElement {
         }
       };
 
-      // Multi-pass "flat" shading
+      // Multi-pass "flat" shading with theme-aware outlines and glow
+      const outlineWeight = this.cc.colorScheme?.outline_weight ?? 1.1;
+      const glow = this.cc.colorScheme?.glow_intensity ?? 0;
+
       if (this.isHighlighted || a1.isHighlighted || a1.parent.isHighlighted) {
-        drawPath(lw * 1.4, 'rgba(255, 255, 0, 0.7)'); // Segment highlight
+        drawPath(lw * 1.4 * outlineWeight, 'rgba(255, 255, 0, 0.7)'); // Segment highlight
       }
-      drawPath(lw * 1.1, shadow); // Thin border
+
+      if (glow > 0) {
+        ctx.save();
+        ctx.shadowBlur = glow / this.cc.zoom;
+        ctx.shadowColor = color;
+        drawPath(lw * outlineWeight, shadow); // Glowing border
+        ctx.restore();
+      } else {
+        drawPath(lw * outlineWeight, shadow); // Regular border
+      }
+
       drawPath(lw * 1.0, color); // Flat body
       drawPath(lw * 0.4, 'rgba(255,255,255,0.15)'); // Very subtle center highlight
     }
@@ -751,20 +773,33 @@ export class Atom extends MolElement {
     ctx.beginPath();
     ctx.arc(this.x, this.y, zz, 0, 2 * Math.PI, false);
 
-    // Subtle dark rim for better edge definition
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 0.5 / this.cc.zoom;
-    ctx.stroke();
+    // Theme-aware edge definition and glow
+    const outlineWeight = this.cc.colorScheme?.outline_weight ?? 1.1;
+    const glow = this.cc.colorScheme?.glow_intensity ?? 0;
+
+    if (glow > 0) {
+      ctx.save();
+      ctx.shadowBlur = glow / this.cc.zoom;
+      ctx.shadowColor = fill;
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = (0.8 * outlineWeight) / this.cc.zoom;
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = (0.5 * outlineWeight) / this.cc.zoom;
+      ctx.stroke();
+    }
 
     ctx.fillStyle = fill;
     ctx.fill();
 
-    // 3D highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    // Graphic 3D highlight (Digital Illustrator style)
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.beginPath();
     ctx.arc(
-      this.x - zz * 0.3,
-      this.y - zz * 0.3,
+      this.x - zz * 0.35,
+      this.y - zz * 0.35,
       zz * 0.3,
       0,
       2 * Math.PI,
