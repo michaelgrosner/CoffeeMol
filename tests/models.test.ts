@@ -7,7 +7,7 @@ import {
   atomAtomDistance,
   Selector,
 } from '../src/models';
-import { defaultColorScheme } from '../src/types';
+import { defaultColorScheme } from '../src/schemes';
 
 describe('Models', () => {
   it('should calculate distance between atoms', () => {

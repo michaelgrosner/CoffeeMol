@@ -6,9 +6,8 @@ import {
   ParsedStructure,
   DrawMethod,
   ColorScheme,
-  defaultColorScheme,
-  colorSchemes,
 } from './types';
+import { defaultColorScheme, colorSchemes } from './schemes';
 import {
   arrayToRGB,
   defaultInfo,

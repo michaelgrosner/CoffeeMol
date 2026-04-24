@@ -66,6 +66,10 @@ declare module "src/types" {
     export const supported_draw_methods: DrawMethod[];
     export const selector_delimiter = "/";
     export const atom_colors: Record<string, RGB>;
+    export const atom_radii: Record<string, number>;
+}
+declare module "src/schemes" {
+    import { ColorScheme } from "src/types";
     export const defaultColorScheme: ColorScheme;
     export const highContrastScheme: ColorScheme;
     export const nordScheme: ColorScheme;
@@ -80,7 +84,6 @@ declare module "src/types" {
     export const neonScheme: ColorScheme;
     export const molokaiScheme: ColorScheme;
     export const colorSchemes: Record<string, ColorScheme>;
-    export const atom_radii: Record<string, number>;
 }
 declare module "src/utils" {
     import { RGB, DrawMethod, AtomInfo } from "src/types";
@@ -225,6 +228,7 @@ declare module "src/parser" {
 }
 declare module "src/coffeemol" {
     import { AtomInfo, StructureLoadInfo, ParsedStructure, DrawMethod, ColorScheme } from "src/types";
+    import { colorSchemes } from "src/schemes";
     import { Structure, Atom, Bond, Selector } from "src/models";
     export class CanvasContext {
         static colorSchemes: Record<string, ColorScheme>;
