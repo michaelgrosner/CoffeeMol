@@ -60,6 +60,7 @@ export class CanvasContext {
   measureEndAtom: Atom | null;
   isDarkBackground: boolean;
   colorScheme: ColorScheme;
+  private _pendingRaf: number | null = null;
 
   constructor(
     canvas_target: string | HTMLCanvasElement,
@@ -350,6 +351,22 @@ export class CanvasContext {
   // ---- Drawing ----
 
   drawAll(): void {
+    if (this._pendingRaf !== null) return;
+    // Sentinel prevents re-entry; works correctly even when RAF fires synchronously
+    // (e.g. in Node test environments where requestAnimationFrame is not available).
+    this._pendingRaf = -1;
+
+    const schedule = typeof requestAnimationFrame !== 'undefined'
+      ? requestAnimationFrame
+      : (cb: (ts: number) => void) => { cb(0); return 0; };
+
+    schedule(() => {
+      this._pendingRaf = null;
+      this._doRender();
+    });
+  }
+
+  private _doRender(): void {
     const options: RenderOptions = {
       zoom: this.zoom,
       x_origin: this.x_origin,

@@ -6,7 +6,7 @@ import { hexToRGBArray, arrayToRGB } from '../utils';
 export class Canvas2DRenderer implements Renderer {
   private canvas!: HTMLCanvasElement;
   private context!: CanvasRenderingContext2D;
-  private grid: Record<number, Record<number, Atom | null>> = {};
+  private grid: Map<number, Atom> = new Map();
   private z_extent: number = 1;
 
   init(canvas: HTMLCanvasElement): void {
@@ -142,17 +142,11 @@ export class Canvas2DRenderer implements Renderer {
   }
 
   private drawLines(el: Structure, options: RenderOptions): void {
-    // Need to collect ALL bonds in the structure
-    const allBonds: Bond[] = [];
-    const collect = (m: any) => {
-      if (m.bonds) allBonds.push(...m.bonds);
-      if (m.children) {
-        for (const c of m.children) collect(c);
-      }
-    };
-    collect(el);
-
-    allBonds.sort(sortBondsByZ);
+    // Structure.bonds contains all bonds (intra-residue, inter-residue, inter-chain).
+    // Using it directly avoids recursive collection that would triple-count intra-residue
+    // bonds (once at Structure, Chain, and Residue levels).
+    if (el.bonds.length === 0) return;
+    const allBonds = el.bonds.slice().sort(sortBondsByZ);
     const ctx = this.context;
     ctx.lineCap = 'round';
 
@@ -167,40 +161,23 @@ export class Canvas2DRenderer implements Renderer {
       const isCartoon = b.a1.info.drawMethod === 'cartoon' || b.a2.info.drawMethod === 'cartoon';
       const colorType = isTube || isCartoon ? 'chain' : 'cpk';
 
-      let width = 0.15;
+      let lw = 0.15;
       if (isTube) {
-        width = b.a1.parent.ss === 'helix' ? 0.8 : b.a1.parent.ss === 'sheet' ? 0.6 : 0.4;
+        lw = b.a1.parent.ss === 'helix' ? 0.8 : b.a1.parent.ss === 'sheet' ? 0.6 : 0.4;
       }
-      const lw = width;
 
       const color1 = this.depthShadedColorString(b.a1, options, colorType);
       const shadow1 = this.depthShadedColorString(b.a1, options, colorType, -0.4);
 
-      const passes = [
-        { width: 1.3, opacity: 1.0, color: shadow1 },
-        { width: 1.0, opacity: 1.0, color: color1 },
-        { width: 0.7, opacity: 0.2, color: 'rgba(255,255,255,0.4)' },
-        { width: 0.3, opacity: 0.5, color: 'rgba(255,255,255,0.6)' },
-      ];
-
-      for (const pass of passes) {
-        ctx.strokeStyle = pass.color;
-        ctx.lineWidth = lw * pass.width;
-        ctx.beginPath();
-        ctx.moveTo(b.a1.x, b.a1.y);
-        ctx.lineTo(midX, midY);
-        ctx.stroke();
-      }
-
-      const color2 = this.depthShadedColorString(b.a2, options, colorType);
-      const shadow2 = this.depthShadedColorString(b.a2, options, colorType, -0.4);
-
-      const passes2 = [
-        { width: 1.3, opacity: 1.0, color: shadow2 },
-        { width: 1.0, opacity: 1.0, color: color2 },
-        { width: 0.7, opacity: 0.2, color: 'rgba(255,255,255,0.4)' },
-        { width: 0.3, opacity: 0.5, color: 'rgba(255,255,255,0.6)' },
-      ];
+      // First half: a1 → midpoint (inlined to avoid per-bond array allocation)
+      ctx.strokeStyle = shadow1; ctx.lineWidth = lw * 1.3;
+      ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+      ctx.strokeStyle = color1; ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = lw * 0.7;
+      ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = lw * 0.3;
+      ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
 
       const isHighlighted = el.isHighlighted || b.a1.isHighlighted || b.a1.parent.isHighlighted || b.a2.isHighlighted || b.a2.parent.isHighlighted;
       if (isHighlighted) {
@@ -212,14 +189,18 @@ export class Canvas2DRenderer implements Renderer {
         ctx.stroke();
       }
 
-      for (const pass of passes2) {
-        ctx.strokeStyle = pass.color;
-        ctx.lineWidth = lw * pass.width;
-        ctx.beginPath();
-        ctx.moveTo(b.a2.x, b.a2.y);
-        ctx.lineTo(midX, midY);
-        ctx.stroke();
-      }
+      const color2 = this.depthShadedColorString(b.a2, options, colorType);
+      const shadow2 = this.depthShadedColorString(b.a2, options, colorType, -0.4);
+
+      // Second half: a2 → midpoint
+      ctx.strokeStyle = shadow2; ctx.lineWidth = lw * 1.3;
+      ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+      ctx.strokeStyle = color2; ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = lw * 0.7;
+      ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = lw * 0.3;
+      ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
     }
   }
 
@@ -509,55 +490,50 @@ export class Canvas2DRenderer implements Renderer {
   }
 
   private determinePointGrid(elements: Structure[], options: RenderOptions): void {
-    this.grid = {};
+    this.grid.clear();
+    const { zoom, x_origin, y_origin } = options;
+
     const addToGrid = (a: Atom, x: number, y: number, z: number) => {
-      const gx = Math.round(x / 5);
-      const gy = Math.round(y / 5);
-      if (this.grid[gx] == null) this.grid[gx] = {};
-      const existing = this.grid[gx][gy];
-      if (existing == null || z > existing.z) this.grid[gx][gy] = a;
+      const key = Math.round(x / 5) * 131072 + Math.round(y / 5);
+      const existing = this.grid.get(key);
+      if (existing == null || z > existing.z) this.grid.set(key, a);
     };
 
     for (const el of elements) {
       for (const a of el.atoms) {
-        const ax = a.x * options.zoom + options.x_origin;
-        const ay = a.y * options.zoom + options.y_origin;
-        addToGrid(a, ax, ay, a.z);
+        addToGrid(a, a.x * zoom + x_origin, a.y * zoom + y_origin, a.z);
       }
 
-      const allBonds: Bond[] = [];
-      const collect = (m: any) => {
-        allBonds.push(...m.bonds);
-        for (const c of m.children) collect(c);
-      };
-      collect(el);
+      // Structure.bonds contains all bonds; no recursive traversal needed.
+      for (const b of el.bonds) {
+        const x1 = b.a1.x * zoom + x_origin;
+        const y1 = b.a1.y * zoom + y_origin;
+        const x2 = b.a2.x * zoom + x_origin;
+        const y2 = b.a2.y * zoom + y_origin;
 
-      for (const b of allBonds) {
-        const x1 = b.a1.x * options.zoom + options.x_origin;
-        const y1 = b.a1.y * options.zoom + options.y_origin;
-        const x2 = b.a2.x * options.zoom + options.x_origin;
-        const y2 = b.a2.y * options.zoom + options.y_origin;
-
-        const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        // Hoist loop-invariant quantities outside the step loop.
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
         const steps = Math.ceil(dist / 2);
+        if (steps < 2) continue;
+
+        // nx/ny are the bond's screen-space normal — constant per bond.
+        const nx = dist > 0 ? -dy / dist : 0;
+        const ny = dist > 0 ?  dx / dist : 0;
+        const zDelta = b.a2.z - b.a1.z;
+
         for (let i = 1; i < steps; i++) {
           const t = i / steps;
-          const px = x1 + (x2 - x1) * t;
-          const py = y1 + (y2 - y1) * t;
-          const pz = b.a1.z + (b.a2.z - b.a1.z) * t;
+          const px = x1 + dx * t;
+          const py = y1 + dy * t;
+          const pz = b.a1.z + zDelta * t;
           const atom = t < 0.5 ? b.a1 : b.a2;
-          addToGrid(atom, px, py, pz);
-
-          const dx = x2 - x1;
-          const dy = y2 - y1;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 0) {
-            const nx = -dy / len;
-            const ny = dx / len;
-            for (const offset of [-10, -5, 5, 10]) {
-              addToGrid(atom, px + nx * offset, py + ny * offset, pz);
-            }
-          }
+          addToGrid(atom, px,           py,           pz);
+          addToGrid(atom, px - nx * 10, py - ny * 10, pz);
+          addToGrid(atom, px - nx * 5,  py - ny * 5,  pz);
+          addToGrid(atom, px + nx * 5,  py + ny * 5,  pz);
+          addToGrid(atom, px + nx * 10, py + ny * 10, pz);
         }
       }
     }
@@ -572,7 +548,7 @@ export class Canvas2DRenderer implements Renderer {
 
     for (let ix = gx - 1; ix <= gx + 1; ix++) {
       for (let iy = gy - 1; iy <= gy + 1; iy++) {
-        const a = this.grid[ix]?.[iy];
+        const a = this.grid.get(ix * 131072 + iy);
         if (a) {
           const ax = a.x * zoom + x_origin;
           const ay = a.y * zoom + y_origin;
@@ -599,7 +575,7 @@ export class Canvas2DRenderer implements Renderer {
   }
 
   clear(): void {
-    this.grid = {};
+    this.grid.clear();
   }
 
   dispose(): void {}

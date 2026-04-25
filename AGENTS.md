@@ -1,31 +1,14 @@
 # CoffeeMol Project Context
 
 ## Project Overview
-**CoffeeMol** is a high-performance, embeddable molecular visualizer written in TypeScript. It renders PDB and mmCIF files on an HTML5 `<canvas>` element using 2D drawing APIs, achieving a "3D" look through a custom volumetric multi-pass shading engine. It has **no runtime dependencies** and does **not** require WebGL.
-
-### Key Features
-- **File Support**: Parses `.pdb`, `.cif`, and `.mmcif` formats.
-- **Rendering Modes**: `ribbon`, `tube`, `cartoon`, `points`, `lines`, and `both` (points+lines).
-- **Secondary Structure**: Automatic detection of helices, sheets, and loops from input files.
-- **Interactive Tools**: Built-in distance measurement, rotation, and zoom support (including mobile touch/pinch).
-- **Custom Shading**: Depth-based contrast and volumetric highlights for a 3D effect in 2D.
+**CoffeeMol** is a high-performance, embeddable molecular visualizer written in TypeScript. It renders PDB and mmCIF files on an HTML5 `<canvas>` element using either a custom 2D multi-pass shading engine or a Three.js (WebGL) renderer. Both renderers share the same `Renderer` interface and are selectable at runtime. Three.js (`three`) is a runtime dependency for the 3D renderer path.
 
 ## Core Technologies
 - **Language**: TypeScript
 - **Bundler**: `esbuild` (minifies to a single `CoffeeMol.js` file)
 - **Testing**: `vitest`
-- **Platform**: Web (HTML5 Canvas 2D API)
-
-## Project Structure
-- `src/`: Core source code.
-  - `coffeemol.ts`: Main entry point; contains the `CanvasContext` class.
-  - `models.ts`: Structural hierarchy classes (`Structure`, `Chain`, `Residue`, `Atom`, `Bond`).
-  - `parser.ts`: PDB and mmCIF parsing logic.
-  - `types.ts`: Shared TypeScript interfaces and constant definitions (colors, radii).
-  - `utils.ts`: Mathematical helpers (rotations) and UI utilities.
-- `tests/`: Comprehensive test suite using Vitest.
-- `traces/`: Contains performance traces and output screenshots.
-- `index.html`, `index.css`: Demonstration and local development page.
+- **Platform**: Web (HTML5 Canvas 2D API or WebGL via Three.js)
+- **Runtime dependency**: `three` (^0.184.0) — used by `ThreeRenderer` only
 
 ## Building and Running
 - **Installation**: `npm install`
@@ -46,26 +29,22 @@ Releases are automated via GitHub Actions (`.github/workflows/release.yml`). To 
 3. **Push Tag**: `git push origin vX.Y.Z`.
 4. **Automated Assets**: The workflow will build the project and attach `CoffeeMol.js`, `CoffeeMol.d.ts`, and `CoffeeMol.js.map` to the GitHub Release.
 
-## Development Conventions
-- **Rendering Logic**:
-  - Uses Z-sorting for correct transparency and occlusion.
-  - Multi-pass rendering is used for "volumetric" effects (shadow/outline, main body, soft highlight, sharp shine).
-- **Structural Hierarchy**:
-  - `CanvasContext` manages one or more `Structure` elements.
-  - `Structure` contains `Chain` elements.
-  - `Chain` contains `Residue` elements.
-  - `Residue` contains `Atom` elements.
-- **Color Schemes**:
-  - **CPK**: Element-based (defined in `types.ts`).
-  - **SS**: Secondary Structure-based (Helix: Magenta, Sheet: Yellow, Loop: Gray).
-  - **Chain**: Distinct colors for different chains.
-- **Selection System**: Uses a hierarchical `Selector` string (e.g., `structureIndex/chainIndex/residueIndex/atomIndex`).
+## Performance Philosophy
 
-## Key Symbols
-- `CanvasContext`: The main API class. Initialize via `CoffeeMol.create(target)`.
-- `parsePDB`, `parseMmCIF`: Core parsing functions in `parser.ts`.
-- `MolElement`: Abstract base class for all structural units in `models.ts`.
-- `Atom.depthShadedColorString()`: Handles the depth-aware color calculation for the 3D effect.
+Must remain interactive with large structures (e.g. 8WLU — a ribosome-associated complex with tens of thousands of atoms) at smooth frame rates. When something feels slow, profile it.
+
+### Render Loop
+- `drawAll()` must be coalesced through `requestAnimationFrame`. Without RAF gating, a fast render path floods the GPU with hundreds of command buffers per second during interaction, causing multi-hundred-millisecond GPU stalls even when CPU utilization looks low.
+- Any number of `drawAll()` calls within a single animation frame must collapse to one actual render.
+
+### Allocation and GC
+- Avoid per-frame heap allocations in hot paths. GC pauses manifest as frame drops; watch the GC category in Chrome DevTools performance traces.
+
+### Profiling Guidance
+- Use Chrome DevTools performance recording with CPU profiling enabled. Capture traces during active interaction (rotation + zoom on a large structure).
+- Compare **non-idle CPU sample %** as the primary CPU metric. Compare **GPUTask average duration** and **p95 duration** as the primary GPU metric. A reduction in CPU% accompanied by a rise in GPU p95 means the CPU bottleneck was masking a GPU problem — add throttling, not more CPU work.
+- Traces are stored in `traces/`. Use the `.json.gz` format for sharing.
+- Watch for bimodal GPU task distributions (many tiny tasks + a few huge ones): this is the signature of GPU command buffer overflow caused by unthrottled rendering.
 
 ## Source Control
 - NEVER commit without explicit permission
