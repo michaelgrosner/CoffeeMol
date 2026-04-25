@@ -36,6 +36,7 @@ declare module "src/types" {
         y: number;
         z: number;
         tempFactor: number;
+        isHetatm: boolean;
     }
     export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';
     export interface SecondaryStructureRange {
@@ -109,7 +110,7 @@ declare module "src/utils" {
     };
 }
 declare module "src/models" {
-    import { RGB, AtomInfo, ColorMethod, SecondaryStructureType } from "src/types";
+    import { RGB, AtomInfo, SecondaryStructureType } from "src/types";
     export function sortBondsByZ(b1: Bond, b2: Bond): number;
     export function sortByZ(a1: Atom, a2: Atom): number;
     export function atomAtomDistance(a1: Atom, a2: Atom): number;
@@ -143,7 +144,6 @@ declare module "src/models" {
         isHighlighted: boolean;
         constructor(parent: MolElement | null, name: string, cc?: any);
         abstract toString(): string;
-        abstract drawHighlight(): void;
         constructorName(): string;
         setHighlighted(val: boolean): void;
         /**
@@ -157,10 +157,6 @@ declare module "src/models" {
         stashInfo(): void;
         retrieveStashedInfo(): void;
         getOfType<T extends MolElement>(type: new (...args: any[]) => T): T[];
-        draw(): void;
-        drawLines(): void;
-        drawRibbons(): void;
-        drawPoints(): void;
         rotateAboutZ(theta: number): void;
         rotateAboutY(theta: number): void;
         rotateAboutX(theta: number): void;
@@ -174,7 +170,6 @@ declare module "src/models" {
         parent: null;
         constructor(name: string, cc: any);
         toString(): string;
-        drawHighlight(): void;
         attachTitle(title: string): void;
     }
     export class Chain extends MolElement {
@@ -183,15 +178,14 @@ declare module "src/models" {
         constructor(parent: Structure, name: string);
         onAddedToParent(): void;
         toString(): string;
-        drawHighlight(): void;
     }
     export class Residue extends MolElement {
         resid: number;
         ss: SecondaryStructureType;
+        isHetatm: boolean;
         parent: Chain;
         constructor(parent: Chain, name: string, id: number);
         toString(): string;
-        drawHighlight(): void;
         isDNA(): boolean;
         isProtein(): boolean;
         typeName(): string;
@@ -201,19 +195,17 @@ declare module "src/models" {
         y: number;
         z: number;
         tempFactor: number;
+        isHetatm: boolean;
         original_atom_name: string;
         original_position: [number, number, number];
         parent: Residue;
-        constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string, tempFactor?: number);
+        constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string, tempFactor?: number, isHetatm?: boolean);
         toString(): string;
         cpkColor(): RGB;
         ssColor(): RGB;
         chainColor(): RGB;
         bFactorColor(): RGB;
         hydrophobicityColor(): RGB;
-        depthShadedColorString(colorType?: ColorMethod, brightnessOffset?: number): string;
-        drawPoint(): void;
-        drawHighlight(): void;
         applyRotationY(sin: number, cos: number): void;
         applyRotationX(sin: number, cos: number): void;
         applyRotationZ(sin: number, cos: number): void;
@@ -226,19 +218,103 @@ declare module "src/parser" {
     export function parsePDB(data: string): ParsedStructure;
     export function parseMmCIF(data: string): ParsedStructure;
 }
+declare module "src/renderers/renderer" {
+    import { Structure, Atom, Bond } from "src/models";
+    import { ColorScheme } from "src/types";
+    export interface Renderer {
+        init(canvas: HTMLCanvasElement): void;
+        render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
+        resize(width: number, height: number): void;
+        setBackgroundColor(color: string): void;
+        getAtomAt(x: number, y: number, zoom: number, x_origin: number, y_origin: number): Atom | null;
+        clear(): void;
+        dispose(): void;
+    }
+    export interface RenderOptions {
+        zoom: number;
+        x_origin: number;
+        y_origin: number;
+        colorScheme: ColorScheme;
+        isDarkBackground: boolean;
+        highlightedAtom: Atom | null;
+        measureStartAtom: Atom | null;
+        measureEndAtom: Atom | null;
+        mouseX: number;
+        mouseY: number;
+    }
+}
+declare module "src/renderers/canvas2d" {
+    import { Structure, Atom, Bond } from "src/models";
+    import { Renderer, RenderOptions } from "src/renderers/renderer";
+    export class Canvas2DRenderer implements Renderer {
+        private canvas;
+        private context;
+        private grid;
+        private z_extent;
+        init(canvas: HTMLCanvasElement): void;
+        render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
+        private clearCanvas;
+        private drawGridLines;
+        private drawVignette;
+        private drawStructure;
+        private drawLines;
+        private drawRibbons;
+        private drawPoints;
+        private drawAtomPoint;
+        private drawAtomHighlight;
+        private depthShadedColorString;
+        private drawMeasureLine;
+        private computeZExtent;
+        private determinePointGrid;
+        getAtomAt(x: number, y: number, zoom: number, x_origin: number, y_origin: number): Atom | null;
+        resize(width: number, height: number): void;
+        setBackgroundColor(color: string): void;
+        clear(): void;
+        dispose(): void;
+    }
+}
+declare module "src/renderers/threejs" {
+    import { Structure, Atom, Bond } from "src/models";
+    import { Renderer, RenderOptions } from "src/renderers/renderer";
+    export class ThreeRenderer implements Renderer {
+        private canvas;
+        private scene;
+        private camera;
+        private renderer;
+        private raycaster;
+        private atomsGroup;
+        private bondsGroup;
+        private ribbonsGroup;
+        private lightsGroup;
+        private instancedAtomsList;
+        init(canvas: HTMLCanvasElement): void;
+        private setupLights;
+        render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
+        private updateScene;
+        private renderBonds;
+        private renderInstancedBonds;
+        private buildAdvancedRibbon;
+        resize(width: number, height: number): void;
+        setBackgroundColor(color: string): void;
+        getAtomAt(x: number, y: number, zoom: number, x_origin: number, y_origin: number): Atom | null;
+        clear(): void;
+        dispose(): void;
+    }
+}
 declare module "src/coffeemol" {
     import { AtomInfo, StructureLoadInfo, ParsedStructure, DrawMethod, ColorScheme } from "src/types";
-    import { colorSchemes } from "src/schemes";
     import { Structure, Atom, Bond, Selector } from "src/models";
+    import { Renderer } from "src/renderers/renderer";
+    export type RendererType = '2d' | '3d';
     export class CanvasContext {
         static colorSchemes: Record<string, ColorScheme>;
         canvas_target: string | HTMLCanvasElement;
         background_color: string;
         elements: Structure[];
         bonds: Bond[];
-        grid: Record<number, Record<number, Atom | null>>;
         canvas: HTMLCanvasElement;
-        context: CanvasRenderingContext2D;
+        renderer: Renderer;
+        rendererType: RendererType;
         zoom: number;
         zoom_prev: number;
         x_origin: number;
@@ -259,7 +335,9 @@ declare module "src/coffeemol" {
         measureEndAtom: Atom | null;
         isDarkBackground: boolean;
         colorScheme: ColorScheme;
-        constructor(canvas_target: string | HTMLCanvasElement, background_color?: string);
+        constructor(canvas_target: string | HTMLCanvasElement, background_color?: string, rendererType?: RendererType);
+        private attachListeners;
+        setRenderer(type: RendererType): void;
         init(): void;
         addElement(el: Structure): void;
         loadNewStructure(filepath: string, info?: StructureLoadInfo | AtomInfo | null): void;
@@ -269,12 +347,8 @@ declare module "src/coffeemol" {
         loadFromDict(structuresToLoad: Record<string, StructureLoadInfo>): void;
         drawAll(): void;
         findBestZoom(): void;
-        drawGridLines(): void;
         changeAllDrawMethods(method: DrawMethod): void;
         resize(width?: number, height?: number): void;
-        /**
-         * Opt-in to automatic resizing based on the window size.
-         */
         autoResize(): CanvasContext;
         clearCanvas(): void;
         private checkIsDark;
@@ -283,7 +357,6 @@ declare module "src/coffeemol" {
         getAtomAt(clientX: number, clientY: number): Atom | null;
         handleContextMenu(e: MouseEvent): void;
         handleClick(e: MouseEvent): void;
-        drawMeasureLine(): void;
         mousedown(e: MouseEvent): void;
         touchstart(e: TouchEvent): void;
         mouseup(_e: MouseEvent): void;
@@ -299,38 +372,21 @@ declare module "src/coffeemol" {
         avgCenterOfAllElements(): [number, number, number];
         timedRotation(axis: string, ms: number): void;
         stopRotation(): void;
-        determinePointGrid(): void;
         showAtomInfo(e: MouseEvent): void;
         assignSelectors(): void;
         handleSelectorArg(s: string | Selector): Selector;
         childFromSelector(selector: string | Selector): any;
         changeInfoFromSelectors(selectors: string | Selector | Array<string | Selector>, info_key: keyof AtomInfo, info_value: string): void;
         writeContextInfo(): void;
-        /**
-         * Export the current scene state as a JSON string.
-         */
         getState(): string;
-        /**
-         * Load a scene state from a JSON string or object.
-         */
         loadState(state: string | any): void;
-        /**
-         * Export the current canvas as a high-resolution image.
-         * @param scale Factor to scale the output resolution (default: 2)
-         */
         exportImage(scale?: number): string;
-        /**
-         * Apply a color scheme and redraw.
-         * @param scheme A complete or partial ColorScheme object.
-         */
         setScheme(scheme: Partial<ColorScheme>): void;
-        /**
-         * Factory method to initialize a new visualizer on a canvas.
-         */
-        static create(canvas_target: string | HTMLCanvasElement, background_color?: string): CanvasContext;
+        static create(canvas_target: string | HTMLCanvasElement, background_color?: string, rendererType?: RendererType): CanvasContext;
     }
 }
 declare module "tests/coffeemol.test" { }
+declare module "tests/hetatm.test" { }
 declare module "tests/interaction.test" { }
 declare module "tests/models.test" { }
 declare module "tests/parser.test" { }

@@ -102,6 +102,14 @@
 		</div>
 
 		<div class="control-group">
+			<label class="control-label">Renderer Engine</label>
+			<select id="mol-renderer-type" class="action-button full-width">
+				<option value="2d">Canvas</option>
+				<option value="3d">Three.js (BETA)</option>
+			</select>
+		</div>
+
+		<div class="control-group">
 			<label class="control-label">Presets</label>
 
 			<select id="settings-theme" class="action-button full-width">
@@ -183,7 +191,8 @@
 		const RCSB_WWW_BASE  = 'https://www.rcsb.org/structure';
 
 		// --- Initialization ---
-		const viewer = CoffeeMol.create("#coffeemolCanvas").autoResize();
+		const initialRenderer = localStorage.getItem('coffeemol_renderer_type') || '2d';
+		const viewer = CoffeeMol.create("#coffeemolCanvas", null, initialRenderer).autoResize();
 		viewer.resize(); // Initial resize to fill screen
 
 		// --- Service Worker ---
@@ -206,6 +215,7 @@
 
 		// --- Persistence ---
 		const STORAGE_KEYS = {
+			RENDERER: 'coffeemol_renderer_type',
 			METHOD: 'coffeemol_draw_method',
 			COLOR: 'coffeemol_color_method',
 			COLLAPSED: 'coffeemol_meta_collapsed',
@@ -214,6 +224,11 @@
 		};
 
 		function initPersistence() {
+			const savedRenderer = localStorage.getItem(STORAGE_KEYS.RENDERER);
+			if (savedRenderer) {
+				document.getElementById('mol-renderer-type').value = savedRenderer;
+			}
+
 			const savedMethod = localStorage.getItem(STORAGE_KEYS.METHOD);
 			if (savedMethod) {
 				document.getElementById('mol-draw-method').value = savedMethod;
@@ -245,6 +260,7 @@
 			}
 		}
 
+		function saveRenderer(val) { localStorage.setItem(STORAGE_KEYS.RENDERER, val); }
 		function saveMethod(val) { localStorage.setItem(STORAGE_KEYS.METHOD, val); }
 		function saveColor(val) { localStorage.setItem(STORAGE_KEYS.COLOR, val); }
 		function saveCollapsed(val) { localStorage.setItem(STORAGE_KEYS.COLLAPSED, val); }
@@ -407,6 +423,13 @@
 
 		document.getElementById('pdb-input').addEventListener('keydown', e => {
 			if (e.key === 'Enter') loadPdb(e.target.value);
+		});
+
+		document.getElementById('mol-renderer-type').addEventListener('change', e => {
+			const val = e.target.value;
+			viewer.setRenderer(val);
+			viewer.drawAll();
+			saveRenderer(val);
 		});
 
 		document.getElementById('mol-draw-method').addEventListener('change', e => {

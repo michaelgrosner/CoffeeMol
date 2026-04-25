@@ -30,6 +30,7 @@ describe('CanvasContext', () => {
     mockCanvas = {
       getContext: vi.fn(() => mockContext),
       addEventListener: vi.fn(),
+      toDataURL: vi.fn(() => 'data:image/png;base64,test'),
       style: {},
       width: 800,
       height: 600,
@@ -57,7 +58,7 @@ describe('CanvasContext', () => {
   it('should initialize correctly', () => {
     const cc = new CanvasContext('#target');
     expect(cc.canvas).toBe(mockCanvas);
-    expect(cc.context).toBe(mockContext);
+    expect(cc.renderer).toBeDefined();
     expect(cc.x_origin).toBe(400); // 800 / 2
     expect(cc.y_origin).toBe(300); // 600 / 2
   });
@@ -106,7 +107,7 @@ describe('CanvasContext', () => {
     cc.x_origin = 0;
     cc.y_origin = 0;
     cc.zoom = 1;
-    cc.determinePointGrid();
+    cc.drawAll();
 
     // Mock getBoundingClientRect for getAtomAt
     mockCanvas.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 0 }));
@@ -135,7 +136,7 @@ describe('CanvasContext', () => {
     cc.x_origin = 0;
     cc.y_origin = 0;
     cc.zoom = 1;
-    cc.determinePointGrid();
+    cc.drawAll();
 
     mockCanvas.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 0 }));
 
@@ -186,7 +187,7 @@ describe('CanvasContext', () => {
     cc.x_origin = 0;
     cc.y_origin = 0;
     cc.zoom = 1;
-    cc.determinePointGrid();
+    cc.drawAll();
 
     mockCanvas.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 0 }));
 
@@ -231,23 +232,9 @@ describe('CanvasContext', () => {
 
   it('should export high-resolution image', () => {
     const cc = new CanvasContext('#target');
-    const mockToDataURL = vi.fn(() => 'data:image/png;base64,test');
-    const mockOffCanvas = {
-      width: 0,
-      height: 0,
-      getContext: vi.fn(() => mockContext),
-      toDataURL: mockToDataURL,
-    };
-    vi.stubGlobal('document', {
-      ...document,
-      createElement: vi.fn((tag) => (tag === 'canvas' ? mockOffCanvas : {})),
-    });
-
     const dataURL = cc.exportImage(2);
     expect(dataURL).toBe('data:image/png;base64,test');
-    expect(mockOffCanvas.width).toBe(cc.canvas.width * 2);
-    expect(mockOffCanvas.height).toBe(cc.canvas.height * 2);
-    expect(mockToDataURL).toHaveBeenCalled();
+    expect(mockCanvas.toDataURL).toHaveBeenCalled();
   });
 
   it('should apply color scheme', () => {

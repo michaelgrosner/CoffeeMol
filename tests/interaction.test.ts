@@ -13,11 +13,24 @@ describe('Interaction Picking', () => {
       restore: vi.fn(),
       translate: vi.fn(),
       scale: vi.fn(),
+      setTransform: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      fill: vi.fn(),
+      arc: vi.fn(),
+      setLineDash: vi.fn(),
+      createRadialGradient: vi.fn(() => ({
+        addColorStop: vi.fn(),
+      })),
+      fillRect: vi.fn(),
     };
 
     mockCanvas = {
       getContext: vi.fn(() => mockContext),
       addEventListener: vi.fn(),
+      toDataURL: vi.fn(() => 'data:image/png;base64,test'),
       style: {},
       width: 800,
       height: 600,
@@ -61,7 +74,7 @@ describe('Interaction Picking', () => {
     cc.zoom = 1.0;
     cc.x_origin = 400; // Center of 800
     cc.y_origin = 300; // Center of 600
-    cc.determinePointGrid();
+    cc.drawAll();
 
     // The atom should be at viewport (100 + 400, 100 + 300) = (500, 400)
     // because canvas left=100, top=100 and x_origin=400, y_origin=300
