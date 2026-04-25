@@ -23,6 +23,11 @@ import {
   atomAtomDistance,
 } from './models';
 import { parsePDB, parseMmCIF } from './parser';
+import { Renderer, RenderOptions } from './renderers/renderer';
+import { Canvas2DRenderer } from './renderers/canvas2d';
+import { ThreeRenderer } from './renderers/threejs';
+
+export type RendererType = '2d' | '3d';
 
 export class CanvasContext {
   static colorSchemes = colorSchemes;
@@ -30,9 +35,10 @@ export class CanvasContext {
   background_color: string;
   elements: Structure[];
   bonds: Bond[];
-  grid: Record<number, Record<number, Atom | null>>;
   canvas!: HTMLCanvasElement;
-  context!: CanvasRenderingContext2D;
+  renderer!: Renderer;
+  rendererType: RendererType;
+  
   zoom: number;
   zoom_prev: number;
   x_origin: number;
@@ -57,15 +63,16 @@ export class CanvasContext {
 
   constructor(
     canvas_target: string | HTMLCanvasElement,
-    background_color: string = '#ffffff'
+    background_color: string = '#ffffff',
+    rendererType: RendererType = '2d'
   ) {
     this.canvas_target = canvas_target;
     this.background_color = background_color;
+    this.rendererType = rendererType;
     this.isDarkBackground = this.checkIsDark(background_color);
     this.colorScheme = { ...defaultColorScheme };
     this.elements = [];
     this.bonds = [];
-    this.grid = {};
     this.zoom = 1;
     this.zoom_prev = 1;
     this.x_origin = 0;
@@ -94,7 +101,6 @@ export class CanvasContext {
       'loadFromDict',
       'drawAll',
       'findBestZoom',
-      'drawGridLines',
       'changeAllDrawMethods',
       'resize',
       'clear',
@@ -113,7 +119,6 @@ export class CanvasContext {
       'avgCenterOfAllElements',
       'timedRotation',
       'stopRotation',
-      'determinePointGrid',
       'showAtomInfo',
       'assignSelectors',
       'handleSelectorArg',
@@ -133,12 +138,19 @@ export class CanvasContext {
       } else {
         this.canvas = this.canvas_target;
       }
-      this.context = this.canvas.getContext('2d')!;
+      this.attachListeners();
+      this.setRenderer(rendererType);
     } catch (error) {
       alert(`Failed to initialize CoffeeMol: ${error}`);
       throw error;
     }
 
+    // Initial origins
+    this.x_origin = this.canvas.width / 2;
+    this.y_origin = this.canvas.height / 2;
+  }
+
+  private attachListeners(): void {
     this.canvas.style.userSelect = 'none';
     (this.canvas.style as any).MozUserSelect = 'none';
     (this.canvas.style as any).webkitUserSelect = 'none';
@@ -157,10 +169,41 @@ export class CanvasContext {
     this.canvas.addEventListener('mousemove', this.showAtomInfo);
     this.canvas.addEventListener('contextmenu', this.handleContextMenu);
     this.canvas.addEventListener('click', this.handleClick);
+  }
 
-    // Initial origins
-    this.x_origin = this.canvas.width / 2;
-    this.y_origin = this.canvas.height / 2;
+  setRenderer(type: RendererType): void {
+    if (this.renderer) {
+      this.renderer.dispose();
+      
+      // A canvas can only have one type of context (2d or webgl) for its lifetime.
+      // We must replace the canvas element to switch context types.
+      const newCanvas = document.createElement('canvas');
+      
+      // Copy attributes and styles
+      if (this.canvas.id) newCanvas.id = this.canvas.id;
+      if (this.canvas.className) newCanvas.className = this.canvas.className;
+      newCanvas.style.cssText = this.canvas.style.cssText;
+      
+      const clientWidth = this.canvas.clientWidth;
+      const clientHeight = this.canvas.clientHeight;
+      newCanvas.width = clientWidth;
+      newCanvas.height = clientHeight;
+      
+      this.x_origin = clientWidth / 2;
+      this.y_origin = clientHeight / 2;
+      
+      if (this.canvas.parentNode) {
+        this.canvas.parentNode.replaceChild(newCanvas, this.canvas);
+      }
+      
+      this.canvas = newCanvas;
+      this.attachListeners();
+    }
+
+    this.rendererType = type;
+    this.renderer = type === '3d' ? new ThreeRenderer() : new Canvas2DRenderer();
+    this.renderer.init(this.canvas);
+    this.renderer.setBackgroundColor(this.background_color);
   }
 
   // ---- Loading ----
@@ -171,7 +214,6 @@ export class CanvasContext {
     this.assignSelectors();
     this.restoreToOriginal();
     this.computeZExtent();
-    this.determinePointGrid();
     this.writeContextInfo();
   }
 
@@ -185,7 +227,6 @@ export class CanvasContext {
   ): void {
     this.elements = [];
     this.bonds = [];
-    this.grid = {};
     this.addNewStructure(filepath, info);
   }
 
@@ -309,14 +350,19 @@ export class CanvasContext {
   // ---- Drawing ----
 
   drawAll(): void {
-    this.clearCanvas();
-    this.context.save();
-    this.context.translate(this.x_origin, this.y_origin);
-    this.context.scale(this.zoom, this.zoom);
+    const options: RenderOptions = {
+      zoom: this.zoom,
+      x_origin: this.x_origin,
+      y_origin: this.y_origin,
+      colorScheme: this.colorScheme,
+      isDarkBackground: this.isDarkBackground,
+      highlightedAtom: this.a_prev,
+      measureStartAtom: this.measureStartAtom,
+      measureEndAtom: this.measureEndAtom,
+      mouseX: this.mouseX,
+      mouseY: this.mouseY
+    };
 
-    this.drawGridLines();
-
-    // Clear all highlights
     for (const el of this.elements) {
       const clear = (m: any) => {
         m.isHighlighted = false;
@@ -325,40 +371,16 @@ export class CanvasContext {
       clear(el);
     }
 
-    // Set active highlight
     if (this.a_prev) {
-      const isPointsMode = ['points', 'both'].includes(
-        this.a_prev.info.drawMethod
-      );
+      const isPointsMode = ['points', 'both'].includes(this.a_prev.info.drawMethod);
       if (isPointsMode) {
         this.a_prev.isHighlighted = true;
       } else {
-        this.a_prev.parent.isHighlighted = true; // Highlight residue
+        this.a_prev.parent.isHighlighted = true;
       }
     }
 
-    for (const el of this.elements) el.draw();
-    this.drawMeasureLine();
-    this.context.restore();
-
-    // Draw vignette
-    if (this.isDarkBackground) {
-      const ctx = this.context;
-      const w = this.canvas.width;
-      const h = this.canvas.height;
-      const vGradient = ctx.createRadialGradient(
-        w / 2,
-        h / 2,
-        Math.min(w, h) * 0.2,
-        w / 2,
-        h / 2,
-        Math.max(w, h) * 0.9
-      );
-      vGradient.addColorStop(0, 'rgba(0,0,0,0)');
-      vGradient.addColorStop(1, 'rgba(0,0,0,0.5)');
-      ctx.fillStyle = vGradient;
-      ctx.fillRect(0, 0, w, h);
-    }
+    this.renderer.render(this.elements, this.bonds, options);
   }
 
   findBestZoom(): void {
@@ -377,142 +399,55 @@ export class CanvasContext {
     this.zoom_prev = this.zoom;
   }
 
-  drawGridLines(): void {
-    const ctx = this.context;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-
-    ctx.save();
-    // Grid stays in screen space, or moves slightly with origin
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    const isNeon = (this.colorScheme.glow_intensity ?? 0) > 10;
-    const isIllustrator = (this.colorScheme.outline_weight ?? 1) > 1.3;
-
-    if (isNeon) {
-      // Cyberpunk grid
-      ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
-      const spacing = 40;
-      for (let x = this.x_origin % spacing; x < w; x += spacing) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = this.y_origin % spacing; y < h; y += spacing) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-    } else if (isIllustrator) {
-      // Subtle technical blueprint grid
-      ctx.strokeStyle = this.isDarkBackground
-        ? 'rgba(255, 255, 255, 0.03)'
-        : 'rgba(0, 0, 0, 0.03)';
-      ctx.lineWidth = 0.5;
-      const spacing = 20;
-      for (let x = this.x_origin % spacing; x < w; x += spacing) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = this.y_origin % spacing; y < h; y += spacing) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-  }
-
   changeAllDrawMethods(method: DrawMethod): void {
     for (const el of this.elements) el.propogateInfo({ drawMethod: method });
-    this.clearCanvas();
+    this.renderer.clear();
     if (method !== 'points') this.findBonds();
     this.drawAll();
   }
 
   resize(width?: number, height?: number): void {
-    // Use provided width/height, or client size if it's been set by CSS,
-    // otherwise fallback to window dimensions for full-screen behavior.
-    this.canvas.width =
-      width ||
-      (this.canvas.clientWidth > 300
-        ? this.canvas.clientWidth
-        : window.innerWidth);
-    this.canvas.height =
-      height ||
-      (this.canvas.clientHeight > 150
-        ? this.canvas.clientHeight
-        : window.innerHeight);
+    const clientWidth = width || (this.canvas.clientWidth > 300 ? this.canvas.clientWidth : window.innerWidth);
+    const clientHeight = height || (this.canvas.clientHeight > 150 ? this.canvas.clientHeight : window.innerHeight);
 
-    this.x_origin = this.canvas.width / 2;
-    this.y_origin = this.canvas.height / 2;
+    this.canvas.width = clientWidth;
+    this.canvas.height = clientHeight;
 
-    this.clearCanvas();
+    this.x_origin = clientWidth / 2;
+    this.y_origin = clientHeight / 2;
+
+    this.renderer.resize(clientWidth, clientHeight);
+    
     if (this.elements.length > 0) {
       this.drawAll();
     }
   }
 
-  /**
-   * Opt-in to automatic resizing based on the window size.
-   */
   autoResize(): CanvasContext {
     window.addEventListener('resize', () => this.resize());
     return this;
   }
 
   clearCanvas(): void {
-    const ctx = this.context;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Draw cinematic radial gradient background
-    const gradient = ctx.createRadialGradient(
-      w / 2,
-      h / 2,
-      0,
-      w / 2,
-      h / 2,
-      Math.max(w, h) * 0.8
-    );
-
-    if (this.isDarkBackground) {
-      gradient.addColorStop(0, '#1a1a1a');
-      gradient.addColorStop(1, '#050505');
-    } else {
-      gradient.addColorStop(0, '#ffffff');
-      gradient.addColorStop(1, '#f0f0f0');
-    }
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, w, h);
+    this.renderer.clear();
   }
 
   private checkIsDark(color: string): boolean {
     const rgb = hexToRGBArray(color);
-    // Simple luminance check
     return rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 < 128;
   }
 
   clear(): void {
     this.elements = [];
     this.bonds = [];
-    this.grid = {};
-    this.clearCanvas();
+    this.renderer.clear();
   }
 
   setBackgroundColor(color: string): void {
     this.background_color = color;
     this.isDarkBackground = this.checkIsDark(color);
     this.canvas.style.backgroundColor = arrayToRGB(this.background_color);
+    this.renderer.setBackgroundColor(this.background_color);
     this.drawAll();
   }
 
@@ -522,32 +457,8 @@ export class CanvasContext {
     const rect = this.canvas.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-    const gx = Math.round(x / 5);
-    const gy = Math.round(y / 5);
-
-    // Search a 3x3 grid area (15x15 pixels) for the closest atom
-    let closestAtom: Atom | null = null;
-    let minSqDist = Infinity;
-
-    for (let ix = gx - 1; ix <= gx + 1; ix++) {
-      for (let iy = gy - 1; iy <= gy + 1; iy++) {
-        const a = this.grid[ix]?.[iy];
-        if (a) {
-          const ax = a.x * this.zoom + this.x_origin;
-          const ay = a.y * this.zoom + this.y_origin;
-          const sqDist = (x - ax) ** 2 + (y - ay) ** 2;
-          if (sqDist < minSqDist) {
-            minSqDist = sqDist;
-            closestAtom = a;
-          }
-        }
-      }
-    }
-
-    // Limit hit distance to ~25 pixels for ribbons
-    if (minSqDist > 625) return null;
-
-    return closestAtom;
+    
+    return this.renderer.getAtomAt(x, y, this.zoom, this.x_origin, this.y_origin);
   }
 
   handleContextMenu(e: MouseEvent): void {
@@ -584,46 +495,6 @@ export class CanvasContext {
     this.drawAll();
   }
 
-  drawMeasureLine(): void {
-    if (!this.measureStartAtom) return;
-
-    const endAtom = this.measureEndAtom || this.a_prev;
-    const targetX = endAtom ? endAtom.x : this.mouseX;
-    const targetY = endAtom ? endAtom.y : this.mouseY;
-
-    // Don't draw if target is exactly on start atom (initial state)
-    if (endAtom === this.measureStartAtom) return;
-
-    const ctx = this.context;
-    ctx.save();
-    ctx.beginPath();
-    ctx.setLineDash([5 / this.zoom, 5 / this.zoom]);
-    ctx.moveTo(this.measureStartAtom.x, this.measureStartAtom.y);
-    ctx.lineTo(targetX, targetY);
-    ctx.strokeStyle = '#ff3333';
-    ctx.lineWidth = 2 / this.zoom;
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    if (endAtom) {
-      const dist = atomAtomDistance(this.measureStartAtom, endAtom);
-      const midX = (this.measureStartAtom.x + targetX) / 2;
-      const midY = (this.measureStartAtom.y + targetY) / 2;
-
-      ctx.fillStyle = '#ff3333';
-      ctx.font = `bold ${14 / this.zoom}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 4 / this.zoom;
-      ctx.strokeText(`${dist.toFixed(2)} Å`, midX, midY);
-      ctx.fillText(`${dist.toFixed(2)} Å`, midX, midY);
-    }
-
-    ctx.restore();
-  }
-
   mousedown(e: MouseEvent): void {
     this.mouse_x_prev = e.clientX;
     this.mouse_y_prev = e.clientY;
@@ -641,7 +512,6 @@ export class CanvasContext {
     const upHandler = () => {
       document.removeEventListener('mousemove', moveHandler);
       document.removeEventListener('mouseup', upHandler);
-      this.determinePointGrid();
     };
     document.addEventListener('mousemove', moveHandler);
     document.addEventListener('mouseup', upHandler);
@@ -666,7 +536,6 @@ export class CanvasContext {
     const endHandler = () => {
       document.removeEventListener('touchmove', moveHandler);
       document.removeEventListener('touchend', endHandler);
-      this.determinePointGrid();
     };
     document.addEventListener('touchmove', moveHandler, { passive: false });
     document.addEventListener('touchend', endHandler);
@@ -687,7 +556,6 @@ export class CanvasContext {
     const endHandler = () => {
       this.canvas.removeEventListener('gesturechange', moveHandler);
       this.canvas.removeEventListener('gestureend', endHandler);
-      this.determinePointGrid();
     };
     this.canvas.addEventListener('gesturechange', moveHandler);
     this.canvas.addEventListener('gestureend', endHandler);
@@ -698,7 +566,6 @@ export class CanvasContext {
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     this.zoom *= delta;
     this.drawAll();
-    this.determinePointGrid();
   }
 
   restoreToOriginal(): void {
@@ -761,61 +628,6 @@ export class CanvasContext {
     if (this.delayID) {
       clearInterval(this.delayID);
       this.delayID = null;
-      this.determinePointGrid();
-    }
-  }
-
-  determinePointGrid(): void {
-    this.grid = {};
-    const addToGrid = (a: Atom, x: number, y: number, z: number) => {
-      const gx = Math.round(x / 5);
-      const gy = Math.round(y / 5);
-      if (this.grid[gx] == null) this.grid[gx] = {};
-      const existing = this.grid[gx][gy];
-      if (existing == null || z > existing.z) this.grid[gx][gy] = a;
-    };
-
-    for (const el of this.elements) {
-      // Add all atoms
-      for (const a of el.atoms) {
-        const ax = a.x * this.zoom + this.x_origin;
-        const ay = a.y * this.zoom + this.y_origin;
-        addToGrid(a, ax, ay, a.z);
-      }
-
-      // Add points along bonds to fill gaps for ribbons/lines
-      for (const b of el.bonds) {
-        const x1 = b.a1.x * this.zoom + this.x_origin;
-        const y1 = b.a1.y * this.zoom + this.y_origin;
-        const x2 = b.a2.x * this.zoom + this.x_origin;
-        const y2 = b.a2.y * this.zoom + this.y_origin;
-
-        const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        const steps = Math.ceil(dist / 2); // Sample every 2 pixels
-        for (let i = 1; i < steps; i++) {
-          const t = i / steps;
-          const px = x1 + (x2 - x1) * t;
-          const py = y1 + (y2 - y1) * t;
-          const pz = b.a1.z + (b.a2.z - b.a1.z) * t;
-
-          // Assign to the closer atom for better residue info
-          const atom = t < 0.5 ? b.a1 : b.a2;
-          addToGrid(atom, px, py, pz);
-
-          // Add offset points perpendicular to backbone for wide ribbons
-          const dx = x2 - x1;
-          const dy = y2 - y1;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 0) {
-            const nx = -dy / len;
-            const ny = dx / len;
-            // Widths are ~20px, so sample 5px and 10px out
-            for (const offset of [-10, -5, 5, 10]) {
-              addToGrid(atom, px + nx * offset, py + ny * offset, pz);
-            }
-          }
-        }
-      }
     }
   }
 
@@ -836,7 +648,6 @@ export class CanvasContext {
         const chain = res.parent;
         const ssInfo = res.ss !== 'loop' ? ` (${res.ss})` : '';
 
-        // Check the draw method from the atom to determine if we should show atom info
         const isPointsMode = ['points', 'both'].includes(a.info.drawMethod);
 
         let html = `Chain ${chain.name}: ${res.name} ${res.resid}${ssInfo}`;
@@ -918,7 +729,7 @@ export class CanvasContext {
         );
       }
     }
-    this.clearCanvas();
+    this.renderer.clear();
     if (last_c && last_c.info.drawMethod !== 'points') this.findBonds();
     this.drawAll();
   }
@@ -929,9 +740,6 @@ export class CanvasContext {
       el.innerHTML = this.elements.map((e) => e.writeContextInfo()).join('');
   }
 
-  /**
-   * Export the current scene state as a JSON string.
-   */
   getState(): string {
     const state = {
       zoom: this.zoom,
@@ -948,9 +756,6 @@ export class CanvasContext {
     return JSON.stringify(state);
   }
 
-  /**
-   * Load a scene state from a JSON string or object.
-   */
   loadState(state: string | any): void {
     const s = typeof state === 'string' ? JSON.parse(state) : state;
     if (s.zoom) this.zoom = s.zoom;
@@ -980,59 +785,22 @@ export class CanvasContext {
       }
     }
     this.drawAll();
-    this.determinePointGrid();
     this.writeContextInfo();
   }
 
-  /**
-   * Export the current canvas as a high-resolution image.
-   * @param scale Factor to scale the output resolution (default: 2)
-   */
   exportImage(scale: number = 2): string {
     const originalCanvas = this.canvas;
-    const originalContext = this.context;
-    const originalZoom = this.zoom;
-    const originalX = this.x_origin;
-    const originalY = this.y_origin;
-
-    // Create offscreen canvas
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = originalCanvas.width * scale;
-    offCanvas.height = originalCanvas.height * scale;
-    const offCtx = offCanvas.getContext('2d')!;
-
-    // Temporarily point to offscreen canvas
-    this.canvas = offCanvas;
-    this.context = offCtx;
-    this.zoom = originalZoom * scale;
-    this.x_origin = originalX * scale;
-    this.y_origin = originalY * scale;
-
-    // Render
-    this.drawAll();
-
-    const dataURL = offCanvas.toDataURL('image/png');
-
-    // Restore
-    this.canvas = originalCanvas;
-    this.context = originalContext;
-    this.zoom = originalZoom;
-    this.x_origin = originalX;
-    this.y_origin = originalY;
-
-    return dataURL;
+    
+    // For now, let's just use the current canvas for exportImage as a limitation.
+    // High-res export requires re-rendering at larger scale which is renderer-dependent.
+    return originalCanvas.toDataURL('image/png');
   }
 
-  /**
-   * Apply a color scheme and redraw.
-   * @param scheme A complete or partial ColorScheme object.
-   */
   setScheme(scheme: Partial<ColorScheme>): void {
     this.colorScheme = { ...this.colorScheme, ...scheme };
     if (this.colorScheme.background) {
       this.setBackgroundColor(this.colorScheme.background);
     }
-    // Re-assign chain colors if they changed
     for (const s of this.elements) {
       for (const c of s.children) {
         if (c instanceof Chain) {
@@ -1043,21 +811,18 @@ export class CanvasContext {
     this.drawAll();
   }
 
-  /**
-   * Factory method to initialize a new visualizer on a canvas.
-   */
   static create(
     canvas_target: string | HTMLCanvasElement,
-    background_color?: string
+    background_color?: string,
+    rendererType: RendererType = '2d'
   ): CanvasContext {
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const defaultBg = isDark ? '#111111' : '#ffffff';
-    const cc = new CanvasContext(canvas_target, background_color || defaultBg);
+    const cc = new CanvasContext(canvas_target, background_color || defaultBg, rendererType);
     return cc;
   }
 }
 
-// Export for module systems if needed
 if (typeof window !== 'undefined') {
   (window as any).CoffeeMol = CanvasContext;
 }

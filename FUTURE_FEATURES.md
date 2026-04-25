@@ -4,12 +4,6 @@ This document outlines potential features for CoffeeMol, weighted by their biolo
 
 ## 1. High-Value, Medium-Effort (The "Pro" Upgrade)
 
-### Automatic Ligand (HETATM) Detection & Highlight
-*   **Biological Value:** Very High. Usually, the protein is "background" (cartoon) and the ligand is "foreground" (sticks).
-*   **Implementation:** Medium.
-    *   Add an `isHetatm` flag to the `ParsedAtom` and `Atom` types.
-    *   Update `CanvasContext.buildStructure` to default `isHetatm` residues to `both` (points+lines) mode while keeping proteins in `ribbon` mode.
-
 ### Non-Covalent Interaction Visualization (H-Bonds)
 *   **Biological Value:** High. Essential for explaining binding affinity and specificity.
 *   **Implementation:** Medium.

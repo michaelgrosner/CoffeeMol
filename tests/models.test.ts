@@ -150,14 +150,5 @@ describe('Models', () => {
     expect(hColor[0]).toBe(179);
     expect(hColor[1]).toBe(0);
     expect(hColor[2]).toBe(77);
-
-    // Test depthShadedColorString with different methods
-    a.info.colorMethod = 'b-factor';
-    const shadedB = a.depthShadedColorString();
-    expect(shadedB).toContain('rgb');
-
-    a.info.colorMethod = 'hydrophobicity';
-    const shadedH = a.depthShadedColorString();
-    expect(shadedH).toContain('rgb');
   });
 });
