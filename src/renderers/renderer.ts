@@ -22,4 +22,8 @@ export interface RenderOptions {
   measureEndAtom: Atom | null;
   mouseX: number;
   mouseY: number;
+  // True while the user is actively dragging/zooming/panning. Renderers should
+  // drop expensive effects (shadowBlur, multi-pass highlights) during this
+  // window and resume full quality once a final idle render is requested.
+  isInteracting: boolean;
 }

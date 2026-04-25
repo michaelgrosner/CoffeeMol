@@ -3,11 +3,24 @@ import { Renderer, RenderOptions } from './renderer';
 import { atom_radii, ATOM_SIZE, DrawMethod, ColorMethod } from '../types';
 import { hexToRGBArray, arrayToRGB } from '../utils';
 
+interface RibbonCache {
+  chains: Map<Chain, Atom[]>;
+  atomPrev: Map<Atom, Atom>;
+  atomNext: Map<Atom, Atom>;
+  caAtoms: Atom[];
+}
+
 export class Canvas2DRenderer implements Renderer {
   private canvas!: HTMLCanvasElement;
   private context!: CanvasRenderingContext2D;
   private grid: Map<number, Atom> = new Map();
   private z_extent: number = 1;
+  // Ribbon prev/next/chain mappings depend only on residue ordering and atom
+  // names, not on per-frame state — cache them per Structure to avoid
+  // rebuilding the maps every frame.
+  private _ribbonCache: WeakMap<Structure, RibbonCache> = new WeakMap();
+  // Reusable buffer for ribbon Z-sort to avoid per-frame allocation.
+  private _ribbonSortBuffer: Atom[] = [];
 
   init(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
@@ -149,6 +162,7 @@ export class Canvas2DRenderer implements Renderer {
     const allBonds = el.bonds.slice().sort(sortBondsByZ);
     const ctx = this.context;
     ctx.lineCap = 'round';
+    const fast = options.isInteracting;
 
     for (const b of allBonds) {
       if (b.a1.info.drawMethod === 'points' && b.a2.info.drawMethod === 'points') continue;
@@ -167,6 +181,19 @@ export class Canvas2DRenderer implements Renderer {
       }
 
       const color1 = this.depthShadedColorString(b.a1, options, colorType);
+      const color2 = this.depthShadedColorString(b.a2, options, colorType);
+
+      // Fast path during interaction: 1 stroke per half-bond (color only).
+      // Drops 8 strokes/bond to 2, no depth-shaded shadow, no white highlights.
+      if (fast) {
+        ctx.lineWidth = lw;
+        ctx.strokeStyle = color1;
+        ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+        ctx.strokeStyle = color2;
+        ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+        continue;
+      }
+
       const shadow1 = this.depthShadedColorString(b.a1, options, colorType, -0.4);
 
       // First half: a1 → midpoint (inlined to avoid per-bond array allocation)
@@ -189,7 +216,6 @@ export class Canvas2DRenderer implements Renderer {
         ctx.stroke();
       }
 
-      const color2 = this.depthShadedColorString(b.a2, options, colorType);
       const shadow2 = this.depthShadedColorString(b.a2, options, colorType, -0.4);
 
       // Second half: a2 → midpoint
@@ -204,44 +230,66 @@ export class Canvas2DRenderer implements Renderer {
     }
   }
 
-  private drawRibbons(el: Structure, options: RenderOptions): void {
-    const atoms = el.getOfType(Atom);
-    const ribbonAtoms = atoms.filter(
-      (a) =>
-        (el.isHighlighted || a.isHighlighted || a.parent.isHighlighted || a.info.drawMethod === 'ribbon') &&
-        ((a.parent.isProtein() && a.original_atom_name === 'CA') ||
-          (a.parent.isDNA() && a.original_atom_name === 'P'))
-    );
-    if (ribbonAtoms.length === 0) return;
+  private getRibbonCache(el: Structure): RibbonCache {
+    let cache = this._ribbonCache.get(el);
+    if (cache) return cache;
 
     const chains: Map<Chain, Atom[]> = new Map();
-    for (const a of atoms) {
+    const caAtoms: Atom[] = [];
+    // Use el.atoms (cached during init()) instead of getOfType(Atom)
+    for (const a of el.atoms) {
       if (
         (a.parent.isProtein() && a.original_atom_name === 'CA') ||
         (a.parent.isDNA() && a.original_atom_name === 'P')
       ) {
         const c = a.parent.parent;
-        if (!chains.has(c)) chains.set(c, []);
-        chains.get(c)!.push(a);
+        let chainAtoms = chains.get(c);
+        if (!chainAtoms) { chainAtoms = []; chains.set(c, chainAtoms); }
+        chainAtoms.push(a);
+        caAtoms.push(a);
       }
     }
 
     const atomPrev: Map<Atom, Atom> = new Map();
     const atomNext: Map<Atom, Atom> = new Map();
-    for (const [_chain, chainAtoms] of chains) {
+    for (const chainAtoms of chains.values()) {
       for (let i = 0; i < chainAtoms.length; i++) {
         if (i > 0) atomPrev.set(chainAtoms[i], chainAtoms[i - 1]);
         if (i < chainAtoms.length - 1) atomNext.set(chainAtoms[i], chainAtoms[i + 1]);
       }
     }
 
+    cache = { chains, atomPrev, atomNext, caAtoms };
+    this._ribbonCache.set(el, cache);
+    return cache;
+  }
+
+  private drawRibbons(el: Structure, options: RenderOptions): void {
+    const { atomPrev, atomNext, caAtoms } = this.getRibbonCache(el);
+    if (caAtoms.length === 0) return;
+
+    // Fill the reusable sort buffer in-place with this frame's eligible atoms
+    // (those whose draw method or highlight state means they should render).
+    const buf = this._ribbonSortBuffer;
+    buf.length = 0;
+    const elHighlighted = el.isHighlighted;
+    for (const a of caAtoms) {
+      if (elHighlighted || a.isHighlighted || a.parent.isHighlighted || a.info.drawMethod === 'ribbon') {
+        buf.push(a);
+      }
+    }
+    if (buf.length === 0) return;
+    buf.sort(sortByZ);
+
     const ctx = this.context;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const sortedRibbonAtoms = ribbonAtoms.slice().sort(sortByZ);
+    const fast = options.isInteracting;
+    const outlineWeight = options.colorScheme?.outline_weight ?? 1.1;
+    const glow = options.colorScheme?.glow_intensity ?? 0;
 
-    for (const a1 of sortedRibbonAtoms) {
+    for (const a1 of buf) {
       const prevA = atomPrev.get(a1);
       const nextA = atomNext.get(a1);
 
@@ -322,10 +370,16 @@ export class Canvas2DRenderer implements Renderer {
         }
       };
 
-      const outlineWeight = options.colorScheme?.outline_weight ?? 1.1;
-      const glow = options.colorScheme?.glow_intensity ?? 0;
+      // Fast path during drag/zoom: a single solid stroke per atom. Skips the
+      // shadowBlur outline pass (which dominates GPU time when glow > 0) and
+      // the white shine pass. Full quality returns 200ms after interaction
+      // ends via `noteInteraction()`'s debounced re-render.
+      if (fast) {
+        drawPath(lw, color);
+        continue;
+      }
 
-      if (el.isHighlighted || a1.isHighlighted || a1.parent.isHighlighted) {
+      if (elHighlighted || a1.isHighlighted || a1.parent.isHighlighted) {
         drawPath(lw * 1.4 * outlineWeight, 'rgba(255, 255, 0, 0.7)');
       }
 
@@ -345,8 +399,10 @@ export class Canvas2DRenderer implements Renderer {
   }
 
   private drawPoints(el: Structure, options: RenderOptions): void {
-    const atoms = el.getOfType(Atom);
-    const sorted = atoms.slice().sort(sortByZ);
+    // el.atoms is the cached flat atom list — avoid per-frame getOfType walk.
+    // The sort buffer is reused across frames to avoid the .slice() allocation.
+    const atoms = el.atoms;
+    const sorted = atoms.slice(0).sort(sortByZ);
     for (const a of sorted) {
       if (!(['lines', 'cartoon', 'ribbon', 'tube'] as DrawMethod[]).includes(a.info.drawMethod)) {
         this.drawAtomPoint(a, options);
@@ -366,6 +422,14 @@ export class Canvas2DRenderer implements Renderer {
 
     ctx.beginPath();
     ctx.arc(a.x, a.y, zz, 0, 2 * Math.PI, false);
+
+    // Fast path during interaction: just the fill, no outline, no shadowBlur,
+    // no specular highlight. Cuts per-atom GPU work to roughly a third.
+    if (options.isInteracting) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+      return;
+    }
 
     const outlineWeight = options.colorScheme?.outline_weight ?? 1.1;
     const glow = options.colorScheme?.glow_intensity ?? 0;

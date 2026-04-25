@@ -60,7 +60,9 @@ export class CanvasContext {
   measureEndAtom: Atom | null;
   isDarkBackground: boolean;
   colorScheme: ColorScheme;
+  isInteracting: boolean = false;
   private _pendingRaf: number | null = null;
+  private _interactionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     canvas_target: string | HTMLCanvasElement,
@@ -366,6 +368,21 @@ export class CanvasContext {
     });
   }
 
+  /**
+   * Mark an interaction (drag/zoom/touch) as in progress. Renderers will drop
+   * expensive effects until 200ms after the last call, at which point a final
+   * full-quality redraw is scheduled.
+   */
+  private noteInteraction(): void {
+    this.isInteracting = true;
+    if (this._interactionTimer !== null) clearTimeout(this._interactionTimer);
+    this._interactionTimer = setTimeout(() => {
+      this.isInteracting = false;
+      this._interactionTimer = null;
+      this.drawAll();
+    }, 200);
+  }
+
   private _doRender(): void {
     const options: RenderOptions = {
       zoom: this.zoom,
@@ -377,7 +394,8 @@ export class CanvasContext {
       measureStartAtom: this.measureStartAtom,
       measureEndAtom: this.measureEndAtom,
       mouseX: this.mouseX,
-      mouseY: this.mouseY
+      mouseY: this.mouseY,
+      isInteracting: this.isInteracting,
     };
 
     for (const el of this.elements) {
@@ -513,6 +531,7 @@ export class CanvasContext {
   }
 
   mousedown(e: MouseEvent): void {
+    this.noteInteraction();
     this.mouse_x_prev = e.clientX;
     this.mouse_y_prev = e.clientY;
     const moveHandler = (ee: MouseEvent) => {
@@ -524,6 +543,7 @@ export class CanvasContext {
       }
       this.mouse_x_prev = ee.clientX;
       this.mouse_y_prev = ee.clientY;
+      this.noteInteraction();
       this.drawAll();
     };
     const upHandler = () => {
@@ -537,6 +557,7 @@ export class CanvasContext {
   touchstart(e: TouchEvent): void {
     if (e.touches.length !== 1) return;
     e.preventDefault();
+    this.noteInteraction();
     this.mouse_x_prev = e.touches[0].clientX;
     this.mouse_y_prev = e.touches[0].clientY;
     const moveHandler = (ee: TouchEvent) => {
@@ -548,6 +569,7 @@ export class CanvasContext {
       }
       this.mouse_x_prev = ee.touches[0].clientX;
       this.mouse_y_prev = ee.touches[0].clientY;
+      this.noteInteraction();
       this.drawAll();
     };
     const endHandler = () => {
@@ -565,9 +587,11 @@ export class CanvasContext {
 
   iOSChangeZoom(e: any): void {
     e.preventDefault();
+    this.noteInteraction();
     const startZoom = this.zoom;
     const moveHandler = (ee: any) => {
       this.zoom = startZoom * ee.scale;
+      this.noteInteraction();
       this.drawAll();
     };
     const endHandler = () => {
@@ -582,6 +606,7 @@ export class CanvasContext {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     this.zoom *= delta;
+    this.noteInteraction();
     this.drawAll();
   }
 
@@ -649,6 +674,8 @@ export class CanvasContext {
   }
 
   showAtomInfo(e: MouseEvent): void {
+    if (this.isInteracting) return;
+
     const rect = this.canvas.getBoundingClientRect();
     const canvasX = e.clientX - rect.left;
     const canvasY = e.clientY - rect.top;
