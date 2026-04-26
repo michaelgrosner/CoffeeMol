@@ -699,18 +699,15 @@ export class CanvasContext {
           html += `<br>Atom: ${a.original_atom_name}`;
         }
         infoEl.innerHTML = html;
-        infoEl.style.left = `${e.clientX + 15}px`;
-        infoEl.style.top = `${e.clientY + 15}px`;
-      }
-      this.a_prev = a;
-      this.drawAll();
-    }
- else if (a && a === this.a_prev) {
-      if (infoEl) {
-        infoEl.style.left = `${e.clientX + 15}px`;
-        infoEl.style.top = `${e.clientY + 15}px`;
-      }
-    } else if (!a) {
+        infoEl.style.transform = `translate(${e.clientX + 15}px, ${e.clientY + 15}px)`;
+        }
+        this.a_prev = a;
+        this.drawAll();
+        } else if (a && a === this.a_prev) {
+        if (infoEl) {
+        infoEl.style.transform = `translate(${e.clientX + 15}px, ${e.clientY + 15}px)`;
+        }
+        } else if (!a) {
       if (infoEl) infoEl.innerHTML = '';
       if (this.a_prev !== null) {
         this.a_prev = null;

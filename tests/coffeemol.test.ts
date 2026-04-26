@@ -119,7 +119,7 @@ describe('CanvasContext', () => {
     expect(infoEl.innerHTML).not.toContain('Test Structure');
     expect(infoEl.innerHTML).toContain('Chain A: ALA 1 (helix)');
     expect(infoEl.innerHTML).not.toContain('Atom: CA');
-    expect(infoEl.style.left).toBe('15px');
+    expect(infoEl.style.transform).toBe('translate(15px, 15px)');
   });
 
   it('should pick atom with slight offset', () => {
