@@ -48,3 +48,6 @@ Must remain interactive with large structures (e.g. 8WLU — a ribosome-associat
 
 ## Source Control
 - NEVER commit without explicit permission
+
+## Code Hygiene
+- NEVER leave in strictly-for-debugging code (e.g., `window.viewer = viewer`, `console.log` for flow tracking, or temporary global exports) in production-ready files. Verify all debug hooks are removed before committing.

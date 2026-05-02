@@ -1,17 +1,19 @@
 # [CoffeeMol](https://michaelgrosner.github.io/CoffeeMol/)
 
-An embeddable molecular visualizer for HTML5 browsers, written in TypeScript. Renders PDB and mmCIF files on a `<canvas>` element using 2D drawing APIs — **no WebGL required, no runtime dependencies.**
+An embeddable molecular visualizer for HTML5 browsers, written in TypeScript. Renders PDB and mmCIF files on a `<canvas>` element using either a custom 2D multi-pass shading engine (no WebGL required) or a Three.js (WebGL) renderer.
 
-CoffeeMol brings a rich, 3D-like experience to any browser using a custom volumetric multi-pass shading engine.
+CoffeeMol brings a rich, 3D experience to any browser, providing both a lightweight 2D fallback and a hardware-accelerated 3D path.
 
 ## Features
 
+- **Dual Rendering Engine**: Choose between a custom **2D multi-pass shading engine** (no WebGL/runtime dependencies) or a **Three.js (WebGL)** renderer for hardware-accelerated 3D.
 - **PDB and mmCIF** parsing support with automatic secondary structure detection (helices, sheets, loops).
 - **Advanced 2D Rendering**: Volumetric shading, depth-based contrast enhancement, and multi-pass highlights for a "3D" feel without WebGL.
+- **Rich Color Schemes**: Multiple built-in themes (Dracula, Nord, Synthwave '84, etc.) and support for custom schemes.
 - **Multi-Instance Support**: Independently embed multiple visualizers on the same page.
 - **Measurement Tool**: Built-in distance measurement between atoms.
-- **TypeScript Support**: Full type definitions included for a first-class developer experience.
-- **No runtime dependencies** — just a single bundled `CoffeeMol.js` file.
+- **TypeScript Support**: Full type definitions included.
+- **Minimal Dependencies**: Zero runtime dependencies when using the 2D renderer. Three.js is only required if opting into the 3D renderer path.
 - **Cross-platform**: Works on desktop and mobile (including touch/pinch gestures).
 
 ## Installation
@@ -36,8 +38,11 @@ Add a `<canvas>` element and include `CoffeeMol.js`:
 <canvas id="coffeemolCanvas" width="800" height="600">Canvas not supported</canvas>
 <script src="https://michaelgrosner.github.io/CoffeeMol/CoffeeMol.js"></script>
 <script>
-  // Initialize the viewer
+  // Initialize the viewer (defaults to '2d' renderer)
   const viewer = CoffeeMol.create("#coffeemolCanvas").autoResize();
+
+  // Or explicitly select a renderer: '2d' or '3d'
+  // const viewer = CoffeeMol.create("#coffeemolCanvas", "#ffffff", "3d").autoResize();
 
   // Load a structure
   viewer.loadNewStructure("path/to/structure.pdb", { drawMethod: "ribbon" });
@@ -81,6 +86,21 @@ viewer.loadFromDict({
 });
 ```
 
+## Color Schemes
+
+CoffeeMol supports a variety of built-in color schemes:
+
+- `default`: Classic magenta/yellow/gray for secondary structure.
+- `modern`: A clean, dark-mode friendly palette.
+- `dracula`, `nord`, `oneDark`, `tokyoNight`: Popular developer themes.
+- `synthwave84`, `neon`: Vibrant, high-glow aesthetics.
+- `coffee`: Earthy brown tones.
+
+You can apply a scheme using:
+```js
+viewer.setScheme(CoffeeMol.colorSchemes.dracula);
+```
+
 ## Controls
 
 | Action | Control |
@@ -97,7 +117,7 @@ viewer.loadFromDict({
 - **`ribbon`** — Smooth spline representation of the backbone (Cα/P trace) with volumetric shading. Automatically colored by secondary structure (helix, sheet, loop).
 - **`tube`** — Thick, depth-shaded cylindrical segments for the backbone.
 - **`cartoon`** — Simplified backbone trace: Cα–Cα for proteins, P–P for DNA.
-- **`points`** — Atoms as spheres, colored by element (CPK-style). Hydrogen, Carbon, Nitrogen, Oxygen, Fluorine, Phosphorus, Sulfur, Potassium, Iodine, and Vanadium are supported; unknown elements are gray.
+- **`points`** — Atoms as spheres, colored by element (CPK-style).
 - **`lines`** — Bonds only.
 - **`both`** — Atoms and bonds combined.
 
@@ -109,13 +129,6 @@ CoffeeMol includes a built-in distance measurement tool:
 3. **Left-click** on the target atom to fix the measurement.
 4. **Click again** (anywhere or on either atom) to clear the measurement.
 
-## Secondary Structure
-
-CoffeeMol automatically parses HELIX and SHEET records from PDB/mmCIF files:
-- **Helices**: Magenta
-- **Sheets**: Yellow
-- **Loops**: Gray
-
 ## API
 
 The instance returned by `CoffeeMol.create()` provides several methods for programmatic control:
@@ -124,11 +137,11 @@ The instance returned by `CoffeeMol.create()` provides several methods for progr
 - `addNewStructure(path, info)`: Add a file to the current scene.
 - `loadFromData(data, name, info)`: Load from a string (PDB/mmCIF content).
 - `changeAllDrawMethods(method)`: Change the rendering style of all loaded structures.
+- `setScheme(scheme)`: Apply a color scheme (e.g., `CoffeeMol.colorSchemes.dracula`).
 - `timedRotation(axis, ms)`: Start continuous rotation about 'X', 'Y', or 'Z'.
 - `stopRotation()`: Stop any active rotation.
 - `setBackgroundColor(color)`: Set the canvas background.
 - `clear()`: Clear all structures from the scene.
-- `clearCanvas()`: Clear the pixels from the canvas without removing structures.
 - `resize(w, h)`: Resize the viewer.
 - `autoResize()`: Enable automatic resizing.
 
@@ -153,9 +166,9 @@ npm run dev
 - **Language**: TypeScript
 - **Bundler**: esbuild
 - **Testing**: vitest
-- **Coordinate System**: Custom 3D-to-2D projection with Z-sorting for correct transparency and occlusion.
+- **Dual Engine Architecture**: Shared `Renderer` interface with 2D Canvas and Three.js (WebGL) implementations.
 
 ## Known Issues
 
-- Performance degrades on large structures (>50,000 atoms); `cartoon` or `ribbon` modes are recommended for better performance.
+- Performance degrades on large structures (>50,000 atoms); `cartoon` or `ribbon` modes are recommended for better performance on the 2D path.
 - Tested on modern Chrome, Firefox, and Safari.

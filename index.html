@@ -195,7 +195,6 @@
 		const initialRenderer = localStorage.getItem('coffeemol_renderer_type') || '2d';
 		const viewer = CoffeeMol.create("#coffeemolCanvas", null, initialRenderer).autoResize();
 		viewer.resize(); // Initial resize to fill screen
-		window.viewer = viewer; // expose for debugging
 
 		// --- Service Worker ---
 		if ('serviceWorker' in navigator) {
