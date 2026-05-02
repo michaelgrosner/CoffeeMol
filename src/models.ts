@@ -3,6 +3,7 @@
 import {
   RGB,
   AtomInfo,
+  AtomInfoUpdate,
   DrawMethod,
   ColorMethod,
   SecondaryStructureType,
@@ -195,15 +196,16 @@ export abstract class MolElement {
     child.onAddedToParent();
   }
 
-  propogateInfo(info: AtomInfo): void {
-    this.info = deepCopy(info);
-    if (this.info.colorMethod) {
-      this.info.colorMethod = this.info.colorMethod.toLowerCase() as ColorMethod;
+  propogateInfo(info: AtomInfoUpdate): void {
+    const update = deepCopy(info);
+    if (update.colorMethod) {
+      update.colorMethod = (update.colorMethod as string).toLowerCase() as ColorMethod;
     }
-    this.info.drawColor =
-      this.info.drawColor != null
-        ? hexToRGBArray(this.info.drawColor as RGB | string)
-        : null;
+    if (update.drawColor !== undefined && update.drawColor !== null) {
+      update.drawColor = hexToRGBArray(update.drawColor as RGB | string);
+    }
+    
+    this.info = { ...this.info, ...(update as AtomInfo) };
     for (const c of this.children) c.propogateInfo(info);
   }
 
@@ -359,6 +361,14 @@ export class Residue extends MolElement {
   typeName(): string {
     return this.isDNA() ? 'DNA' : 'protein';
   }
+
+  propogateInfo(info: AtomInfoUpdate): void {
+    let targetInfo = info;
+    if (this.isHetatm && info.drawMethod && ['ribbon', 'cartoon', 'tube', 'lines'].includes(info.drawMethod)) {
+      targetInfo = { ...info, drawMethod: 'both' };
+    }
+    super.propogateInfo(targetInfo);
+  }
 }
 
 // ===== Atom =====
@@ -395,6 +405,14 @@ export class Atom extends MolElement {
 
   toString(): string {
     return `<Atom: ${this.name} [${this.x.toFixed(2)}, ${this.y.toFixed(2)}, ${this.z.toFixed(2)}]>`;
+  }
+
+  propogateInfo(info: AtomInfoUpdate): void {
+    let targetInfo = info;
+    if (this.isHetatm && info.drawMethod && ['ribbon', 'cartoon', 'tube', 'lines'].includes(info.drawMethod)) {
+      targetInfo = { ...info, drawMethod: 'both' };
+    }
+    super.propogateInfo(targetInfo);
   }
   cpkColor(): RGB {
     const colors = this.cc.colorScheme?.atom_colors || {};

@@ -6,10 +6,10 @@ declare module "src/types" {
         drawMethod: DrawMethod;
         colorMethod?: ColorMethod;
         drawColor?: RGB | null;
-        borderColor?: RGB | null;
-        prevDrawColor?: RGB | null;
-        prevBorderColor?: RGB | null;
     }
+    export type AtomInfoUpdate = Omit<Partial<AtomInfo>, 'drawColor'> & {
+        drawColor?: RGB | string | null;
+    };
     export interface PDBAtomData {
         original_atom_name: string;
         atom_name: string;
@@ -155,7 +155,7 @@ declare module "src/models" {
         writeContextInfo(): string;
         init(): void;
         addChild(child: MolElement): void;
-        propogateInfo(info: AtomInfo): void;
+        propogateInfo(info: AtomInfoUpdate): void;
         stashInfo(): void;
         retrieveStashedInfo(): void;
         getOfType<T extends MolElement>(type: new (...args: any[]) => T): T[];

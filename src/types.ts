@@ -20,10 +20,10 @@ export interface AtomInfo {
   drawMethod: DrawMethod;
   colorMethod?: ColorMethod;
   drawColor?: RGB | null;
-  borderColor?: RGB | null;
-  prevDrawColor?: RGB | null;
-  prevBorderColor?: RGB | null;
 }
+
+export type AtomInfoUpdate = Omit<Partial<AtomInfo>, 'drawColor'> & { drawColor?: RGB | string | null };
+
 
 export interface PDBAtomData {
   original_atom_name: string;

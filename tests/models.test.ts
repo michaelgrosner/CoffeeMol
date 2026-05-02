@@ -65,6 +65,31 @@ describe('Models', () => {
     expect(c.color).toBeDefined(); // Chain color should be set on added to parent
   });
 
+  it('should merge info in propogateInfo', () => {
+    const dummyCC = { addElement: () => {}, colorScheme: defaultColorScheme } as any;
+    const s = new Structure('test', dummyCC);
+    const c = new Chain(s, 'A');
+    s.addChild(c);
+    const r = new Residue(c, 'ALA', 1);
+    c.addChild(r);
+
+    // Initial state
+    r.propogateInfo({ drawMethod: 'ribbon', colorMethod: 'cpk' });
+    expect(r.info.drawMethod).toBe('ribbon');
+    expect(r.info.colorMethod).toBe('cpk');
+
+    // Partial update: only colorMethod
+    r.propogateInfo({ colorMethod: 'chain' });
+    expect(r.info.drawMethod).toBe('ribbon'); // Should be preserved
+    expect(r.info.colorMethod).toBe('chain');
+
+    // Partial update: only drawColor
+    r.propogateInfo({ drawColor: '#FF0000' });
+    expect(r.info.drawMethod).toBe('ribbon'); // Should be preserved
+    expect(r.info.colorMethod).toBe('chain'); // Should be preserved
+    expect(r.info.drawColor).toEqual([255, 0, 0]);
+  });
+
   it('should find bonds', () => {
     const dummyCC = { addElement: () => {}, colorScheme: defaultColorScheme } as any;
     const s = new Structure('test', dummyCC);
