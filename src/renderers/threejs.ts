@@ -277,22 +277,28 @@ export class ThreeRenderer implements Renderer {
       const m1 = b.a1.info.drawMethod;
       const m2 = b.a2.info.drawMethod;
 
+      // Cartoon and ribbon are represented entirely by ribbon geometry — bonds
+      // between two such atoms would obscure the ribbon (matches Canvas2D
+      // drawLines, which skips cartoon/ribbon bonds). Cross-mode bonds (e.g.
+      // cartoon protein to a lines-mode ligand) still draw via the lines path.
+      const r1 = m1 === 'cartoon' || m1 === 'ribbon';
+      const r2 = m2 === 'cartoon' || m2 === 'ribbon';
+      if (r1 && r2) continue;
+
       if (['lines', 'both'].includes(m1) || ['lines', 'both'].includes(m2)) {
         lineBonds.push(b);
-      } else if (['tube', 'cartoon'].includes(m1) || ['tube', 'cartoon'].includes(m2)) {
+      } else if (m1 === 'tube' || m2 === 'tube') {
         thickBonds.push(b);
       }
     }
 
     if (lineBonds.length > 0) {
-      // ~2 px on screen across zoom levels. World-space size that scales inversely with
-      // camera zoom — same approach as the atom radius — keeps bonds thinner than atoms.
       this.renderInstancedBonds(lineBonds, 1.0 / options.zoom, options, true);
     }
     if (thickBonds.length > 0) {
-      // Tube/cartoon backbone — chunkier, zoom-independent in world units so it reads
-      // as a continuous backbone rather than a per-atom marker.
-      this.renderInstancedBonds(thickBonds, 0.4, options, false);
+      // Tube side-chain bonds — thin lines, like Canvas2D's tube mode where the
+      // backbone is the tube and side chains read as light hash marks.
+      this.renderInstancedBonds(thickBonds, 1.0 / options.zoom, options, true);
     }
   }
 
@@ -411,36 +417,11 @@ export class ThreeRenderer implements Renderer {
         const radius = isCartoon ? 0.28 : 0.14;
         const geo = new THREE.TubeGeometry(curve, seg.atoms.length * 8, radius, 8, false);
         this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
-        this.addCartoonOutline(geo, isCartoon, 0.05);
       } else {
         // sheet: flat ribbon with arrowhead, using parallel-transport framing
         this.buildSheetRibbon(seg.atoms, curve, method, mat, isCartoon);
       }
     }
-  }
-
-  // Inflate a clone of `geo` outward along its vertex normals and render the
-  // back-faces only — the classic "outline shell" trick for cell-shaded looks.
-  // Only runs for cartoon mode; ribbon/tube modes get their normal lit material.
-  private addCartoonOutline(geo: THREE.BufferGeometry, isCartoon: boolean, offset: number): void {
-    if (!isCartoon) return;
-    const outlineGeo = geo.clone();
-    const positions = outlineGeo.attributes.position as THREE.BufferAttribute;
-    const normals = outlineGeo.attributes.normal as THREE.BufferAttribute;
-    if (!normals) return;
-    for (let i = 0; i < positions.count; i++) {
-      positions.setXYZ(
-        i,
-        positions.getX(i) + normals.getX(i) * offset,
-        positions.getY(i) + normals.getY(i) * offset,
-        positions.getZ(i) + normals.getZ(i) * offset
-      );
-    }
-    positions.needsUpdate = true;
-    // Dark indigo, not pure black — pure black on a black background looks like
-    // missing geometry rather than a stylized outline.
-    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x14181f, side: THREE.BackSide });
-    this.ribbonsGroup.add(new THREE.Mesh(outlineGeo, outlineMat));
   }
 
   // Flat wide ribbon for helices, oriented using the helix barrel axis as a stable
@@ -498,7 +479,6 @@ export class ThreeRenderer implements Renderer {
     geo.setIndex(indices);
     geo.computeVertexNormals();
     this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
-    this.addCartoonOutline(geo, isCartoon, 0.08);
   }
 
   // Flat ribbon with a tapered arrowhead at the C-terminal end of a sheet segment.
@@ -568,7 +548,6 @@ export class ThreeRenderer implements Renderer {
     geo.setIndex(indices);
     geo.computeVertexNormals();
     this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
-    this.addCartoonOutline(geo, isCartoon, 0.08);
   }
 
   resize(width: number, height: number): void {

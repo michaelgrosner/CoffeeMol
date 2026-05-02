@@ -296,7 +296,9 @@ declare module "src/renderers/threejs" {
         private vignetteScene;
         private vignetteCamera;
         private vignetteMaterial;
+        private toonGradient;
         init(canvas: HTMLCanvasElement): void;
+        private setupToonGradient;
         private setupVignette;
         private setupLights;
         render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
@@ -305,7 +307,6 @@ declare module "src/renderers/threejs" {
         private renderInstancedBonds;
         private splitBySSType;
         private buildRibbons;
-        private addCartoonOutline;
         private buildHelixRibbon;
         private buildSheetRibbon;
         resize(width: number, height: number): void;
