@@ -49,6 +49,7 @@ vi.mock('three', () => {
   class AmbientLight     { constructor() {} }
   class DirectionalLight { position = makePosition(); constructor() {} }
   class ShaderMaterial   { constructor(_p?: any) {} }
+  class MeshBasicMaterial { constructor(_p?: any) {} }
   class PlaneGeometry    { constructor(..._a: any[]) {} }
   class Mesh             { frustumCulled = true; constructor(..._a: any[]) {} }
   class Raycaster        { params = { Points: { threshold: 0 } }; }
@@ -56,13 +57,14 @@ vi.mock('three', () => {
   class Color            { setRGB = vi.fn().mockReturnThis(); constructor(..._a: any[]) {} }
   const NearestFilter = 1006;
   const RedFormat = 1028;
+  const BackSide = 1;
 
   return {
     Scene, Group, OrthographicCamera, WebGLRenderer,
     AmbientLight, DirectionalLight,
-    ShaderMaterial, PlaneGeometry, Mesh,
+    ShaderMaterial, MeshBasicMaterial, PlaneGeometry, Mesh,
     Raycaster, DataTexture, Color,
-    NearestFilter, RedFormat,
+    NearestFilter, RedFormat, BackSide,
   };
 });
 

@@ -88,13 +88,36 @@ export class ThreeRenderer implements Renderer {
   }
 
   private setupToonGradient(): void {
-    // 4-stop ramp: deep shadow / mid shadow / midtone / highlight.
-    const data = new Uint8Array([110, 170, 215, 255]);
+    // 3-stop ramp: deep shadow / midtone / full highlight.
+    // Wider gaps between stops (18%→63%→100%) produce sharper, more visible
+    // band transitions compared to the previous 4-stop soft ramp.
+    const data = new Uint8Array([45, 160, 255]);
     const tex = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat);
     tex.minFilter = THREE.NearestFilter;
     tex.magFilter = THREE.NearestFilter;
     tex.needsUpdate = true;
     this.toonGradient = tex;
+  }
+
+  // Inverted-hull outline for cartoon geometry. Clones the geometry and displaces
+  // each vertex outward by `d` world units along its computed vertex normal, then
+  // renders the back faces in solid black. Works correctly for any closed or thick
+  // geometry where computeVertexNormals() has already been called.
+  private addCartoonOutline(geo: THREE.BufferGeometry, d = 0.14): void {
+    const outlineGeo = geo.clone();
+    const positions = outlineGeo.getAttribute('position') as THREE.BufferAttribute;
+    const normals   = outlineGeo.getAttribute('normal')   as THREE.BufferAttribute;
+    for (let i = 0; i < positions.count; i++) {
+      positions.setXYZ(
+        i,
+        positions.getX(i) + normals.getX(i) * d,
+        positions.getY(i) + normals.getY(i) * d,
+        positions.getZ(i) + normals.getZ(i) * d,
+      );
+    }
+    positions.needsUpdate = true;
+    this.ribbonsGroup.add(new THREE.Mesh(outlineGeo,
+      new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide })));
   }
 
   private setupVignette(): void {
@@ -426,6 +449,7 @@ export class ThreeRenderer implements Renderer {
         const radius = isCartoon ? 0.28 : 0.14;
         const geo = new THREE.TubeGeometry(curve, seg.atoms.length * 8, radius, 8, false);
         this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
+        if (isCartoon) this.addCartoonOutline(geo);
       } else {
         // sheet: flat ribbon with arrowhead, using parallel-transport framing
         this.buildSheetRibbon(seg.atoms, curve, method, mat, isCartoon);
@@ -488,6 +512,7 @@ export class ThreeRenderer implements Renderer {
     geo.setIndex(indices);
     geo.computeVertexNormals();
     this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
+    if (isCartoon) this.addCartoonOutline(geo);
   }
 
   // Flat ribbon with a tapered arrowhead at the C-terminal end of a sheet segment.
@@ -557,6 +582,7 @@ export class ThreeRenderer implements Renderer {
     geo.setIndex(indices);
     geo.computeVertexNormals();
     this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
+    if (isCartoon) this.addCartoonOutline(geo);
   }
 
   resize(width: number, height: number): void {
@@ -574,7 +600,7 @@ export class ThreeRenderer implements Renderer {
     this.scene.background = new THREE.Color(color);
   }
 
-  getAtomAt(x: number, y: number, zoom: number, x_origin: number, y_origin: number): Atom | null {
+  getAtomAt(x: number, y: number, _zoom: number, _x_origin: number, _y_origin: number): Atom | null {
     if (!this.renderer) return null;
     const rect = this.canvas.getBoundingClientRect();
     const mouse = new THREE.Vector2((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1);
