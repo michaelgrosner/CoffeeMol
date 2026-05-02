@@ -237,7 +237,7 @@ html, body {
 
 /* ── Rotation panel ──────────────────────────────────── */
 
-#settings-panel {
+#settings-panel, #help-panel {
 	position: absolute;
 	top: 16px; right: 16px;
 	width: 240px;
@@ -257,10 +257,37 @@ html, body {
 	transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-#settings-panel.hidden {
+#settings-panel.hidden, #help-panel.hidden {
 	transform: translateX(20px);
 	opacity: 0;
 	pointer-events: none;
+}
+
+.help-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 4px;
+}
+
+.help-label {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-muted);
+	font-weight: 600;
+}
+
+.help-row {
+	display: flex;
+	justify-content: space-between;
+	font-size: 11px;
+}
+
+.help-text {
+	font-size: 11px;
+	line-height: 1.4;
+	color: var(--text);
 }
 
 .settings-header {

@@ -40,13 +40,16 @@
 		<div id="mol-panel">
 			<div id="mol-header">
 				<span class="panel-title"><span class="coffee">Coffee</span>Mol</span>
-				<div id="mol-settings-toggle" class="action-button" title="Settings">⚙</div>
+				<div style="display: flex; gap: 4px;">
+					<div id="mol-help-toggle" class="action-button" title="Help">?</div>
+					<div id="mol-settings-toggle" class="action-button" title="Settings">⚙</div>
+				</div>
 			</div>
 
 			<div id="mol-picker">
 				<input id="pdb-input" type="text" placeholder="PDB ID e.g. 1KX5" spellcheck="false" autocomplete="off">
 				<button id="mol-load">Load</button>
-				<button id="mol-random" class="action-button" title="Random molecule">?</button>
+				<button id="mol-random" class="action-button" title="Random molecule">🎲</button>
 			</div>
 
 			<div class="control-group">
@@ -94,6 +97,31 @@
 		<button class="action-button" id="rot-stop">Stop</button>
 	</div>
 	</body>
+
+	<div id="help-panel" class="hidden">
+		<div class="settings-header">
+			<span class="panel-title">Help</span>
+			<div id="help-close" class="action-button">✕</div>
+		</div>
+		<div class="help-content">
+			<div class="help-section">
+				<div class="help-label">Controls</div>
+				<div class="help-row"><span>Rotate</span><span>Left Click + Drag</span></div>
+				<div class="help-row"><span>Zoom</span><span>Scroll / Pinch</span></div>
+				<div class="help-row"><span>Re-center</span><span>Double Click</span></div>
+				<div class="help-row"><span>Measure</span><span>Right Click Atoms</span></div>
+			</div>
+			<div class="help-section">
+				<div class="help-label">Input</div>
+				<div class="help-text">Enter a 4-letter PDB ID (e.g. 1KX5) or drag and drop .pdb / .cif files directly onto the canvas.</div>
+			</div>
+			<div class="help-section" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 10px;">
+				<a href="https://github.com/michaelgrosner/CoffeeMol" target="_blank" class="meta-link" style="font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+					CoffeeMol on GitHub ↗
+				</a>
+			</div>
+		</div>
+	</div>
 
 	<div id="settings-panel" class="hidden">
 		<div class="settings-header">
@@ -485,8 +513,18 @@
 		});
 		document.getElementById('rot-stop').addEventListener('click', () => viewer.stopRotation());
 
-		// --- Settings Panel ---
+		// --- Panels ---
+		document.getElementById('mol-help-toggle').addEventListener('click', () => {
+			document.getElementById('settings-panel').classList.add('hidden');
+			document.getElementById('help-panel').classList.toggle('hidden');
+		});
+
+		document.getElementById('help-close').addEventListener('click', () => {
+			document.getElementById('help-panel').classList.add('hidden');
+		});
+
 		document.getElementById('mol-settings-toggle').addEventListener('click', () => {
+			document.getElementById('help-panel').classList.add('hidden');
 			const panel = document.getElementById('settings-panel');
 			panel.classList.toggle('hidden');
 			if (!panel.classList.contains('hidden')) updateSettingsUI();

@@ -112,7 +112,7 @@ declare module "src/utils" {
     };
 }
 declare module "src/models" {
-    import { RGB, AtomInfo, SecondaryStructureType } from "src/types";
+    import { RGB, AtomInfo, AtomInfoUpdate, SecondaryStructureType } from "src/types";
     export function sortBondsByZ(b1: Bond, b2: Bond): number;
     export function sortByZ(a1: Atom, a2: Atom): number;
     export function atomAtomDistance(a1: Atom, a2: Atom): number;
@@ -191,6 +191,7 @@ declare module "src/models" {
         isDNA(): boolean;
         isProtein(): boolean;
         typeName(): string;
+        propogateInfo(info: AtomInfoUpdate): void;
     }
     export class Atom extends MolElement {
         x: number;
@@ -203,6 +204,7 @@ declare module "src/models" {
         parent: Residue;
         constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string, tempFactor?: number, isHetatm?: boolean);
         toString(): string;
+        propogateInfo(info: AtomInfoUpdate): void;
         cpkColor(): RGB;
         ssColor(): RGB;
         chainColor(): RGB;
