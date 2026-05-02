@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parsePDB, parseMmCIF } from '../src/parser';
 import { CanvasContext } from '../src/coffeemol';
 import { makeContextMocks, stubCanvasGlobals } from './helpers';

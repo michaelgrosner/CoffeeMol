@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CanvasContext } from '../src/coffeemol';
 import { Structure, Chain, Residue, Atom } from '../src/models';
-import { makeContextMocks, stubCanvasGlobals } from './helpers';
+import { makeContextMocks } from './helpers';
 
 describe('Interaction Picking', () => {
   let mockCanvas: any;

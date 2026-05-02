@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { Canvas2DRenderer } from '../src/renderers/canvas2d';
-import { Atom, Residue, Chain } from '../src/models';
+import { Atom } from '../src/models';
 import { makeDummyCC, makeCanvasMock, makeStructure, makeBaseRenderOptions } from './helpers';
 
 describe('Canvas2DRenderer', () => {
