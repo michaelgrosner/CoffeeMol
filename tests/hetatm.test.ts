@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { parsePDB, parseMmCIF } from '../src/parser';
 import { CanvasContext } from '../src/coffeemol';
+import { makeContextMocks, stubCanvasGlobals } from './helpers';
+
+function makeCC() {
+  const { mockCanvas } = makeContextMocks();
+  stubCanvasGlobals(mockCanvas);
+  return new CanvasContext(mockCanvas as any);
+}
 
 describe('HETATM Detection', () => {
   it('should detect HETATM in PDB', () => {
@@ -39,58 +46,18 @@ HETATM O HOH 2 A 25.000 27.000 15.000
 ATOM      1  N   ALA A   1      24.364  26.685  14.285  1.00 20.00           N
 HETATM    2  O   HOH A   2      25.000  27.000  15.000  1.00 20.00           O
 `;
-    const parsed = parsePDB(pdbData);
-    
-    // Mocking CanvasContext and its dependencies is complex, 
-    // but we can check if buildStructure sets the properties correctly.
-    // We need a dummy canvas for CanvasContext
-    const ctxMock = {
-      clearRect: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      fill: vi.fn(),
-      arc: vi.fn(),
-      setLineDash: vi.fn(),
-      save: vi.fn(),
-      restore: vi.fn(),
-      translate: vi.fn(),
-      scale: vi.fn(),
-      setTransform: vi.fn(),
-      createRadialGradient: vi.fn(() => ({
-        addColorStop: vi.fn(),
-      })),
-      fillRect: vi.fn(),
-    };
+    const cc = makeCC();
+    cc.buildStructure(parsePDB(pdbData), 'test.pdb');
 
-    const canvas = {
-      getContext: () => ctxMock,
-      addEventListener: vi.fn(),
-      clientWidth: 800,
-      clientHeight: 600,
-      width: 800,
-      height: 600,
-      style: {},
-    } as any;
-    
-    const cc = new CanvasContext(canvas);
-    // Mock document for tests
-    (global as any).document = {
-      getElementById: vi.fn().mockReturnValue(null),
-    };
-    
-    cc.buildStructure(parsed, 'test.pdb');
-    
     const structure = cc.elements[0];
-    const chainA = structure.children[0] as any; // Cast to access children as Residue
+    const chainA = structure.children[0] as any;
     const res1 = chainA.children[0] as any; // ALA 1
     const res2 = chainA.children[1] as any; // HOH 2
-    
+
     expect(res1.name).toBe('ALA');
     expect(res1.isHetatm).toBe(false);
     expect(res1.info.drawMethod).toBe('ribbon'); // default for structure
-    
+
     expect(res2.name).toBe('HOH');
     expect(res2.isHetatm).toBe(true);
     expect(res2.info.drawMethod).toBe('both');
@@ -101,53 +68,15 @@ HETATM    2  O   HOH A   2      25.000  27.000  15.000  1.00 20.00           O
 ATOM      1  N   ALA A   1      24.364  26.685  14.285  1.00 20.00           N
 HETATM    2  O   HOH A   2      25.000  27.000  15.000  1.00 20.00           O
 `;
-    const parsed = parsePDB(pdbData);
-    
-    const ctxMock = {
-      clearRect: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      fill: vi.fn(),
-      arc: vi.fn(),
-      setLineDash: vi.fn(),
-      save: vi.fn(),
-      restore: vi.fn(),
-      translate: vi.fn(),
-      scale: vi.fn(),
-      setTransform: vi.fn(),
-      createRadialGradient: vi.fn(() => ({
-        addColorStop: vi.fn(),
-      })),
-      fillRect: vi.fn(),
-    };
-
-    const canvas = {
-      getContext: () => ctxMock,
-      addEventListener: vi.fn(),
-      clientWidth: 800,
-      clientHeight: 600,
-      width: 800,
-      height: 600,
-      style: {},
-    } as any;
-    
-    const cc = new CanvasContext(canvas);
-    cc.buildStructure(parsed, 'test.pdb');
-    
-    // Change to ribbon
+    const cc = makeCC();
+    cc.buildStructure(parsePDB(pdbData), 'test.pdb');
     cc.changeAllDrawMethods('ribbon');
-    
-    const structure = cc.elements[0];
-    const chainA = structure.children[0] as any;
+
+    const chainA = cc.elements[0].children[0] as any;
     const res1 = chainA.children[0] as any; // ALA 1
     const res2 = chainA.children[1] as any; // HOH 2
-    
-    expect(res1.name).toBe('ALA');
+
     expect(res1.info.drawMethod).toBe('ribbon');
-    
-    expect(res2.name).toBe('HOH');
-    expect(res2.info.drawMethod).toBe('both'); // Should be protected
+    expect(res2.info.drawMethod).toBe('both'); // Protected
   });
 });

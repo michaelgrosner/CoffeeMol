@@ -176,18 +176,20 @@ export class Canvas2DRenderer implements Renderer {
       const midY = (b.a1.y + b.a2.y) / 2;
 
       const isTube = b.a1.info.drawMethod === 'tube' || b.a2.info.drawMethod === 'tube';
+      const isBoth = b.a1.info.drawMethod === 'both' || b.a2.info.drawMethod === 'both';
       const colorType = isTube ? 'chain' : 'cpk';
+      const opacity = isBoth ? 0.4 : 1.0;
 
       // Scale line width by 1/zoom so it stays a constant ~2.5 px on screen,
       // visibly thinner than the ~6 px atom point diameter. Without this, lines
       // grow with zoom and overwhelm point spheres in 'both' mode.
-      let lw = 2.5 / options.zoom;
+      let lw = (isBoth ? 1.5 : 2.5) / options.zoom;
       if (isTube) {
         lw = b.a1.parent.ss === 'helix' ? 0.8 : b.a1.parent.ss === 'sheet' ? 0.6 : 0.4;
       }
 
-      const color1 = this.depthShadedColorString(b.a1, options, colorType);
-      const color2 = this.depthShadedColorString(b.a2, options, colorType);
+      const color1 = this.depthShadedColorString(b.a1, options, colorType, 0, opacity);
+      const color2 = this.depthShadedColorString(b.a2, options, colorType, 0, opacity);
 
       // Fast path during interaction: 1 stroke per half-bond (color only).
       // Drops 8 strokes/bond to 2, no depth-shaded shadow, no white highlights.
@@ -200,21 +202,24 @@ export class Canvas2DRenderer implements Renderer {
         continue;
       }
 
-      const shadow1 = this.depthShadedColorString(b.a1, options, colorType, -0.4);
+      const shadow1 = this.depthShadedColorString(b.a1, options, colorType, -0.4, opacity);
 
       // First half: a1 → midpoint (inlined to avoid per-bond array allocation)
       ctx.strokeStyle = shadow1; ctx.lineWidth = lw * 1.3;
       ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
       ctx.strokeStyle = color1; ctx.lineWidth = lw;
       ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = lw * 0.7;
-      ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = lw * 0.3;
-      ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+      
+      if (!isBoth) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = lw * 0.7;
+        ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = lw * 0.3;
+        ctx.beginPath(); ctx.moveTo(b.a1.x, b.a1.y); ctx.lineTo(midX, midY); ctx.stroke();
+      }
 
       const isHighlighted = el.isHighlighted || b.a1.isHighlighted || b.a1.parent.isHighlighted || b.a2.isHighlighted || b.a2.parent.isHighlighted;
       if (isHighlighted) {
-        ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+        ctx.strokeStyle = isBoth ? 'rgba(255, 255, 0, 0.4)' : 'rgba(255, 255, 0, 0.7)';
         ctx.lineWidth = lw * 1.5;
         ctx.beginPath();
         ctx.moveTo(b.a1.x, b.a1.y);
@@ -222,17 +227,20 @@ export class Canvas2DRenderer implements Renderer {
         ctx.stroke();
       }
 
-      const shadow2 = this.depthShadedColorString(b.a2, options, colorType, -0.4);
+      const shadow2 = this.depthShadedColorString(b.a2, options, colorType, -0.4, opacity);
 
       // Second half: a2 → midpoint
       ctx.strokeStyle = shadow2; ctx.lineWidth = lw * 1.3;
       ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
       ctx.strokeStyle = color2; ctx.lineWidth = lw;
       ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = lw * 0.7;
-      ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = lw * 0.3;
-      ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+
+      if (!isBoth) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = lw * 0.7;
+        ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = lw * 0.3;
+        ctx.beginPath(); ctx.moveTo(b.a2.x, b.a2.y); ctx.lineTo(midX, midY); ctx.stroke();
+      }
     }
   }
 
@@ -512,7 +520,7 @@ export class Canvas2DRenderer implements Renderer {
     ctx.stroke();
   }
 
-  private depthShadedColorString(a: Atom, options: RenderOptions, colorType: ColorMethod = 'cpk', brightnessOffset: number = 0): string {
+  private depthShadedColorString(a: Atom, options: RenderOptions, colorType: ColorMethod = 'cpk', brightnessOffset: number = 0, opacity: number = 1): string {
     const method = a.info.colorMethod || colorType;
     let base: number[];
     switch (method) {
@@ -524,7 +532,7 @@ export class Canvas2DRenderer implements Renderer {
       default: base = a.cpkColor(); break;
     }
 
-    const extent = this.z_extent ?? 1;
+    const extent = this.z_extent > 0 ? this.z_extent : 1;
     const t = Math.max(0, Math.min(1, (a.z + extent) / (2 * extent)));
 
     let factor: number;
@@ -537,7 +545,7 @@ export class Canvas2DRenderer implements Renderer {
     const r = Math.round(base[0] * factor);
     const g = Math.round(base[1] * factor);
     const b = Math.round(base[2] * factor);
-    return `rgb(${r},${g},${b})`;
+    return `rgba(${r},${g},${b},${opacity})`;
   }
 
   private drawMeasureLine(options: RenderOptions): void {

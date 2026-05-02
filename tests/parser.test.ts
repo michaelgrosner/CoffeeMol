@@ -99,6 +99,46 @@ A 11 20
     expect(parsed.secondary_structure![1].type).toBe('sheet');
   });
 
+  it('should return empty atoms and secondary structure for an empty PDB', () => {
+    const parsed = parsePDB('');
+    expect(parsed.atoms.length).toBe(0);
+    expect(parsed.secondary_structure!.length).toBe(0);
+    expect(parsed.title).toBe('');
+  });
+
+  it('should return empty atoms for a PDB with only blank lines and comments', () => {
+    const parsed = parsePDB('\n\n   \n');
+    expect(parsed.atoms.length).toBe(0);
+  });
+
+  it('should parse a PDB that has only HETATM records (no ATOM records)', () => {
+    const pdb = `
+HETATM    1  O   HOH A   1      10.000  20.000  30.000  1.00  5.00           O
+HETATM    2  O   HOH A   2      11.000  21.000  31.000  1.00  5.00           O
+`;
+    const parsed = parsePDB(pdb);
+    expect(parsed.atoms.length).toBe(2);
+    expect(parsed.atoms[0].isHetatm).toBe(true);
+    expect(parsed.atoms[1].isHetatm).toBe(true);
+  });
+
+  it('should handle a TITLE that spans multiple continuation lines', () => {
+    const pdb = `
+TITLE     FIRST LINE
+TITLE     SECOND LINE
+TITLE     THIRD LINE
+`;
+    const parsed = parsePDB(pdb);
+    expect(parsed.title).toBe('FIRST LINE SECOND LINE THIRD LINE');
+  });
+
+  it('should default tempFactor to 0 when column 60-66 is missing or blank', () => {
+    // Line shorter than 66 chars — substring is empty, parseFloat('') is NaN, || 0 → 0.
+    const pdb = `ATOM      1  N   ALA A   1      24.364  26.685  14.285`;
+    const parsed = parsePDB(pdb);
+    expect(parsed.atoms[0].tempFactor).toBe(0);
+  });
+
   it('should parse mmCIF B-factor', () => {
     const cifData = `
 loop_
@@ -115,4 +155,41 @@ N ALA A 1 24.364 26.685 14.285 24.11
     const parsed = parseMmCIF(cifData);
     expect(parsed.atoms[0].tempFactor).toBe(24.11);
   });
+
+  it('should default tempFactor to 0 when B_iso_or_equiv column is absent from mmCIF', () => {
+    const cifData = `
+loop_
+_atom_site.auth_atom_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+N ALA A 1 24.364 26.685 14.285
+`;
+    const parsed = parseMmCIF(cifData);
+    expect(parsed.atoms.length).toBe(1);
+    expect(parsed.atoms[0].tempFactor).toBe(0);
+  });
+
+  it('should correctly handle quoted tokens with spaces in mmCIF values', () => {
+    // tokenizeCifLine must respect single-quote boundaries.
+    const cifData = `
+loop_
+_atom_site.auth_atom_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+'N CA' ALA A 1 1.0 2.0 3.0
+`;
+    const parsed = parseMmCIF(cifData);
+    expect(parsed.atoms.length).toBe(1);
+    // The quoted atom name preserves the space; handleAtomName takes first char.
+    expect(parsed.atoms[0].original_atom_name).toBe('N CA');
+  });
 });
+

@@ -1,50 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CanvasContext } from '../src/coffeemol';
 import { Structure, Chain, Residue, Atom } from '../src/models';
+import { makeContextMocks, stubCanvasGlobals } from './helpers';
 
 describe('Interaction Picking', () => {
   let mockCanvas: any;
-  let mockContext: any;
 
   beforeEach(() => {
-    mockContext = {
-      clearRect: vi.fn(),
-      save: vi.fn(),
-      restore: vi.fn(),
-      translate: vi.fn(),
-      scale: vi.fn(),
-      setTransform: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      fill: vi.fn(),
-      arc: vi.fn(),
-      setLineDash: vi.fn(),
-      createRadialGradient: vi.fn(() => ({
-        addColorStop: vi.fn(),
-      })),
-      fillRect: vi.fn(),
-    };
-
-    mockCanvas = {
-      getContext: vi.fn(() => mockContext),
-      addEventListener: vi.fn(),
-      toDataURL: vi.fn(() => 'data:image/png;base64,test'),
-      style: {},
-      width: 800,
-      height: 600,
-      clientWidth: 800,
-      clientHeight: 600,
-      // Mock getBoundingClientRect for offset
-      getBoundingClientRect: vi.fn(() => ({
-        left: 100,
-        top: 100,
-        width: 800,
-        height: 600,
-      })),
-    };
-
+    ({ mockCanvas } = makeContextMocks({
+      getBoundingClientRect: () => ({ left: 100, top: 100, width: 800, height: 600 }),
+    }));
     vi.stubGlobal('document', {
       querySelector: vi.fn(() => mockCanvas),
       getElementById: vi.fn(),

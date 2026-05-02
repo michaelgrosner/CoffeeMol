@@ -1,58 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CanvasContext } from '../src/coffeemol';
 import { Structure, Chain, Residue, Atom } from '../src/models';
+import { makeContextMocks, stubCanvasGlobals } from './helpers';
 
 describe('CanvasContext', () => {
   let mockCanvas: any;
   let mockContext: any;
 
   beforeEach(() => {
-    mockContext = {
-      clearRect: vi.fn(),
-      save: vi.fn(),
-      restore: vi.fn(),
-      translate: vi.fn(),
-      scale: vi.fn(),
-      setTransform: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      fill: vi.fn(),
-      arc: vi.fn(),
-      setLineDash: vi.fn(),
-      createRadialGradient: vi.fn(() => ({
-        addColorStop: vi.fn(),
-      })),
-      fillRect: vi.fn(),
-    };
-
-    mockCanvas = {
-      getContext: vi.fn(() => mockContext),
-      addEventListener: vi.fn(),
-      toDataURL: vi.fn(() => 'data:image/png;base64,test'),
-      style: {},
-      width: 800,
-      height: 600,
-      clientWidth: 800,
-      clientHeight: 600,
-    };
-
-    const mockInfoEl = { style: {}, textContent: '', innerHTML: '' };
-    vi.stubGlobal('document', {
-      querySelector: vi.fn(() => mockCanvas),
-      getElementById: vi.fn((id) => (id === 'mol-info-display' ? mockInfoEl : null)),
-      addEventListener: vi.fn(),
-    });
-
-    vi.stubGlobal('window', {
-      addEventListener: vi.fn(),
-      matchMedia: vi.fn(() => ({ matches: false })),
-      innerWidth: 1024,
-      innerHeight: 768,
-    });
-
-    vi.stubGlobal('alert', vi.fn());
+    ({ mockContext, mockCanvas } = makeContextMocks());
+    stubCanvasGlobals(mockCanvas);
   });
 
   it('should initialize correctly', () => {

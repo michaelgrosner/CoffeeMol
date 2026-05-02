@@ -271,6 +271,7 @@ export class ThreeRenderer implements Renderer {
 
   private renderBonds(allBonds: Bond[], options: RenderOptions): void {
     const lineBonds: Bond[] = [];
+    const bothBonds: Bond[] = [];
     const thickBonds: Bond[] = [];
 
     for (const b of allBonds) {
@@ -285,13 +286,19 @@ export class ThreeRenderer implements Renderer {
       const r2 = m2 === 'cartoon' || m2 === 'ribbon';
       if (r1 && r2) continue;
 
-      if (['lines', 'both'].includes(m1) || ['lines', 'both'].includes(m2)) {
+      if (m1 === 'both' || m2 === 'both') {
+        bothBonds.push(b);
+      } else if (m1 === 'lines' || m2 === 'lines') {
         lineBonds.push(b);
       } else if (m1 === 'tube' || m2 === 'tube') {
         thickBonds.push(b);
       }
     }
 
+    if (bothBonds.length > 0) {
+      // Points and lines mode: very thin, semi-transparent bonds.
+      this.renderInstancedBonds(bothBonds, 0.6 / options.zoom, options, true, 0.4);
+    }
     if (lineBonds.length > 0) {
       this.renderInstancedBonds(lineBonds, 1.0 / options.zoom, options, true);
     }
@@ -302,7 +309,7 @@ export class ThreeRenderer implements Renderer {
     }
   }
 
-  private renderInstancedBonds(bonds: Bond[], radius: number, options: RenderOptions, splitColor: boolean): void {
+  private renderInstancedBonds(bonds: Bond[], radius: number, options: RenderOptions, splitColor: boolean, opacity: number = 1.0): void {
     const cylinderGeom = new THREE.CylinderGeometry(1, 1, 1, 6);
     cylinderGeom.rotateX(Math.PI / 2);
 
@@ -314,6 +321,8 @@ export class ThreeRenderer implements Renderer {
     const material = new THREE.MeshStandardMaterial({
       color: splitColor ? 0xffffff : 0x888888,
       roughness: 0.4,
+      transparent: opacity < 1.0,
+      opacity: opacity,
     });
     const mesh = new THREE.InstancedMesh(cylinderGeom, material, count);
     const dummy = new THREE.Object3D();
