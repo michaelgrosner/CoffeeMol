@@ -109,6 +109,7 @@ export abstract class MolElement {
   atoms: Atom[];
   bonds: Bond[];
   isHighlighted: boolean = false;
+  explicit_bonds: [number, number][] = [];
 
   constructor(parent: MolElement | null, name: string, cc: any = null) {
     this.parent = parent;
@@ -271,13 +272,35 @@ export abstract class MolElement {
   findBonds(): void {
     this.bonds = [];
     if (this.atoms.length < 2) return;
+
+    // 1. Explicit bonds from CONECT records
+    if (this.explicit_bonds.length > 0) {
+      const serialMap: Map<number, Atom> = new Map();
+      for (const a of this.atoms) serialMap.set(a.serial, a);
+
+      for (const [s1, s2] of this.explicit_bonds) {
+        const a1 = serialMap.get(s1);
+        const a2 = serialMap.get(s2);
+        if (a1 && a2) {
+          // Avoid duplicates
+          const exists = this.bonds.some(b => (b.a1 === a1 && b.a2 === a2) || (b.a1 === a2 && b.a2 === a1));
+          if (!exists) this.bonds.push(new Bond(a1, a2));
+        }
+      }
+    }
+
+    // 2. Implicit bonds by distance (heuristic)
     for (let i = 0; i <= this.atoms.length - 2; i++) {
       const a1 = this.atoms[i];
       // Increase window to 80 to catch bonds between residues with many atoms
       const jEnd = Math.min(i + 80, this.atoms.length - 1);
       for (let j = i + 1; j <= jEnd; j++) {
-        if (isBonded(a1, this.atoms[j]))
-          this.bonds.push(new Bond(a1, this.atoms[j]));
+        const a2 = this.atoms[j];
+        if (isBonded(a1, a2)) {
+          // Avoid duplicates with explicit bonds
+          const exists = this.bonds.some(b => (b.a1 === a1 && b.a2 === a2) || (b.a1 === a2 && b.a2 === a1));
+          if (!exists) this.bonds.push(new Bond(a1, a2));
+        }
       }
     }
   }
@@ -382,6 +405,11 @@ export class Atom extends MolElement {
   original_atom_name: string;
   original_position: [number, number, number];
   declare parent: Residue;
+  occupancy: number;
+  element: string;
+  formalCharge: number;
+  model_id: number;
+  serial: number;
 
   constructor(
     parent: Residue,
@@ -391,7 +419,12 @@ export class Atom extends MolElement {
     z: number,
     original_atom_name: string,
     tempFactor: number = 0,
-    isHetatm: boolean = false
+    isHetatm: boolean = false,
+    occupancy: number = 1.0,
+    element: string = '',
+    formalCharge: number = 0,
+    model_id: number = 1,
+    serial: number = 0
   ) {
     super(parent, name);
     this.x = x;
@@ -401,6 +434,11 @@ export class Atom extends MolElement {
     this.isHetatm = isHetatm;
     this.original_atom_name = original_atom_name;
     this.original_position = [x, y, z];
+    this.occupancy = occupancy;
+    this.element = element || name;
+    this.formalCharge = formalCharge;
+    this.model_id = model_id;
+    this.serial = serial;
   }
 
   toString(): string {
@@ -416,7 +454,7 @@ export class Atom extends MolElement {
   }
   cpkColor(): RGB {
     const colors = this.cc.colorScheme?.atom_colors || {};
-    return this.info.drawColor ?? colors[this.name] ?? colors['_'];
+    return this.info.drawColor ?? colors[this.element] ?? colors[this.name] ?? colors['_'];
   }
   ssColor(): RGB {
     const colors = this.cc.colorScheme?.ss_colors || {};

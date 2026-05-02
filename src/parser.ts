@@ -10,7 +10,9 @@ import {
 export function parsePDB(data: string): ParsedStructure {
   const atoms: ParsedAtom[] = [];
   const secondary_structure: SecondaryStructureRange[] = [];
+  const explicit_bonds: [number, number][] = [];
   let title = '';
+  let currentModel = 1;
 
   const handleResiName = (r: string) =>
     nuc_acids.slice(4).includes(r) ? r.substring(1, 3) : r;
@@ -21,6 +23,10 @@ export function parsePDB(data: string): ParsedStructure {
       const t = line.substring(6).trim();
       if (!title) title = t;
       else title += ' ' + t;
+      continue;
+    }
+    if (line.startsWith('MODEL')) {
+      currentModel = parseInt(line.substring(10).trim()) || 1;
       continue;
     }
     if (line.startsWith('HELIX')) {
@@ -41,11 +47,20 @@ export function parsePDB(data: string): ParsedStructure {
       });
       continue;
     }
+    if (line.startsWith('CONECT')) {
+      const a1 = parseInt(line.substring(6, 11).trim());
+      for (let offset = 11; offset <= 26; offset += 5) {
+        const a2 = parseInt(line.substring(offset, offset + 5).trim());
+        if (!isNaN(a2)) explicit_bonds.push([a1, a2]);
+      }
+      continue;
+    }
     if (!line.startsWith('ATOM') && !line.startsWith('HETATM')) continue;
 
     const isHetatm = line.startsWith('HETATM');
     const raw = line.substring(12, 16).trim();
     atoms.push({
+      serial: parseInt(line.substring(6, 11).trim()),
       original_atom_name: raw,
       atom_name: handleAtomName(raw),
       resi_name: handleResiName(line.substring(17, 20).trim()),
@@ -54,12 +69,16 @@ export function parsePDB(data: string): ParsedStructure {
       x: parseFloat(line.substring(30, 38).trim()),
       y: parseFloat(line.substring(38, 46).trim()),
       z: parseFloat(line.substring(46, 54).trim()),
+      occupancy: parseFloat(line.substring(54, 60).trim()) || 1.0,
       tempFactor: parseFloat(line.substring(60, 66).trim()) || 0,
+      element: line.substring(76, 78).trim() || handleAtomName(raw),
+      formalCharge: parseInt(line.substring(78, 80).trim()) || 0,
       isHetatm,
+      model_id: currentModel,
     });
   }
 
-  return { title, atoms, secondary_structure };
+  return { title, atoms, secondary_structure, explicit_bonds };
 }
 
 export function parseMmCIF(data: string): ParsedStructure {
@@ -136,6 +155,7 @@ export function parseMmCIF(data: string): ParsedStructure {
         const attrMap: Record<string, number> = {};
         attributes.forEach((attr, idx) => (attrMap[attr] = idx));
         const getAttr = (key: string) => attrMap[`_atom_site.${key}`];
+        const serialIdx = getAttr('id');
         const atomIdIdx = getAttr('auth_atom_id') ?? getAttr('label_atom_id');
         const compIdIdx = getAttr('auth_comp_id') ?? getAttr('label_comp_id');
         const seqIdIdx = getAttr('auth_seq_id') ?? getAttr('label_seq_id');
@@ -144,6 +164,10 @@ export function parseMmCIF(data: string): ParsedStructure {
         const yIdx = getAttr('Cartn_y');
         const zIdx = getAttr('Cartn_z');
         const tempIdx = getAttr('B_iso_or_equiv');
+        const occupancyIdx = getAttr('occupancy');
+        const elementIdx = getAttr('type_symbol');
+        const chargeIdx = getAttr('pdbx_formal_charge');
+        const modelIdx = getAttr('pdbx_PDB_model_num');
         const groupIdx = getAttr('group_PDB');
 
         if (
@@ -169,6 +193,7 @@ export function parseMmCIF(data: string): ParsedStructure {
               const raw = values[atomIdIdx];
               const isHetatm = groupIdx !== undefined && values[groupIdx] === 'HETATM';
               atoms.push({
+                serial: serialIdx !== undefined ? parseInt(values[serialIdx]) : atoms.length + 1,
                 original_atom_name: raw,
                 atom_name: handleAtomName(raw),
                 resi_name: handleResiName(values[compIdIdx]),
@@ -179,6 +204,10 @@ export function parseMmCIF(data: string): ParsedStructure {
                 z: parseFloat(values[zIdx]),
                 tempFactor:
                   tempIdx !== undefined ? parseFloat(values[tempIdx]) : 0,
+                occupancy: occupancyIdx !== undefined ? parseFloat(values[occupancyIdx]) : 1.0,
+                element: elementIdx !== undefined ? values[elementIdx] : handleAtomName(raw),
+                formalCharge: chargeIdx !== undefined ? parseInt(values[chargeIdx]) : 0,
+                model_id: modelIdx !== undefined ? parseInt(values[modelIdx]) : 1,
                 isHetatm,
               });
             }

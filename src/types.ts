@@ -44,6 +44,7 @@ export interface StructureLoadInfo {
 }
 
 export interface ParsedAtom {
+  serial: number;
   original_atom_name: string;
   atom_name: string;
   resi_name: string;
@@ -54,6 +55,10 @@ export interface ParsedAtom {
   z: number;
   tempFactor: number;
   isHetatm: boolean;
+  occupancy?: number;
+  element?: string;
+  formalCharge?: number;
+  model_id?: number;
 }
 
 export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';
@@ -69,6 +74,7 @@ export interface ParsedStructure {
   title: string;
   atoms: ParsedAtom[];
   secondary_structure?: SecondaryStructureRange[];
+  explicit_bonds?: [number, number][];
 }
 
 export interface ColorScheme {

@@ -241,6 +241,7 @@ export class CanvasContext {
     const s = new Structure(filepath, this);
     this.addElement(s);
     if (parsed.title) s.attachTitle(parsed.title);
+    if (parsed.explicit_bonds) s.explicit_bonds = parsed.explicit_bonds;
 
     let chain_id_prev: string | null = null;
     let resi_id_prev: number | null = null;
@@ -249,7 +250,11 @@ export class CanvasContext {
 
     const residues: Residue[] = [];
 
-    for (const d of parsed.atoms) {
+    // Filter to only first model by default to avoid overlapping structures
+    const firstModelId = parsed.atoms.length > 0 ? parsed.atoms[0].model_id : 1;
+    const atomsToLoad = parsed.atoms.filter(a => a.model_id === firstModelId);
+
+    for (const d of atomsToLoad) {
       if (chain_id_prev == null || d.chain_id !== chain_id_prev) {
         c = new Chain(s, d.chain_id);
         s.addChild(c);
@@ -271,7 +276,11 @@ export class CanvasContext {
           d.z,
           d.original_atom_name,
           d.tempFactor,
-          d.isHetatm
+          d.isHetatm,
+          d.occupancy,
+          d.element,
+          d.formalCharge,
+          d.model_id
         )
       );
       chain_id_prev = d.chain_id;
