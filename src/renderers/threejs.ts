@@ -1,7 +1,22 @@
 import * as THREE from 'three';
 import { Structure, Atom, Bond, Chain, sortByZ, atomAtomDistance } from '../models';
 import { Renderer, RenderOptions } from './renderer';
-import { atom_radii, ATOM_SIZE } from '../types';
+import { atom_radii, ATOM_SIZE, SecondaryStructureType, ColorMethod, RGB } from '../types';
+
+// Resolve an atom's RGB color from its colorMethod (or a fallback). Mirrors
+// the logic in Canvas2DRenderer.depthShadedColorString minus the depth tint —
+// 3D shading is handled by the lighting model.
+function atomRGB(a: Atom, fallback: ColorMethod = 'cpk'): RGB {
+  const method = a.info.colorMethod || fallback;
+  switch (method) {
+    case 'ss': return a.ssColor();
+    case 'chain': return a.chainColor();
+    case 'b-factor': return a.bFactorColor();
+    case 'hydrophobicity': return a.hydrophobicityColor();
+    case 'cpk':
+    default: return a.cpkColor();
+  }
+}
 
 export class ThreeRenderer implements Renderer {
   private canvas!: HTMLCanvasElement;
@@ -14,8 +29,20 @@ export class ThreeRenderer implements Renderer {
   private bondsGroup: THREE.Group = new THREE.Group();
   private ribbonsGroup: THREE.Group = new THREE.Group();
   private lightsGroup: THREE.Group = new THREE.Group();
-  
+
   private instancedAtomsList: THREE.InstancedMesh[] = [];
+
+  // Vignette overlay — a fullscreen quad rendered in clip space after the main
+  // pass. Mirrors the radial darkening that Canvas2DRenderer paints over its
+  // 2D output so the 3D and 2D renderers feel consistent.
+  private vignetteScene: THREE.Scene | null = null;
+  private vignetteCamera: THREE.OrthographicCamera | null = null;
+  private vignetteMaterial: THREE.ShaderMaterial | null = null;
+
+  // Three-step gradient ramp for cartoon shading. Without a gradientMap, MeshToonMaterial
+  // defaults to a 2-step ramp that crushes the shadow side to near-black; a 3-step ramp
+  // keeps shadows readable while still reading as cell-shaded.
+  private toonGradient: THREE.DataTexture | null = null;
 
   init(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
@@ -55,20 +82,75 @@ export class ThreeRenderer implements Renderer {
     this.scene.add(this.lightsGroup);
 
     this.setupLights();
+    this.setupVignette();
+    this.setupToonGradient();
     this.raycaster.params.Points!.threshold = 1;
   }
 
+  private setupToonGradient(): void {
+    // 4-stop ramp: deep shadow / mid shadow / midtone / highlight.
+    const data = new Uint8Array([110, 170, 215, 255]);
+    const tex = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat);
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    tex.needsUpdate = true;
+    this.toonGradient = tex;
+  }
+
+  private setupVignette(): void {
+    this.vignetteScene = new THREE.Scene();
+    // Identity-projection camera; the vertex shader emits clip-space directly.
+    this.vignetteCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.vignetteMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        // Larger offset = darker corners, larger inner clear area.
+        offset:   { value: 1.6 },
+        darkness: { value: 0.55 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float offset;
+        uniform float darkness;
+        varying vec2 vUv;
+        void main() {
+          vec2 uv = (vUv - 0.5) * offset;
+          float d = clamp(dot(uv, uv), 0.0, 1.0);
+          gl_FragColor = vec4(0.0, 0.0, 0.0, d * darkness);
+        }
+      `,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.vignetteMaterial);
+    quad.frustumCulled = false;
+    this.vignetteScene.add(quad);
+  }
+
   private setupLights(): void {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
     this.lightsGroup.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
-    dirLight1.position.set(1, 1, 2);
+    // Key light: upper-left-front for primary shading
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.3);
+    dirLight1.position.set(1, 2, 3);
     this.lightsGroup.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+    // Subtle fill from lower-right to soften shadows
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.2);
     dirLight2.position.set(-1, -1, -2);
     this.lightsGroup.add(dirLight2);
+
+    // Cool rim light from behind-left for edge definition
+    const rimLight = new THREE.DirectionalLight(0x99aacc, 0.35);
+    rimLight.position.set(-2, 0.5, -1);
+    this.lightsGroup.add(rimLight);
   }
 
   render(elements: Structure[], bonds: Bond[], options: RenderOptions): void {
@@ -78,6 +160,16 @@ export class ThreeRenderer implements Renderer {
     this.camera.updateProjectionMatrix();
     this.camera.lookAt(0, 0, 0);
     this.renderer.render(this.scene, this.camera);
+
+    // Composite the vignette over the molecule. Only meaningful on dark
+    // backgrounds; on light backgrounds the soft black halo would just look
+    // like uneven exposure.
+    if (options.isDarkBackground && this.vignetteScene && this.vignetteCamera) {
+      this.renderer.autoClear = false;
+      this.renderer.clearDepth();
+      this.renderer.render(this.vignetteScene, this.vignetteCamera);
+      this.renderer.autoClear = true;
+    }
   }
 
   private updateScene(elements: Structure[], options: RenderOptions): void {
@@ -86,7 +178,7 @@ export class ThreeRenderer implements Renderer {
     this.ribbonsGroup.clear();
     this.instancedAtomsList = [];
 
-    const atomsByElement: Map<string, Atom[]> = new Map();
+    const pointAtoms: Atom[] = [];
     const allBonds: Bond[] = [];
     const ribbonChains: Map<Chain, Atom[]> = new Map();
 
@@ -96,7 +188,7 @@ export class ThreeRenderer implements Renderer {
         const method = a.info.drawMethod;
 
         if (['ribbon', 'cartoon', 'tube'].includes(method)) {
-          if ((a.parent.isProtein() && a.original_atom_name === 'CA') || 
+          if ((a.parent.isProtein() && a.original_atom_name === 'CA') ||
               (a.parent.isDNA() && a.original_atom_name === 'P')) {
             const c = a.parent.parent;
             if (!ribbonChains.has(c)) ribbonChains.set(c, []);
@@ -105,8 +197,7 @@ export class ThreeRenderer implements Renderer {
         }
 
         if (['points', 'both'].includes(method)) {
-          if (!atomsByElement.has(a.name)) atomsByElement.set(a.name, []);
-          atomsByElement.get(a.name)!.push(a);
+          pointAtoms.push(a);
         }
       }
 
@@ -117,47 +208,63 @@ export class ThreeRenderer implements Renderer {
       collectBonds(el);
     }
 
-    // 1. Atoms
-    const sphereGeom = new THREE.SphereGeometry(1, 12, 12);
-    for (const [elementName, atoms] of atomsByElement) {
-      const relR = atom_radii[elementName] ?? 1.0;
-      const radius = (ATOM_SIZE * relR) / options.zoom;
-      const colorArr = atoms[0].cpkColor();
-      const color = new THREE.Color(colorArr[0] / 255, colorArr[1] / 255, colorArr[2] / 255);
-      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.1 });
-      const instancedMesh = new THREE.InstancedMesh(sphereGeom, material, atoms.length);
+    // 1. Atoms — single instanced mesh with per-instance color so each atom can
+    // honor its own colorMethod (cpk / ss / chain / b-factor / hydrophobicity).
+    if (pointAtoms.length > 0) {
+      // Atom radius in world units. Camera frustum is sized in pixels (frustumSize=height,
+      // left/right=±width/2), so 1 world unit = 1 px at zoom=1. Dividing by zoom keeps
+      // points a constant ~6px diameter on screen across zoom levels.
+      const baseRadius = ATOM_SIZE / options.zoom;
+      const sphereGeom = new THREE.SphereGeometry(1, 12, 12);
+      // Three.js auto-enables `USE_INSTANCING_COLOR` when the InstancedMesh has an
+      // instanceColor attribute; the material color is multiplied by it. Setting the
+      // base color to white means the per-instance color shows through unchanged.
+      const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.1 });
+      const mesh = new THREE.InstancedMesh(sphereGeom, material, pointAtoms.length);
       const dummy = new THREE.Object3D();
-      for (let i = 0; i < atoms.length; i++) {
-        const a = atoms[i];
+      const tmpColor = new THREE.Color();
+      for (let i = 0; i < pointAtoms.length; i++) {
+        const a = pointAtoms[i];
+        const relR = atom_radii[a.name] ?? 1.0;
+        const radius = baseRadius * relR;
         dummy.position.set(a.x, -a.y, a.z);
         dummy.scale.set(radius, radius, radius);
         dummy.updateMatrix();
-        instancedMesh.setMatrixAt(i, dummy.matrix);
+        mesh.setMatrixAt(i, dummy.matrix);
+        const c = atomRGB(a, 'cpk');
+        tmpColor.setRGB(c[0] / 255, c[1] / 255, c[2] / 255);
+        mesh.setColorAt(i, tmpColor);
       }
-      (instancedMesh.userData as any).atoms = atoms;
-      this.instancedAtomsList.push(instancedMesh);
-      this.atomsGroup.add(instancedMesh);
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      (mesh.userData as any).atoms = pointAtoms;
+      this.instancedAtomsList.push(mesh);
+      this.atomsGroup.add(mesh);
     }
 
     // 2. Bonds
     this.renderBonds(allBonds, options);
 
     // 3. Ribbon / Cartoon / Tube
+    // The atom's own colorMethod decides how the ribbon is colored. Falling back
+    // to the scheme's ribbon_color_method preserves the historical 'ss' default
+    // for the Modern preset; otherwise chain coloring matches 2D behavior.
+    const ribbonFallback: ColorMethod = options.colorScheme?.ribbon_color_method === 'ss' ? 'ss' : 'chain';
     for (const [chain, atoms] of ribbonChains) {
       if (atoms.length < 2) continue;
-      const points = atoms.map(a => new THREE.Vector3(a.x, -a.y, a.z));
-      const curve = new THREE.CatmullRomCurve3(points);
       const firstAtom = atoms[0];
       const method = firstAtom.info.drawMethod;
-      const colorArr = firstAtom.chainColor();
-      const baseColor = new THREE.Color(colorArr[0]/255, colorArr[1]/255, colorArr[2]/255);
-      const material = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.4, metalness: 0.1 });
 
       if (method === 'tube') {
-        const geometry = new THREE.TubeGeometry(curve, atoms.length * 8, 0.4, 12, false);
-        this.ribbonsGroup.add(new THREE.Mesh(geometry, material));
+        const pts = atoms.map(a => new THREE.Vector3(a.x, -a.y, a.z));
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const colorArr = atomRGB(firstAtom, ribbonFallback);
+        const color = new THREE.Color(colorArr[0]/255, colorArr[1]/255, colorArr[2]/255);
+        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.0 });
+        const geo = new THREE.TubeGeometry(curve, atoms.length * 10, 0.4, 16, false);
+        this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
       } else {
-        this.buildAdvancedRibbon(atoms, curve, method, material, options);
+        this.buildRibbons(atoms, method, options, ribbonFallback);
       }
     }
   }
@@ -178,165 +285,290 @@ export class ThreeRenderer implements Renderer {
     }
 
     if (lineBonds.length > 0) {
-      // Match 2D lineWidth (0.15 diameter -> 0.075 radius)
-      this.renderInstancedBonds(lineBonds, 0.075, options, true);
+      // ~2 px on screen across zoom levels. World-space size that scales inversely with
+      // camera zoom — same approach as the atom radius — keeps bonds thinner than atoms.
+      this.renderInstancedBonds(lineBonds, 1.0 / options.zoom, options, true);
     }
     if (thickBonds.length > 0) {
-      // Match 2D tube width (0.4-0.8 diameter -> 0.2-0.4 radius). Using 0.3 as a good middle ground.
-      this.renderInstancedBonds(thickBonds, 0.3, options, false);
+      // Tube/cartoon backbone — chunkier, zoom-independent in world units so it reads
+      // as a continuous backbone rather than a per-atom marker.
+      this.renderInstancedBonds(thickBonds, 0.4, options, false);
     }
   }
 
-  private renderInstancedBonds(bonds: Bond[], radius: number, options: RenderOptions, splitCPK: boolean): void {
+  private renderInstancedBonds(bonds: Bond[], radius: number, options: RenderOptions, splitColor: boolean): void {
     const cylinderGeom = new THREE.CylinderGeometry(1, 1, 1, 6);
     cylinderGeom.rotateX(Math.PI / 2);
 
-    if (splitCPK) {
-      const elementPairs: Map<string, Array<{pos: THREE.Vector3, target: THREE.Vector3, dist: number, atom: Atom}>> = new Map();
+    // Two half-cylinders per bond when splitColor, one full cylinder otherwise.
+    const count = splitColor ? bonds.length * 2 : bonds.length;
+    // Base color must be white when relying on per-instance instanceColor (it is
+    // multiplied with the material color). For non-split bonds we use a single
+    // neutral grey across all instances.
+    const material = new THREE.MeshStandardMaterial({
+      color: splitColor ? 0xffffff : 0x888888,
+      roughness: 0.4,
+    });
+    const mesh = new THREE.InstancedMesh(cylinderGeom, material, count);
+    const dummy = new THREE.Object3D();
+    const tmpColor = new THREE.Color();
+    const p1 = new THREE.Vector3();
+    const p2 = new THREE.Vector3();
+    const mid = new THREE.Vector3();
+    const halfPos = new THREE.Vector3();
 
-      for (const b of bonds) {
-        const p1 = new THREE.Vector3(b.a1.x, -b.a1.y, b.a1.z);
-        const p2 = new THREE.Vector3(b.a2.x, -b.a2.y, b.a2.z);
-        const mid = new THREE.Vector3().copy(p1).add(p2).multiplyScalar(0.5);
-        const distHalf = p1.distanceTo(p2) / 2;
+    let idx = 0;
+    for (const b of bonds) {
+      p1.set(b.a1.x, -b.a1.y, b.a1.z);
+      p2.set(b.a2.x, -b.a2.y, b.a2.z);
 
-        const name1 = b.a1.name;
-        if (!elementPairs.has(name1)) elementPairs.set(name1, []);
-        elementPairs.get(name1)!.push({ pos: new THREE.Vector3().copy(p1).add(mid).multiplyScalar(0.5), target: mid, dist: distHalf, atom: b.a1 });
+      if (splitColor) {
+        mid.copy(p1).add(p2).multiplyScalar(0.5);
+        const half = p1.distanceTo(p2) / 2;
 
-        const name2 = b.a2.name;
-        if (!elementPairs.has(name2)) elementPairs.set(name2, []);
-        elementPairs.get(name2)!.push({ pos: new THREE.Vector3().copy(p2).add(mid).multiplyScalar(0.5), target: mid, dist: distHalf, atom: b.a2 });
-      }
+        // Half 1: a1 → midpoint, colored by a1.
+        halfPos.copy(p1).add(mid).multiplyScalar(0.5);
+        dummy.position.copy(halfPos);
+        dummy.lookAt(mid);
+        dummy.scale.set(radius, radius, half);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(idx, dummy.matrix);
+        const c1 = atomRGB(b.a1, 'cpk');
+        tmpColor.setRGB(c1[0] / 255, c1[1] / 255, c1[2] / 255);
+        mesh.setColorAt(idx, tmpColor);
+        idx++;
 
-      for (const [name, instances] of elementPairs) {
-        const colorArr = instances[0].atom.cpkColor();
-        const color = new THREE.Color(colorArr[0]/255, colorArr[1]/255, colorArr[2]/255);
-        // Fully opaque, slightly less rough for more highlight
-        const material = new THREE.MeshStandardMaterial({ color, roughness: 0.4 });
-        const mesh = new THREE.InstancedMesh(cylinderGeom, material, instances.length);
-        const dummy = new THREE.Object3D();
-
-        for (let i = 0; i < instances.length; i++) {
-          const inst = instances[i];
-          dummy.position.copy(inst.pos);
-          dummy.lookAt(inst.target);
-          dummy.scale.set(radius, radius, inst.dist);
-          dummy.updateMatrix();
-          mesh.setMatrixAt(i, dummy.matrix);
-        }
-        this.bondsGroup.add(mesh);
-      }
-    } else {
-      const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5 });
-      const mesh = new THREE.InstancedMesh(cylinderGeom, material, bonds.length);
-      const dummy = new THREE.Object3D();
-      for (let i = 0; i < bonds.length; i++) {
-        const b = bonds[i];
-        const p1 = new THREE.Vector3(b.a1.x, -b.a1.y, b.a1.z);
-        const p2 = new THREE.Vector3(b.a2.x, -b.a2.y, b.a2.z);
+        // Half 2: a2 → midpoint, colored by a2.
+        halfPos.copy(p2).add(mid).multiplyScalar(0.5);
+        dummy.position.copy(halfPos);
+        dummy.lookAt(mid);
+        dummy.scale.set(radius, radius, half);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(idx, dummy.matrix);
+        const c2 = atomRGB(b.a2, 'cpk');
+        tmpColor.setRGB(c2[0] / 255, c2[1] / 255, c2[2] / 255);
+        mesh.setColorAt(idx, tmpColor);
+        idx++;
+      } else {
         const dist = p1.distanceTo(p2);
         dummy.position.copy(p1).add(p2).multiplyScalar(0.5);
         dummy.lookAt(p2);
         dummy.scale.set(radius, radius, dist);
         dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
+        mesh.setMatrixAt(idx, dummy.matrix);
+        idx++;
       }
-      this.bondsGroup.add(mesh);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    this.bondsGroup.add(mesh);
+  }
+
+  // Split a chain's CA atoms into contiguous secondary-structure segments,
+  // overlapping by 1 atom at each boundary so adjacent curves meet smoothly.
+  private splitBySSType(atoms: Atom[]): Array<{ atoms: Atom[]; ss: SecondaryStructureType }> {
+    const result: Array<{ atoms: Atom[]; ss: SecondaryStructureType }> = [];
+    if (atoms.length === 0) return result;
+
+    let segStart = 0;
+    for (let i = 1; i <= atoms.length; i++) {
+      const atEnd = i === atoms.length || atoms[i].parent.ss !== atoms[segStart].parent.ss;
+      if (atEnd) {
+        const from = Math.max(0, segStart - 1);
+        const to = Math.min(atoms.length, i + 1);
+        result.push({ atoms: atoms.slice(from, to), ss: atoms[segStart].parent.ss });
+        segStart = i;
+      }
+    }
+    return result;
+  }
+
+  // Dispatch each SS segment to the appropriate geometry builder.
+  private buildRibbons(atoms: Atom[], method: string, options: RenderOptions, ribbonFallback: ColorMethod): void {
+    const segs = this.splitBySSType(atoms);
+
+    for (const seg of segs) {
+      if (seg.atoms.length < 2) continue;
+      const pts = seg.atoms.map(a => new THREE.Vector3(a.x, -a.y, a.z));
+      const curve = new THREE.CatmullRomCurve3(pts);
+
+      // Color the segment using the middle atom's resolved color. b-factor /
+      // hydrophobicity get a per-segment readout (not per-residue), but that
+      // matches how the 2D renderer colors ribbon segments today.
+      const midAtom = seg.atoms[Math.floor(seg.atoms.length / 2)];
+      const c = atomRGB(midAtom, ribbonFallback);
+      const color = new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
+
+      const isCartoon = method === 'cartoon';
+      const mat = isCartoon
+        // Toon material with a 4-step ramp so shadows aren't crushed to black.
+        ? new THREE.MeshToonMaterial({ color, gradientMap: this.toonGradient })
+        : new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.0 });
+
+      if (seg.ss === 'helix') {
+        this.buildHelixRibbon(seg.atoms, curve, method, mat, isCartoon);
+      } else if (seg.ss === 'loop') {
+        const radius = isCartoon ? 0.28 : 0.14;
+        const geo = new THREE.TubeGeometry(curve, seg.atoms.length * 8, radius, 8, false);
+        this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
+        this.addCartoonOutline(geo, isCartoon, 0.05);
+      } else {
+        // sheet: flat ribbon with arrowhead, using parallel-transport framing
+        this.buildSheetRibbon(seg.atoms, curve, method, mat, isCartoon);
+      }
     }
   }
 
-  private buildAdvancedRibbon(atoms: Atom[], curve: THREE.CatmullRomCurve3, method: string, material: THREE.MeshStandardMaterial, options: RenderOptions): void {
-    const segments = atoms.length * 10;
-    const points = curve.getPoints(segments);
-    const tangents = curve.getSpacedPoints(segments).map((_, i) => curve.getTangent(i / segments));
-    const geometry = new THREE.BufferGeometry();
+  // Inflate a clone of `geo` outward along its vertex normals and render the
+  // back-faces only — the classic "outline shell" trick for cell-shaded looks.
+  // Only runs for cartoon mode; ribbon/tube modes get their normal lit material.
+  private addCartoonOutline(geo: THREE.BufferGeometry, isCartoon: boolean, offset: number): void {
+    if (!isCartoon) return;
+    const outlineGeo = geo.clone();
+    const positions = outlineGeo.attributes.position as THREE.BufferAttribute;
+    const normals = outlineGeo.attributes.normal as THREE.BufferAttribute;
+    if (!normals) return;
+    for (let i = 0; i < positions.count; i++) {
+      positions.setXYZ(
+        i,
+        positions.getX(i) + normals.getX(i) * offset,
+        positions.getY(i) + normals.getY(i) * offset,
+        positions.getZ(i) + normals.getZ(i) * offset
+      );
+    }
+    positions.needsUpdate = true;
+    // Dark indigo, not pure black — pure black on a black background looks like
+    // missing geometry rather than a stylized outline.
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x14181f, side: THREE.BackSide });
+    this.ribbonsGroup.add(new THREE.Mesh(outlineGeo, outlineMat));
+  }
+
+  // Flat wide ribbon for helices, oriented using the helix barrel axis as a stable
+  // normal reference. The binormal = tangent × helixAxis spirals smoothly with the
+  // helix, giving the classic coiled-ribbon appearance without the wild spinning
+  // caused by the CA→O normal (which rotates ~100° per residue in an alpha helix).
+  private buildHelixRibbon(atoms: Atom[], curve: THREE.CatmullRomCurve3, _method: string, mat: THREE.Material, isCartoon: boolean): void {
+    const segs = atoms.length * 20;
+    const points = curve.getPoints(segs);
+
+    // Cartoon = wider, fatter band so the cell-shaded outline reads clearly.
+    const width = isCartoon ? 1.7 : 0.9;
+    const thickness = isCartoon ? 0.5 : 0.2;
+
+    // Helix axis: overall start→end direction of the segment.
+    // Using this as a fixed reference keeps the ribbon plane stable as it
+    // winds around the helix, rather than tracking each individual CA→O vector.
+    const firstPt = new THREE.Vector3(atoms[0].x, -atoms[0].y, atoms[0].z);
+    const lastPt  = new THREE.Vector3(atoms[atoms.length - 1].x, -atoms[atoms.length - 1].y, atoms[atoms.length - 1].z);
+    const helixAxis = lastPt.clone().sub(firstPt).normalize();
+
     const vertices: number[] = [];
     const indices: number[] = [];
 
-    const normals: THREE.Vector3[] = [];
-    for (let i = 0; i < atoms.length; i++) {
-      const atom = atoms[i];
-      const oxygen = atom.parent.children.find(a => (a as Atom).original_atom_name === 'O') as Atom;
-      normals.push(oxygen ? new THREE.Vector3(oxygen.x - atom.x, -(oxygen.y - atom.y), oxygen.z - atom.z).normalize() : new THREE.Vector3(0, 1, 0));
-    }
-
-    const smoothedNormals: THREE.Vector3[] = [];
-    for (let i = 0; i < normals.length; i++) {
-      const smoothed = new THREE.Vector3(0, 0, 0);
-      for (let j = i - 2; j <= i + 2; j++) {
-        if (j >= 0 && j < normals.length) smoothed.add(normals[j]);
-      }
-      smoothedNormals.push(smoothed.normalize());
-    }
-
-    const edgeVerticesFrontL: THREE.Vector3[] = [];
-    const edgeVerticesFrontR: THREE.Vector3[] = [];
-    const thickness = method === 'cartoon' ? 0.3 : 0.15;
-
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
+    for (let i = 0; i <= segs; i++) {
       const pos = points[i];
-      const tangent = tangents[i];
+      const tangent = curve.getTangent(i / segs).normalize();
+
+      // Binormal: tangent × helixAxis — spirals with the helix smoothly.
+      let binormal = new THREE.Vector3().crossVectors(tangent, helixAxis).normalize();
+      if (binormal.lengthSq() < 0.01) {
+        binormal = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(1, 0, 0)).normalize();
+      }
+      const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+
+      const hT = thickness / 2;
+      const pFL = pos.clone().addScaledVector(binormal,  width).addScaledVector(normal,  hT);
+      const pFR = pos.clone().addScaledVector(binormal, -width).addScaledVector(normal,  hT);
+      const pBL = pos.clone().addScaledVector(binormal,  width).addScaledVector(normal, -hT);
+      const pBR = pos.clone().addScaledVector(binormal, -width).addScaledVector(normal, -hT);
+
+      vertices.push(pFL.x, pFL.y, pFL.z, pFR.x, pFR.y, pFR.z, pBL.x, pBL.y, pBL.z, pBR.x, pBR.y, pBR.z);
+    }
+
+    for (let i = 0; i < segs; i++) {
+      const b = i * 4, nn = (i + 1) * 4;
+      indices.push(b, b+1, nn,   b+1, nn+1, nn);
+      indices.push(b+2, nn+2, b+3, b+3, nn+2, nn+3);
+      indices.push(b, nn, b+2,   b+2, nn, nn+2);
+      indices.push(b+1, b+3, nn+1, b+3, nn+3, nn+1);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
+    this.addCartoonOutline(geo, isCartoon, 0.08);
+  }
+
+  // Flat ribbon with a tapered arrowhead at the C-terminal end of a sheet segment.
+  // Uses parallel-transport framing so the ribbon stays flat instead of spinning
+  // with the Frenet normal (which flips on tightly curved strands).
+  private buildSheetRibbon(atoms: Atom[], curve: THREE.CatmullRomCurve3, _method: string, mat: THREE.Material, isCartoon: boolean): void {
+    const segs = atoms.length * 20;
+    const points = curve.getPoints(segs);
+
+    const baseWidth = isCartoon ? 1.9 : 1.0;
+    const thickness = isCartoon ? 0.42 : 0.16;
+
+    // Seed the parallel-transport normal: world-up projected perpendicular to tangent.
+    const t0 = curve.getTangent(0).normalize();
+    const pN = new THREE.Vector3(0, 1, 0);
+    pN.sub(t0.clone().multiplyScalar(pN.dot(t0))).normalize();
+    if (pN.lengthSq() < 0.1) {
+      pN.set(1, 0, 0).sub(t0.clone().multiplyScalar(t0.x)).normalize();
+    }
+
+    const vertices: number[] = [];
+    const indices: number[] = [];
+
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const pos = points[i];
+      const tangent = curve.getTangent(t).normalize();
+
+      // Parallel-transport: keep pN perpendicular to tangent without net rotation.
+      pN.sub(tangent.clone().multiplyScalar(pN.dot(tangent))).normalize();
+      const binormal = new THREE.Vector3().crossVectors(tangent, pN).normalize();
+      const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+
+      // Arrowhead on the last residue of the segment.
       const atomIdx = t * (atoms.length - 1);
-      const lowIdx = Math.floor(atomIdx);
-      const alpha = atomIdx - lowIdx;
-      
-      const n = new THREE.Vector3().lerpVectors(smoothedNormals[lowIdx], smoothedNormals[Math.min(lowIdx + 1, smoothedNormals.length-1)], alpha).normalize();
-      const binormal = new THREE.Vector3().crossVectors(tangent, n).normalize();
-      if (binormal.length() < 0.1) binormal.crossVectors(tangent, new THREE.Vector3(0, 1, 0)).normalize();
-      const actualNormal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+      const lowIdx = Math.min(Math.floor(atomIdx), atoms.length - 2);
+      const progress = atomIdx - lowIdx;
 
-      const atom = atoms[lowIdx];
-      const ss = atom.parent.ss;
-      
-      let width = 0.4;
-      if (ss === 'helix') width = method === 'cartoon' ? 1.0 : 0.7;
-      else if (ss === 'sheet') width = method === 'cartoon' ? 1.3 : 0.9;
-      else width = 0.25;
-
-      if (ss === 'sheet' && (lowIdx === atoms.length - 1 || atoms[lowIdx + 1].parent.ss !== 'sheet')) {
-        const progressInResidue = atomIdx % 1.0;
-        if (progressInResidue > 0.3) {
-          const taper = 1.0 - (progressInResidue - 0.3) / 0.7;
-          width *= (1.2 + (1.0 - taper) * 0.8) * taper;
+      let width = baseWidth;
+      if (lowIdx === atoms.length - 2) {
+        if (progress < 0.15) {
+          width *= 1.0 + (progress / 0.15) * 0.65;      // flare to 1.65×
+        } else {
+          width *= 1.65 * (1.0 - (progress - 0.15) / 0.85); // linear taper to 0
         }
       }
 
-      const halfThickness = thickness / 2;
-      const pFrontLeft = pos.clone().add(binormal.clone().multiplyScalar(width)).add(actualNormal.clone().multiplyScalar(halfThickness));
-      const pFrontRight = pos.clone().add(binormal.clone().multiplyScalar(-width)).add(actualNormal.clone().multiplyScalar(halfThickness));
-      const pBackLeft = pos.clone().add(binormal.clone().multiplyScalar(width)).add(actualNormal.clone().multiplyScalar(-halfThickness));
-      const pBackRight = pos.clone().add(binormal.clone().multiplyScalar(-width)).add(actualNormal.clone().multiplyScalar(-halfThickness));
+      const hT = thickness / 2;
+      const pFL = pos.clone().addScaledVector(binormal,  width).addScaledVector(normal,  hT);
+      const pFR = pos.clone().addScaledVector(binormal, -width).addScaledVector(normal,  hT);
+      const pBL = pos.clone().addScaledVector(binormal,  width).addScaledVector(normal, -hT);
+      const pBR = pos.clone().addScaledVector(binormal, -width).addScaledVector(normal, -hT);
 
-      vertices.push(pFrontLeft.x, pFrontLeft.y, pFrontLeft.z);
-      vertices.push(pFrontRight.x, pFrontRight.y, pFrontRight.z);
-      vertices.push(pBackLeft.x, pBackLeft.y, pBackLeft.z);
-      vertices.push(pBackRight.x, pBackRight.y, pBackRight.z);
-      
-      edgeVerticesFrontL.push(pFrontLeft);
-      edgeVerticesFrontR.push(pFrontRight);
+      vertices.push(pFL.x, pFL.y, pFL.z, pFR.x, pFR.y, pFR.z, pBL.x, pBL.y, pBL.z, pBR.x, pBR.y, pBR.z);
     }
 
-    for (let i = 0; i < segments; i++) {
-      const b = i * 4;
-      const n = (i + 1) * 4;
-      indices.push(b+0, b+1, n+0); indices.push(b+1, n+1, n+0);
-      indices.push(b+2, n+2, b+3); indices.push(b+3, n+2, n+3);
-      indices.push(b+0, n+0, b+2); indices.push(b+2, n+0, n+2);
-      indices.push(b+1, b+3, n+1); indices.push(b+3, n+3, n+1);
+    for (let i = 0; i < segs; i++) {
+      const b = i * 4, nn = (i + 1) * 4;
+      indices.push(b, b+1, nn,   b+1, nn+1, nn);      // front face
+      indices.push(b+2, nn+2, b+3, b+3, nn+2, nn+3);  // back face
+      indices.push(b, nn, b+2,   b+2, nn, nn+2);       // left edge
+      indices.push(b+1, b+3, nn+1, b+3, nn+3, nn+1);  // right edge
     }
 
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
-    this.ribbonsGroup.add(new THREE.Mesh(geometry, material));
-
-    const edgeColor = options.isDarkBackground ? 0x000000 : 0x333333;
-    const edgeMat = new THREE.LineBasicMaterial({ color: edgeColor });
-    this.ribbonsGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgeVerticesFrontL), edgeMat));
-    this.ribbonsGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgeVerticesFrontR), edgeMat));
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    this.ribbonsGroup.add(new THREE.Mesh(geo, mat));
+    this.addCartoonOutline(geo, isCartoon, 0.08);
   }
 
   resize(width: number, height: number): void {

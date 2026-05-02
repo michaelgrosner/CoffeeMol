@@ -113,19 +113,20 @@
 			<label class="control-label">Presets</label>
 
 			<select id="settings-theme" class="action-button full-width">
-				<option value="default">Default (Jmol)</option>
-				<option value="highContrast">High Contrast</option>
-				<option value="nord">Nord</option>
-				<option value="solarizedDark">Solarized Dark</option>
-				<option value="dracula">Dracula</option>
-				<option value="synthwave84">Synthwave '84</option>
-				<option value="gruvboxDark">Gruvbox Dark</option>
-				<option value="tokyoNight">Tokyo Night</option>
-				<option value="oneDark">One Dark</option>
 				<option value="coffee">Coffee</option>
+				<option value="default">Default (Jmol)</option>
+				<option value="dracula">Dracula</option>
+				<option value="gruvboxDark">Gruvbox Dark</option>
+				<option value="highContrast">High Contrast</option>
+				<option value="modern">Modern</option>
+				<option value="molokai">Molokai</option>
 				<option value="monochrome">Monochrome</option>
 				<option value="neon">Neon</option>
-				<option value="molokai">Molokai</option>
+				<option value="nord">Nord</option>
+				<option value="oneDark">One Dark</option>
+				<option value="solarizedDark">Solarized Dark</option>
+				<option value="synthwave84">Synthwave '84</option>
+				<option value="tokyoNight">Tokyo Night</option>
 			</select>
 		</div>
 
@@ -194,6 +195,7 @@
 		const initialRenderer = localStorage.getItem('coffeemol_renderer_type') || '2d';
 		const viewer = CoffeeMol.create("#coffeemolCanvas", null, initialRenderer).autoResize();
 		viewer.resize(); // Initial resize to fill screen
+		window.viewer = viewer; // expose for debugging
 
 		// --- Service Worker ---
 		if ('serviceWorker' in navigator) {
@@ -366,14 +368,25 @@
 			document.getElementById('pdb-input').value = pdbId;
 			const drawMethod = document.getElementById('mol-draw-method').value;
 			const colorMethod = document.getElementById('mol-color-method').value;
-			
+
 			toggleSpinner(true);
 			updateTitle(pdbId);
+
+			// Reflect the loaded PDB in the URL so refresh and sharing work.
+			if (window.location.pathname.slice(1).toUpperCase() !== pdbId) {
+				history.pushState({ pdbId }, '', `/${pdbId}`);
+			}
 
 			// Prefer mmCIF (.cif)
 			viewer.loadNewStructure(`${RCSB_FILE_BASE}/${pdbId}.cif`, { drawMethod, colorMethod });
 			fetchMeta(pdbId).finally(() => toggleSpinner(false));
 		}
+
+		// Reload the structure when the user navigates back/forward.
+		window.addEventListener('popstate', e => {
+			const pdbId = e.state?.pdbId || window.location.pathname.slice(1).toUpperCase();
+			if (/^[0-9][A-Z0-9]{3}$/.test(pdbId)) loadPdb(pdbId);
+		});
 
 		// --- Drag and Drop ---
 		const dropOverlay = document.getElementById('drop-overlay');
@@ -516,6 +529,11 @@
 
 		// --- Init ---
 		initPersistence();
-		fetchRandomPdbId().then(loadPdb).catch(e => alert('Failed to load structure: ' + e));
+		const _pathId = window.location.pathname.slice(1).toUpperCase();
+		if (/^[0-9][A-Z0-9]{3}$/.test(_pathId)) {
+			loadPdb(_pathId);
+		} else {
+			fetchRandomPdbId().then(loadPdb).catch(e => alert('Failed to load structure: ' + e));
+		}
 	</script>
 </html>

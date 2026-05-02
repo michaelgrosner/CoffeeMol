@@ -286,6 +286,39 @@ export const molokaiScheme: ColorScheme = {
   background: '#272822',
 };
 
+export const modernScheme: ColorScheme = {
+  ...defaultColorScheme,
+  atom_colors: {
+    ...atom_colors,
+    C: [175, 178, 190],
+    N: [100, 145, 215],
+    O: [215, 90, 100],
+    S: [220, 175, 70],
+    P: [220, 130, 60],
+  },
+  ss_colors: {
+    helix: [220, 88, 104],
+    sheet: [72, 145, 220],
+    loop: [130, 142, 158],
+  },
+  chain_colors: [
+    [220, 88, 104],
+    [72, 145, 220],
+    [88, 200, 155],
+    [180, 112, 220],
+    [220, 165, 70],
+    [70, 190, 220],
+    [220, 130, 85],
+    [100, 165, 80],
+  ],
+  ramp_low: [72, 145, 220],
+  ramp_high: [220, 88, 104],
+  outline_weight: 1.15,
+  glow_intensity: 0,
+  background: '#111318',
+  ribbon_color_method: 'ss',
+};
+
 export const colorSchemes: Record<string, ColorScheme> = {
   default: defaultColorScheme,
   highContrast: highContrastScheme,
@@ -300,4 +333,5 @@ export const colorSchemes: Record<string, ColorScheme> = {
   monochrome: monochromeScheme,
   neon: neonScheme,
   molokai: molokaiScheme,
+  modern: modernScheme,
 };

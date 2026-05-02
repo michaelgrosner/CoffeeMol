@@ -81,6 +81,7 @@ export interface ColorScheme {
   outline_weight?: number;
   glow_intensity?: number;
   background?: string;
+  ribbon_color_method?: 'chain' | 'ss';
 }
 
 export const ATOM_SIZE = 3;

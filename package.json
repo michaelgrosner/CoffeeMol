@@ -9,7 +9,7 @@
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "build": "npm run type-check && esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --minify --sourcemap && tsc --declaration --emitDeclarationOnly --outFile CoffeeMol.d.ts",
-    "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --sourcemap --watch --servedir=.",
+    "dev": "esbuild src/coffeemol.ts --bundle --outfile=CoffeeMol.js --format=iife --sourcemap --watch --servedir=. --serve-fallback=index.html",
     "test": "npm run type-check && vitest run"
   },
   "repository": {

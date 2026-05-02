@@ -166,16 +166,22 @@ export class Canvas2DRenderer implements Renderer {
 
     for (const b of allBonds) {
       if (b.a1.info.drawMethod === 'points' && b.a2.info.drawMethod === 'points') continue;
+      // Ribbon and cartoon are both drawn in drawRibbons as continuous bands.
+      // Skipping their CA-CA bonds here avoids a thick-line layer underneath the
+      // ribbon (which is wider and would just hide it).
       if (b.a1.info.drawMethod === 'ribbon' || b.a2.info.drawMethod === 'ribbon') continue;
+      if (b.a1.info.drawMethod === 'cartoon' || b.a2.info.drawMethod === 'cartoon') continue;
 
       const midX = (b.a1.x + b.a2.x) / 2;
       const midY = (b.a1.y + b.a2.y) / 2;
 
       const isTube = b.a1.info.drawMethod === 'tube' || b.a2.info.drawMethod === 'tube';
-      const isCartoon = b.a1.info.drawMethod === 'cartoon' || b.a2.info.drawMethod === 'cartoon';
-      const colorType = isTube || isCartoon ? 'chain' : 'cpk';
+      const colorType = isTube ? 'chain' : 'cpk';
 
-      let lw = 0.15;
+      // Scale line width by 1/zoom so it stays a constant ~2.5 px on screen,
+      // visibly thinner than the ~6 px atom point diameter. Without this, lines
+      // grow with zoom and overwhelm point spheres in 'both' mode.
+      let lw = 2.5 / options.zoom;
       if (isTube) {
         lw = b.a1.parent.ss === 'helix' ? 0.8 : b.a1.parent.ss === 'sheet' ? 0.6 : 0.4;
       }
@@ -274,7 +280,8 @@ export class Canvas2DRenderer implements Renderer {
     buf.length = 0;
     const elHighlighted = el.isHighlighted;
     for (const a of caAtoms) {
-      if (elHighlighted || a.isHighlighted || a.parent.isHighlighted || a.info.drawMethod === 'ribbon') {
+      const m = a.info.drawMethod;
+      if (elHighlighted || a.isHighlighted || a.parent.isHighlighted || m === 'ribbon' || m === 'cartoon') {
         buf.push(a);
       }
     }
@@ -282,119 +289,149 @@ export class Canvas2DRenderer implements Renderer {
     buf.sort(sortByZ);
 
     const ctx = this.context;
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     const fast = options.isInteracting;
     const outlineWeight = options.colorScheme?.outline_weight ?? 1.1;
-    const glow = options.colorScheme?.glow_intensity ?? 0;
+    const ribbonColorMethod = options.colorScheme?.ribbon_color_method ?? 'chain';
+
+    // Edge stroke is a constant ~1 px on screen — without dividing by zoom, the
+    // ribbon edge would balloon at high zoom and re-create the sausage feel.
+    const edgePx = 1.0 / options.zoom;
 
     for (const a1 of buf) {
       const prevA = atomPrev.get(a1);
       const nextA = atomNext.get(a1);
-
-      const color = this.depthShadedColorString(a1, options, 'chain');
-      const shadow = this.depthShadedColorString(a1, options, 'chain', -0.3);
-
-      let width = 0.6;
-      if (a1.parent.ss === 'helix') width = 1.5;
-      else if (a1.parent.ss === 'sheet') width = 1.2;
-
-      const lw = width;
-
       if (!prevA && !nextA) continue;
+
+      const isCartoon = a1.info.drawMethod === 'cartoon';
+      const color = this.depthShadedColorString(a1, options, ribbonColorMethod);
+      const edgeColor = this.depthShadedColorString(a1, options, ribbonColorMethod, isCartoon ? -0.95 : -0.45);
+
+      // Half-width of the ribbon band, in world units. Helix / sheet are wide
+      // tapes; loop is a narrow strand. Cartoon mode is bumped up further so
+      // the heavy outline reads as comic-style.
+      let halfW: number;
+      if (a1.parent.ss === 'helix') halfW = isCartoon ? 1.6 : 1.1;
+      else if (a1.parent.ss === 'sheet') halfW = isCartoon ? 1.4 : 0.95;
+      else halfW = isCartoon ? 0.45 : 0.32;
 
       const isLastOfSheet = a1.parent.ss === 'sheet' && (!nextA || nextA.parent.ss !== 'sheet');
 
-      const drawPath = (w: number, c: string) => {
-        ctx.lineWidth = w;
-        ctx.strokeStyle = c;
-        ctx.fillStyle = c;
+      // Endpoints of the band along the chain (midpoints with neighbors).
+      let sx: number, sy: number, ex: number, ey: number;
+      if (!prevA) {
+        if (atomAtomDistance(a1, nextA!) > 10) continue;
+        sx = a1.x; sy = a1.y;
+        ex = (a1.x + nextA!.x) / 2; ey = (a1.y + nextA!.y) / 2;
+      } else if (!nextA) {
+        if (atomAtomDistance(prevA, a1) > 10) continue;
+        sx = (prevA.x + a1.x) / 2; sy = (prevA.y + a1.y) / 2;
+        ex = a1.x; ey = a1.y;
+      } else {
+        if (atomAtomDistance(prevA, a1) > 10 || atomAtomDistance(a1, nextA!) > 10) continue;
+        sx = (prevA.x + a1.x) / 2; sy = (prevA.y + a1.y) / 2;
+        ex = (a1.x + nextA!.x) / 2; ey = (a1.y + nextA!.y) / 2;
+      }
+
+      // Tangent direction at start (prev→a1) and end (a1→next) — used to
+      // orient the ribbon edges so the band's normal smoothly changes per
+      // joint, instead of looking like rounded caps stacked end to end.
+      const startDx = (prevA ? a1.x - prevA.x : nextA!.x - a1.x);
+      const startDy = (prevA ? a1.y - prevA.y : nextA!.y - a1.y);
+      const endDx   = (nextA ? nextA.x - a1.x : a1.x - prevA!.x);
+      const endDy   = (nextA ? nextA.y - a1.y : a1.y - prevA!.y);
+
+      const sLen = Math.hypot(startDx, startDy) || 1;
+      const eLen = Math.hypot(endDx, endDy) || 1;
+      // Perpendicular (left) vector at each end, in screen-space.
+      const sNx = -startDy / sLen, sNy = startDx / sLen;
+      const eNx = -endDy   / eLen, eNy = endDx   / eLen;
+
+      // Sheet arrowhead: replaces the band on the last residue with a triangle.
+      if (isLastOfSheet) {
+        const headW = halfW * 2.0;
+        const baseLx = sx + sNx * halfW, baseLy = sy + sNy * halfW;
+        const baseRx = sx - sNx * halfW, baseRy = sy - sNy * halfW;
+        const tipX = a1.x + (endDx / eLen) * Math.hypot(ex - sx, ey - sy) * 0.9;
+        const tipY = a1.y + (endDy / eLen) * Math.hypot(ex - sx, ey - sy) * 0.9;
+        const flareLx = a1.x + sNx * headW, flareLy = a1.y + sNy * headW;
+        const flareRx = a1.x - sNx * headW, flareRy = a1.y - sNy * headW;
+
         ctx.beginPath();
-        if (isLastOfSheet && prevA) {
-          const dx = a1.x - prevA.x;
-          const dy = a1.y - prevA.y;
-          const dz = a1.z - prevA.z;
-          const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          if (dist3d < 0.1) return;
-
-          const ux = dx / dist3d;
-          const uy = dy / dist3d;
-          const px = -uy;
-          const py = ux;
-
-          const startX = (prevA.x + a1.x) / 2;
-          const startY = (prevA.y + a1.y) / 2;
-
-          const headW = w * 1.6;
-          const headL = headW * 1.4;
-
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(a1.x, a1.y);
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.moveTo(a1.x - px * headW, a1.y - py * headW);
-          ctx.lineTo(a1.x + px * headW, a1.y + py * headW);
-          ctx.lineTo(a1.x + ux * headL, a1.y + uy * headL);
-          ctx.closePath();
-          ctx.fill();
-        } else {
-          let startX, startY, endX, endY;
-          if (!prevA) {
-            if (atomAtomDistance(a1, nextA!) > 10) return;
-            startX = a1.x;
-            startY = a1.y;
-            endX = (a1.x + nextA!.x) / 2;
-            endY = (a1.y + nextA!.y) / 2;
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-          } else if (!nextA) {
-            if (atomAtomDistance(prevA, a1) > 10) return;
-            startX = (prevA.x + a1.x) / 2;
-            startY = (prevA.y + a1.y) / 2;
-            endX = a1.x;
-            endY = a1.y;
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-          } else {
-            if (atomAtomDistance(prevA, a1) > 10 || atomAtomDistance(a1, nextA!) > 10) return;
-            startX = (prevA.x + a1.x) / 2;
-            startY = (prevA.y + a1.y) / 2;
-            endX = (a1.x + nextA!.x) / 2;
-            endY = (a1.y + nextA!.y) / 2;
-            ctx.moveTo(startX, startY);
-            ctx.quadraticCurveTo(a1.x, a1.y, endX, endY);
-          }
+        ctx.moveTo(baseLx, baseLy);
+        ctx.lineTo(flareLx, flareLy);
+        ctx.lineTo(tipX, tipY);
+        ctx.lineTo(flareRx, flareRy);
+        ctx.lineTo(baseRx, baseRy);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        if (!fast) {
+          ctx.strokeStyle = edgeColor;
+          ctx.lineWidth = (isCartoon ? edgePx * 2.2 : edgePx) * outlineWeight;
           ctx.stroke();
         }
-      };
-
-      // Fast path during drag/zoom: a single solid stroke per atom. Skips the
-      // shadowBlur outline pass (which dominates GPU time when glow > 0) and
-      // the white shine pass. Full quality returns 200ms after interaction
-      // ends via `noteInteraction()`'s debounced re-render.
-      if (fast) {
-        drawPath(lw, color);
         continue;
       }
 
+      // Quad (two parallel curves through a1, joining the start/end midpoints).
+      // The fill gives the flat-tape look; the stroke on the two long edges
+      // sells the ribbon shape without the per-segment cap bulges.
+      const sLx = sx + sNx * halfW, sLy = sy + sNy * halfW;
+      const sRx = sx - sNx * halfW, sRy = sy - sNy * halfW;
+      const eLx = ex + eNx * halfW, eLy = ey + eNy * halfW;
+      const eRx = ex - eNx * halfW, eRy = ey - eNy * halfW;
+
+      // Control points at a1 use the average normal so the curve passes
+      // through the midline at a1 with a continuous tangent.
+      const mNx = (sNx + eNx) * 0.5, mNy = (sNy + eNy) * 0.5;
+      const cLx = a1.x + mNx * halfW, cLy = a1.y + mNy * halfW;
+      const cRx = a1.x - mNx * halfW, cRy = a1.y - mNy * halfW;
+
+      ctx.beginPath();
+      ctx.moveTo(sLx, sLy);
+      ctx.quadraticCurveTo(cLx, cLy, eLx, eLy);
+      ctx.lineTo(eRx, eRy);
+      ctx.quadraticCurveTo(cRx, cRy, sRx, sRy);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      if (fast) continue;
+
+      // Highlight pass — yellow tint on hovered residue/structure.
       if (elHighlighted || a1.isHighlighted || a1.parent.isHighlighted) {
-        drawPath(lw * 1.4 * outlineWeight, 'rgba(255, 255, 0, 0.7)');
-      }
-
-      if (glow > 0) {
         ctx.save();
-        ctx.shadowBlur = glow / options.zoom;
-        ctx.shadowColor = color;
-        drawPath(lw * outlineWeight, shadow);
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.35)';
+        ctx.fill();
         ctx.restore();
-      } else {
-        drawPath(lw * outlineWeight, shadow);
       }
 
-      drawPath(lw * 1.0, color);
-      drawPath(lw * 0.4, 'rgba(255,255,255,0.15)');
+      // Edge strokes — render only the two long edges so we don't add round
+      // joints between consecutive segments.
+      ctx.strokeStyle = edgeColor;
+      ctx.lineWidth = (isCartoon ? edgePx * 2.2 : edgePx) * outlineWeight;
+      ctx.beginPath();
+      ctx.moveTo(sLx, sLy);
+      ctx.quadraticCurveTo(cLx, cLy, eLx, eLy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sRx, sRy);
+      ctx.quadraticCurveTo(cRx, cRy, eRx, eRy);
+      ctx.stroke();
+
+      // Subtle interior highlight along the centerline gives the band a
+      // satin-finish feel without re-introducing the sausage outline.
+      if (!isCartoon) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = edgePx * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.quadraticCurveTo(a1.x, a1.y, ex, ey);
+        ctx.stroke();
+      }
     }
   }
 

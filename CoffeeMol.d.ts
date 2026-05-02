@@ -60,6 +60,7 @@ declare module "src/types" {
         outline_weight?: number;
         glow_intensity?: number;
         background?: string;
+        ribbon_color_method?: 'chain' | 'ss';
     }
     export const ATOM_SIZE = 3;
     export const DEBUG = true;
@@ -84,6 +85,7 @@ declare module "src/schemes" {
     export const monochromeScheme: ColorScheme;
     export const neonScheme: ColorScheme;
     export const molokaiScheme: ColorScheme;
+    export const modernScheme: ColorScheme;
     export const colorSchemes: Record<string, ColorScheme>;
 }
 declare module "src/utils" {
@@ -241,6 +243,7 @@ declare module "src/renderers/renderer" {
         measureEndAtom: Atom | null;
         mouseX: number;
         mouseY: number;
+        isInteracting: boolean;
     }
 }
 declare module "src/renderers/canvas2d" {
@@ -251,6 +254,8 @@ declare module "src/renderers/canvas2d" {
         private context;
         private grid;
         private z_extent;
+        private _ribbonCache;
+        private _ribbonSortBuffer;
         init(canvas: HTMLCanvasElement): void;
         render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
         private clearCanvas;
@@ -258,6 +263,7 @@ declare module "src/renderers/canvas2d" {
         private drawVignette;
         private drawStructure;
         private drawLines;
+        private getRibbonCache;
         private drawRibbons;
         private drawPoints;
         private drawAtomPoint;
@@ -287,13 +293,21 @@ declare module "src/renderers/threejs" {
         private ribbonsGroup;
         private lightsGroup;
         private instancedAtomsList;
+        private vignetteScene;
+        private vignetteCamera;
+        private vignetteMaterial;
         init(canvas: HTMLCanvasElement): void;
+        private setupVignette;
         private setupLights;
         render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
         private updateScene;
         private renderBonds;
         private renderInstancedBonds;
-        private buildAdvancedRibbon;
+        private splitBySSType;
+        private buildRibbons;
+        private addCartoonOutline;
+        private buildHelixRibbon;
+        private buildSheetRibbon;
         resize(width: number, height: number): void;
         setBackgroundColor(color: string): void;
         getAtomAt(x: number, y: number, zoom: number, x_origin: number, y_origin: number): Atom | null;
@@ -335,6 +349,9 @@ declare module "src/coffeemol" {
         measureEndAtom: Atom | null;
         isDarkBackground: boolean;
         colorScheme: ColorScheme;
+        isInteracting: boolean;
+        private _pendingRaf;
+        private _interactionTimer;
         constructor(canvas_target: string | HTMLCanvasElement, background_color?: string, rendererType?: RendererType);
         private attachListeners;
         setRenderer(type: RendererType): void;
@@ -346,6 +363,13 @@ declare module "src/coffeemol" {
         addNewStructure(filepath: string, info?: StructureLoadInfo | AtomInfo | null): void;
         loadFromDict(structuresToLoad: Record<string, StructureLoadInfo>): void;
         drawAll(): void;
+        /**
+         * Mark an interaction (drag/zoom/touch) as in progress. Renderers will drop
+         * expensive effects until 200ms after the last call, at which point a final
+         * full-quality redraw is scheduled.
+         */
+        private noteInteraction;
+        private _doRender;
         findBestZoom(): void;
         changeAllDrawMethods(method: DrawMethod): void;
         resize(width?: number, height?: number): void;
