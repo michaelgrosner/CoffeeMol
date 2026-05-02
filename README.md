@@ -1,4 +1,4 @@
-# CoffeeMol
+# [CoffeeMol](https://michaelgrosner.github.io/CoffeeMol/)
 
 An embeddable molecular visualizer for HTML5 browsers, written in TypeScript. Renders PDB and mmCIF files on a `<canvas>` element using 2D drawing APIs — **no WebGL required, no runtime dependencies.**
 
