@@ -66,6 +66,7 @@ html, body {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: 12px;
 }
 
 #mol-header .coffee { color: var(--accent); }
@@ -457,6 +458,46 @@ html, body {
 	line-height: 1.5;
 }
 
-#mol-info-display:not(:empty) {
-	display: block;
+#mol-panel.minimized #mol-controls-container {
+	display: none;
+}
+
+@media (max-width: 600px) {
+	#mol-panel {
+		top: auto;
+		bottom: 0;
+		left: 0;
+		width: 100% !important;
+		border-radius: 16px 16px 0 0;
+		border-left: none;
+		border-right: none;
+		border-bottom: none;
+		padding-bottom: env(safe-area-inset-bottom, 20px);
+		max-height: 50vh;
+		overflow-y: auto;
+	}
+
+	#settings-panel, #help-panel {
+		top: 0; right: 0;
+		width: 100%; height: 100%;
+		border-radius: 0;
+		border: none;
+	}
+
+	#rotation-panel {
+		bottom: auto;
+		top: 16px;
+		right: 16px;
+		left: auto;
+		transform: none;
+	}
+
+	#mol-info-display {
+		bottom: 60px;
+		top: auto !important;
+		left: 50% !important;
+		transform: translateX(-50%) !important;
+		width: 90%;
+		max-width: 300px;
+	}
 }

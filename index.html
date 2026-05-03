@@ -41,53 +41,56 @@
 			<div id="mol-header">
 				<span class="panel-title"><span class="coffee">Coffee</span>Mol</span>
 				<div style="display: flex; gap: 4px;">
+					<div id="mol-panel-toggle" class="action-button" title="Minimize/Maximize">−</div>
 					<div id="mol-help-toggle" class="action-button" title="Help">?</div>
 					<div id="mol-settings-toggle" class="action-button" title="Settings">⚙</div>
 				</div>
 			</div>
 
-			<div id="mol-picker">
-				<input id="pdb-input" type="text" placeholder="PDB ID e.g. 1KX5" spellcheck="false" autocomplete="off">
-				<button id="mol-load">Load</button>
-				<button id="mol-random" class="action-button" title="Random molecule">🎲</button>
-			</div>
-
-			<div class="control-group">
-				<label class="control-label">Representation</label>
-				<select id="mol-draw-method" class="action-button full-width">
-					<option value="ribbon">Ribbon</option>
-					<option value="cartoon">Cartoon</option>
-					<option value="tube">Tube</option>
-					<option value="both">Points + Lines</option>
-					<option value="lines">Lines</option>
-					<option value="points">Points</option>
-				</select>
-			</div>
-
-			<div class="control-group">
-				<label class="control-label">Color Mode</label>
-				<select id="mol-color-method" class="action-button full-width">
-					<option value="cpk">CPK (Element)</option>
-					<option value="chain">Chain</option>
-					<option value="ss">Secondary Structure</option>
-					<option value="b-factor">B-Factor (Temp)</option>
-					<option value="formal-charge">Formal Charge</option>
-					<option value="hydrophobicity">Hydrophobicity</option>
-				</select>
-			</div>
-
-			<div class="controls-row buttons-row">
-				<div id="reset" class="action-button secondary-button" style="flex: 1;">Reset View</div>
-				<div id="export-png" class="action-button secondary-button" style="flex: 1;">Export PNG</div>
-			</div>
-
-			<div id="mol-info">
-				<div id="mol-info-header">
-					<span>Structure Info</span>
-					<span class="toggle-icon">▼</span>
+			<div id="mol-controls-container">
+				<div id="mol-picker">
+					<input id="pdb-input" type="text" placeholder="PDB ID e.g. 1KX5" spellcheck="false" autocomplete="off">
+					<button id="mol-load">Load</button>
+					<button id="mol-random" class="action-button" title="Random molecule">🎲</button>
 				</div>
-				<div id="mol-title-display"></div>
-				<div id="mol-meta"></div>
+
+				<div class="control-group">
+					<label class="control-label">Representation</label>
+					<select id="mol-draw-method" class="action-button full-width">
+						<option value="ribbon">Ribbon</option>
+						<option value="cartoon">Cartoon</option>
+						<option value="tube">Tube</option>
+						<option value="both">Points + Lines</option>
+						<option value="lines">Lines</option>
+						<option value="points">Points</option>
+					</select>
+				</div>
+
+				<div class="control-group">
+					<label class="control-label">Color Mode</label>
+					<select id="mol-color-method" class="action-button full-width">
+						<option value="cpk">CPK (Element)</option>
+						<option value="chain">Chain</option>
+						<option value="ss">Secondary Structure</option>
+						<option value="b-factor">B-Factor (Temp)</option>
+						<option value="formal-charge">Formal Charge</option>
+						<option value="hydrophobicity">Hydrophobicity</option>
+					</select>
+				</div>
+
+				<div class="controls-row buttons-row">
+					<div id="reset" class="action-button secondary-button" style="flex: 1;">Reset View</div>
+					<div id="export-png" class="action-button secondary-button" style="flex: 1;">Export PNG</div>
+				</div>
+
+				<div id="mol-info">
+					<div id="mol-info-header">
+						<span>Structure Info</span>
+						<span class="toggle-icon">▼</span>
+					</div>
+					<div id="mol-title-display"></div>
+					<div id="mol-meta"></div>
+				</div>
 			</div>
 		</div>
 	<div id="rotation-panel">
@@ -504,6 +507,13 @@
 			const isCollapsed = info.classList.toggle('collapsed');
 			icon.textContent = isCollapsed ? '▶' : '▼';
 			saveCollapsed(isCollapsed);
+		});
+
+		document.getElementById('mol-panel-toggle').addEventListener('click', () => {
+			const panel = document.getElementById('mol-panel');
+			const btn = document.getElementById('mol-panel-toggle');
+			const isMinimized = panel.classList.toggle('minimized');
+			btn.textContent = isMinimized ? '+' : '−';
 		});
 
 		document.querySelectorAll('.rot-axis').forEach(btn => {
