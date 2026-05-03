@@ -34,6 +34,8 @@ export class ThreeRenderer implements Renderer {
   private measurementsGroup: THREE.Group = new THREE.Group();
 
   private instancedAtomsList: THREE.InstancedMesh[] = [];
+  // Per-chain ordered backbone atoms for screen-space ribbon picking.
+  private ribbonPickChains: Atom[][] = [];
 
   // Vignette overlay — a fullscreen quad rendered in clip space after the main
   // pass. Mirrors the radial darkening that Canvas2DRenderer paints over its
@@ -318,6 +320,7 @@ export class ThreeRenderer implements Renderer {
     this.ribbonsGroup.clear();
     this.measurementsGroup.clear();
     this.instancedAtomsList = [];
+    this.ribbonPickChains = [];
 
     const pointAtoms: Atom[] = [];
     const allBonds: Bond[] = [];
@@ -352,6 +355,11 @@ export class ThreeRenderer implements Renderer {
         if (m.children) for (const c of m.children) collectBonds(c);
       };
       collectBonds(el);
+    }
+
+    // Collect ordered per-chain backbone atoms for screen-space ribbon picking.
+    for (const atoms of ribbonChains.values()) {
+      if (atoms.length > 0) this.ribbonPickChains.push(atoms);
     }
 
     // Render surface BEFORE points so points (used as a fallback during
@@ -404,7 +412,7 @@ export class ThreeRenderer implements Renderer {
     // to the scheme's ribbon_color_method preserves the historical 'ss' default
     // for the Modern preset; otherwise chain coloring matches 2D behavior.
     const ribbonFallback: ColorMethod = options.colorScheme?.ribbon_color_method === 'ss' ? 'ss' : 'chain';
-    for (const [chain, atoms] of ribbonChains) {
+    for (const [_chain, atoms] of ribbonChains) {
       if (atoms.length < 2) continue;
       const firstAtom = atoms[0];
       const method = firstAtom.info.drawMethod;
@@ -631,9 +639,10 @@ export class ThreeRenderer implements Renderer {
 
       const isCartoon = method === 'cartoon';
       const isSegHighlighted = seg.atoms.some(a => a.isHighlighted || a.parent.isHighlighted);
+      const segColor = isSegHighlighted ? new THREE.Color(1, 0.85, 0) : color;
       const mat = isCartoon
-        ? new THREE.MeshToonMaterial({ color, gradientMap: this.toonGradient, emissive: isSegHighlighted ? new THREE.Color(1, 1, 0) : undefined, emissiveIntensity: isSegHighlighted ? 0.35 : 0 })
-        : new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.0, emissive: isSegHighlighted ? new THREE.Color(1, 1, 0) : undefined, emissiveIntensity: isSegHighlighted ? 0.35 : 0 });
+        ? new THREE.MeshToonMaterial({ color: segColor, gradientMap: this.toonGradient })
+        : new THREE.MeshStandardMaterial({ color: segColor, roughness: 0.55, metalness: 0.0 });
 
       if (seg.ss === 'helix') {
         this.buildHelixRibbon(seg.atoms, curve, method, mat, isCartoon);
@@ -804,7 +813,43 @@ export class ThreeRenderer implements Renderer {
       const instanceId = intersect.instanceId;
       if (instanceId !== undefined && mesh.userData.atoms) return mesh.userData.atoms[instanceId];
     }
-    return null;
+
+    // Fallback: screen-space search against ribbon backbone atoms + midpoints.
+    if (this.ribbonPickChains.length === 0) return null;
+    const w = rect.width;
+    const h = rect.height;
+    const tmp = new THREE.Vector3();
+    const pickRadius = 35 * 35;
+    let best: Atom | null = null;
+    let bestDist = pickRadius;
+
+    const check = (wx: number, wy: number, wz: number, a: Atom) => {
+      tmp.set(wx, wy, wz).project(this.camera);
+      const sx = (tmp.x + 1) * 0.5 * w;
+      const sy = (-tmp.y + 1) * 0.5 * h;
+      const d = (x - sx) ** 2 + (y - sy) ** 2;
+      if (d < bestDist) { bestDist = d; best = a; }
+    };
+
+    for (const chain of this.ribbonPickChains) {
+      for (let i = 0; i < chain.length; i++) {
+        const a = chain[i];
+        check(a.x, -a.y, a.z, a);
+        if (i + 1 < chain.length) {
+          const b = chain[i + 1];
+          // Three interpolated points between consecutive CAs to densify coverage
+          for (const t of [0.25, 0.5, 0.75]) {
+            check(
+              a.x + (b.x - a.x) * t,
+              -(a.y + (b.y - a.y) * t),
+              a.z + (b.z - a.z) * t,
+              t < 0.5 ? a : b
+            );
+          }
+        }
+      }
+    }
+    return best;
   }
 
   clear(): void {
