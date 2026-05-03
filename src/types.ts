@@ -7,7 +7,8 @@ export type DrawMethod =
   | 'points'
   | 'cartoon'
   | 'ribbon'
-  | 'tube';
+  | 'tube'
+  | 'surface';
 
 export type ColorMethod =
   | 'cpk'
@@ -115,6 +116,7 @@ export const supported_draw_methods: DrawMethod[] = [
   'cartoon',
   'ribbon',
   'tube',
+  'surface',
 ];
 export const selector_delimiter = '/';
 

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Structure, Atom, Bond, Chain, sortByZ, atomAtomDistance } from '../models';
 import { Renderer, RenderOptions } from './renderer';
 import { atom_radii, ATOM_SIZE, SecondaryStructureType, ColorMethod, RGB } from '../types';
+import { buildGaussianSurface, effectiveRadius, SurfaceAtom } from '../surface';
 
 // Resolve an atom's RGB color from its colorMethod (or a fallback). Mirrors
 // the logic in Canvas2DRenderer.depthShadedColorString minus the depth tint —
@@ -44,6 +45,16 @@ export class ThreeRenderer implements Renderer {
   // defaults to a 2-step ramp that crushes the shadow side to near-black; a 3-step ramp
   // keeps shadows readable while still reading as cell-shaded.
   private toonGradient: THREE.DataTexture | null = null;
+
+  // Cached surface mesh — rebuilding the Gaussian density grid + marching cubes
+  // is the most expensive step in the scene by orders of magnitude. We hold the
+  // built mesh between renders and only rebuild when the source atom positions
+  // change (detected via a sampled position hash), and never during interaction.
+  private surfaceCache: { mesh: THREE.Mesh | null; key: string; sampleCount: number } = {
+    mesh: null,
+    key: '',
+    sampleCount: 0,
+  };
 
   init(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
@@ -177,6 +188,99 @@ export class ThreeRenderer implements Renderer {
     this.lightsGroup.add(rimLight);
   }
 
+  /**
+   * Build (or reuse) the molecular surface mesh and add it to the scene.
+   *
+   * Heuristics for performance:
+   *  - Skip the rebuild entirely while the user is dragging/zooming. Without
+   *    this, even modestly-sized structures (~5k atoms) drop to single-digit
+   *    fps because each frame triggers ~50ms of marching cubes. While we skip,
+   *    we surface the source atoms as points so the molecule is still visible
+   *    and the user has something to grab onto.
+   *  - Reuse the cached mesh if a sampled position hash matches the last
+   *    build — avoids rebuilding on color-only changes, hover events, or any
+   *    redraw where atoms didn't move.
+   */
+  private renderSurface(surfaceAtoms: Atom[], pointAtomsOut: Atom[], options: RenderOptions): void {
+    if (surfaceAtoms.length === 0) return;
+
+    if (options.isInteracting) {
+      // Cheap fallback: route the surface atoms through the existing point
+      // path so the molecule is still visible during rotation. Reusing the
+      // last cached mesh would look broken (it would be in old positions
+      // while the rest of the scene rotates).
+      for (const a of surfaceAtoms) pointAtomsOut.push(a);
+      return;
+    }
+
+    // Sampled position hash — 16 atoms is enough to detect any rotation
+    // (rotations affect every atom uniformly) without per-frame cost scaling
+    // with structure size.
+    const sampleStep = Math.max(1, Math.floor(surfaceAtoms.length / 16));
+    let h = 2166136261; // FNV-1a seed
+    for (let i = 0; i < surfaceAtoms.length; i += sampleStep) {
+      const a = surfaceAtoms[i];
+      h = Math.imul(h ^ ((a.x * 1024) | 0), 16777619);
+      h = Math.imul(h ^ ((a.y * 1024) | 0), 16777619);
+      h = Math.imul(h ^ ((a.z * 1024) | 0), 16777619);
+    }
+    // Color method may have changed without atoms moving — encode it too.
+    const cm = surfaceAtoms[0].info.colorMethod || 'cpk';
+    const key = `${surfaceAtoms.length}|${cm}|${h}`;
+
+    if (this.surfaceCache.mesh && this.surfaceCache.key === key) {
+      this.atomsGroup.add(this.surfaceCache.mesh);
+      return;
+    }
+
+    // Convert to SurfaceAtom — Y is flipped to match the rest of the 3D scene
+    // (see atomsGroup positions below: `dummy.position.set(a.x, -a.y, a.z)`).
+    const surfInput: SurfaceAtom[] = new Array(surfaceAtoms.length);
+    for (let i = 0; i < surfaceAtoms.length; i++) {
+      const a = surfaceAtoms[i];
+      const elem = a.element || a.name;
+      surfInput[i] = {
+        x: a.x,
+        y: -a.y,
+        z: a.z,
+        radius: effectiveRadius(elem, 1.0, 1.4),
+        color: atomRGB(a, 'cpk'),
+        ref: a,
+      };
+    }
+
+    const mesh = buildGaussianSurface(surfInput);
+    if (!mesh || mesh.vertexCount === 0) return;
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(mesh.colors, 3));
+    geo.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+
+    const mat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.45,
+      metalness: 0.05,
+      side: THREE.DoubleSide,
+      flatShading: false,
+    });
+
+    const threeMesh = new THREE.Mesh(geo, mat);
+
+    // Dispose previous cached geometry/material to avoid GPU memory leaks.
+    if (this.surfaceCache.mesh) {
+      const old = this.surfaceCache.mesh;
+      old.geometry.dispose();
+      (old.material as THREE.Material).dispose();
+    }
+
+    this.surfaceCache.mesh = threeMesh;
+    this.surfaceCache.key = key;
+    this.surfaceCache.sampleCount = surfaceAtoms.length;
+    this.atomsGroup.add(threeMesh);
+  }
+
   render(elements: Structure[], bonds: Bond[], options: RenderOptions): void {
     if (!this.renderer) return;
     this.updateScene(elements, options);
@@ -205,6 +309,7 @@ export class ThreeRenderer implements Renderer {
     const pointAtoms: Atom[] = [];
     const allBonds: Bond[] = [];
     const ribbonChains: Map<Chain, Atom[]> = new Map();
+    const surfaceAtoms: Atom[] = [];
 
     for (const el of elements) {
       const atoms = el.getOfType(Atom);
@@ -223,6 +328,10 @@ export class ThreeRenderer implements Renderer {
         if (['points', 'both'].includes(method)) {
           pointAtoms.push(a);
         }
+
+        if (method === 'surface') {
+          surfaceAtoms.push(a);
+        }
       }
 
       const collectBonds = (m: any) => {
@@ -231,6 +340,10 @@ export class ThreeRenderer implements Renderer {
       };
       collectBonds(el);
     }
+
+    // Render surface BEFORE points so points (used as a fallback during
+    // interaction) draw inside or on top of the cached mesh, not behind it.
+    this.renderSurface(surfaceAtoms, pointAtoms, options);
 
     // 1. Atoms — single instanced mesh with per-instance color so each atom can
     // honor its own colorMethod (cpk / ss / chain / b-factor / hydrophobicity).
@@ -621,12 +734,23 @@ export class ThreeRenderer implements Renderer {
     this.bondsGroup.clear();
     this.ribbonsGroup.clear();
     this.instancedAtomsList = [];
+    this.disposeSurfaceCache();
   }
 
   dispose(): void {
+    this.disposeSurfaceCache();
     if (this.renderer) {
       this.renderer.dispose();
       this.renderer = null;
+    }
+  }
+
+  private disposeSurfaceCache(): void {
+    if (this.surfaceCache.mesh) {
+      this.surfaceCache.mesh.geometry.dispose();
+      (this.surfaceCache.mesh.material as THREE.Material).dispose();
+      this.surfaceCache.mesh = null;
+      this.surfaceCache.key = '';
     }
   }
 }

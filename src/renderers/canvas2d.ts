@@ -151,7 +151,47 @@ export class Canvas2DRenderer implements Renderer {
   private drawStructure(el: Structure, options: RenderOptions): void {
     this.drawLines(el, options);
     this.drawRibbons(el, options);
+    this.drawSurface(el, options);
     this.drawPoints(el, options);
+  }
+
+  // Cheap 2D approximation of a molecular surface: each atom paints a large
+  // soft radial-gradient blob. Where blobs overlap they sum to a continuous
+  // colored region, giving a fuzzy surface read without the cost of marching
+  // cubes. The 3D renderer ships the real Gaussian surface; this is the best
+  // we can do in a single 2D pass.
+  private drawSurface(el: Structure, options: RenderOptions): void {
+    const ctx = this.context;
+    let any = false;
+    // Re-use drawPoints' Z-sort so far atoms paint first and near atoms cover them.
+    const sorted = el.atoms.slice().sort(sortByZ);
+    for (const a of sorted) {
+      if (a.info.drawMethod !== 'surface') continue;
+      any = true;
+
+      const elem = a.element || a.name;
+      // SAS-ish radius: vdW (in carbon-relative units × ~1.7Å carbon vdW) + probe.
+      const r = ((atom_radii[elem] ?? 1.0) * 1.7 + 1.4);
+
+      // Pull a depth-shaded base color, then build matching transparent stop so
+      // the gradient fades to true zero alpha at the blob edge — without this
+      // the edges show as hard circles and the "surface" reads as a sticker.
+      const baseRGBA = this.depthShadedColorString(a, options, 'cpk', 0, 1);
+      const m = baseRGBA.match(/rgba?\((\d+),(\d+),(\d+)/);
+      if (!m) continue;
+      const cr = m[1], cg = m[2], cb = m[3];
+
+      const grad = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, r);
+      grad.addColorStop(0,    `rgba(${cr},${cg},${cb},0.95)`);
+      grad.addColorStop(0.55, `rgba(${cr},${cg},${cb},0.75)`);
+      grad.addColorStop(1,    `rgba(${cr},${cg},${cb},0)`);
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, r, 0, 2 * Math.PI, false);
+      ctx.fill();
+    }
+    if (!any) return;
   }
 
   private drawLines(el: Structure, options: RenderOptions): void {
@@ -171,6 +211,7 @@ export class Canvas2DRenderer implements Renderer {
       // ribbon (which is wider and would just hide it).
       if (b.a1.info.drawMethod === 'ribbon' || b.a2.info.drawMethod === 'ribbon') continue;
       if (b.a1.info.drawMethod === 'cartoon' || b.a2.info.drawMethod === 'cartoon') continue;
+      if (b.a1.info.drawMethod === 'surface' || b.a2.info.drawMethod === 'surface') continue;
 
       const midX = (b.a1.x + b.a2.x) / 2;
       const midY = (b.a1.y + b.a2.y) / 2;
@@ -449,7 +490,7 @@ export class Canvas2DRenderer implements Renderer {
     const atoms = el.atoms;
     const sorted = atoms.slice(0).sort(sortByZ);
     for (const a of sorted) {
-      if (!(['lines', 'cartoon', 'ribbon', 'tube'] as DrawMethod[]).includes(a.info.drawMethod)) {
+      if (!(['lines', 'cartoon', 'ribbon', 'tube', 'surface'] as DrawMethod[]).includes(a.info.drawMethod)) {
         this.drawAtomPoint(a, options);
       }
       if (a === options.highlightedAtom) {

@@ -387,7 +387,7 @@ export class Residue extends MolElement {
 
   propogateInfo(info: AtomInfoUpdate): void {
     let targetInfo = info;
-    if (this.isHetatm && info.drawMethod && ['ribbon', 'cartoon', 'tube', 'lines'].includes(info.drawMethod)) {
+    if (this.isHetatm && info.drawMethod && ['ribbon', 'cartoon', 'tube', 'lines', 'surface'].includes(info.drawMethod)) {
       targetInfo = { ...info, drawMethod: 'both' };
     }
     super.propogateInfo(targetInfo);
@@ -447,7 +447,7 @@ export class Atom extends MolElement {
 
   propogateInfo(info: AtomInfoUpdate): void {
     let targetInfo = info;
-    if (this.isHetatm && info.drawMethod && ['ribbon', 'cartoon', 'tube', 'lines'].includes(info.drawMethod)) {
+    if (this.isHetatm && info.drawMethod && ['ribbon', 'cartoon', 'tube', 'lines', 'surface'].includes(info.drawMethod)) {
       targetInfo = { ...info, drawMethod: 'both' };
     }
     super.propogateInfo(targetInfo);
@@ -534,6 +534,9 @@ export class Atom extends MolElement {
 
 function isBonded(a1: Atom, a2: Atom): boolean {
   if (a1.parent.typeName() !== a2.parent.typeName()) return false;
+  // Surface atoms are represented entirely by mesh geometry; bond sticks would
+  // poke through the surface and waste memory/CPU.
+  if (a1.info.drawMethod === 'surface' || a2.info.drawMethod === 'surface') return false;
   const aad = atomAtomDistance(a1, a2);
 
   const isBackbone1 = ['cartoon', 'ribbon', 'tube'].includes(

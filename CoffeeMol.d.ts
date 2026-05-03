@@ -1,7 +1,7 @@
 declare module "src/types" {
     export type RGB = [number, number, number];
-    export type DrawMethod = 'both' | 'lines' | 'points' | 'cartoon' | 'ribbon' | 'tube';
-    export type ColorMethod = 'cpk' | 'ss' | 'chain' | 'b-factor' | 'hydrophobicity';
+    export type DrawMethod = 'both' | 'lines' | 'points' | 'cartoon' | 'ribbon' | 'tube' | 'surface';
+    export type ColorMethod = 'cpk' | 'ss' | 'chain' | 'b-factor' | 'hydrophobicity' | 'formal-charge';
     export interface AtomInfo {
         drawMethod: DrawMethod;
         colorMethod?: ColorMethod;
@@ -27,6 +27,7 @@ declare module "src/types" {
         drawColor?: RGB | number[] | string | null;
     }
     export interface ParsedAtom {
+        serial: number;
         original_atom_name: string;
         atom_name: string;
         resi_name: string;
@@ -37,6 +38,10 @@ declare module "src/types" {
         z: number;
         tempFactor: number;
         isHetatm: boolean;
+        occupancy?: number;
+        element?: string;
+        formalCharge?: number;
+        model_id?: number;
     }
     export type SecondaryStructureType = 'helix' | 'sheet' | 'loop';
     export interface SecondaryStructureRange {
@@ -49,6 +54,7 @@ declare module "src/types" {
         title: string;
         atoms: ParsedAtom[];
         secondary_structure?: SecondaryStructureRange[];
+        explicit_bonds?: [number, number][];
     }
     export interface ColorScheme {
         atom_colors: Record<string, RGB>;
@@ -144,6 +150,7 @@ declare module "src/models" {
         atoms: Atom[];
         bonds: Bond[];
         isHighlighted: boolean;
+        explicit_bonds: [number, number][];
         constructor(parent: MolElement | null, name: string, cc?: any);
         abstract toString(): string;
         constructorName(): string;
@@ -202,12 +209,18 @@ declare module "src/models" {
         original_atom_name: string;
         original_position: [number, number, number];
         parent: Residue;
-        constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string, tempFactor?: number, isHetatm?: boolean);
+        occupancy: number;
+        element: string;
+        formalCharge: number;
+        model_id: number;
+        serial: number;
+        constructor(parent: Residue, name: string, x: number, y: number, z: number, original_atom_name: string, tempFactor?: number, isHetatm?: boolean, occupancy?: number, element?: string, formalCharge?: number, model_id?: number, serial?: number);
         toString(): string;
         propogateInfo(info: AtomInfoUpdate): void;
         cpkColor(): RGB;
         ssColor(): RGB;
         chainColor(): RGB;
+        formalChargeColor(): RGB;
         bFactorColor(): RGB;
         hydrophobicityColor(): RGB;
         applyRotationY(sin: number, cos: number): void;
@@ -264,6 +277,7 @@ declare module "src/renderers/canvas2d" {
         private drawGridLines;
         private drawVignette;
         private drawStructure;
+        private drawSurface;
         private drawLines;
         private getRibbonCache;
         private drawRibbons;
@@ -280,6 +294,40 @@ declare module "src/renderers/canvas2d" {
         clear(): void;
         dispose(): void;
     }
+}
+declare module "src/surface" {
+    import { RGB } from "src/types";
+    export interface SurfaceAtom {
+        x: number;
+        y: number;
+        z: number;
+        radius: number;
+        color: RGB;
+        ref?: unknown;
+    }
+    export interface SurfaceMesh {
+        positions: Float32Array;
+        normals: Float32Array;
+        colors: Float32Array;
+        indices: Uint32Array;
+        vertexCount: number;
+        triangleCount: number;
+    }
+    export interface SurfaceOptions {
+        resolution?: number;
+        isoLevel?: number;
+        probeRadius?: number;
+        vdwScale?: number;
+        maxVoxels?: number;
+    }
+    /** Resolve an effective Gaussian radius for an atom. */
+    export function effectiveRadius(element: string, vdwScale: number, probeRadius: number): number;
+    /**
+     * Build a Gaussian molecular surface mesh from a set of atoms. Returns null
+     * for empty input. The mesh is expressed in the same coordinate frame as the
+     * input atoms — callers are responsible for any further transform.
+     */
+    export function buildGaussianSurface(atoms: SurfaceAtom[], opts?: SurfaceOptions): SurfaceMesh | null;
 }
 declare module "src/renderers/threejs" {
     import { Structure, Atom, Bond } from "src/models";
@@ -299,10 +347,26 @@ declare module "src/renderers/threejs" {
         private vignetteCamera;
         private vignetteMaterial;
         private toonGradient;
+        private surfaceCache;
         init(canvas: HTMLCanvasElement): void;
         private setupToonGradient;
+        private addCartoonOutline;
         private setupVignette;
         private setupLights;
+        /**
+         * Build (or reuse) the molecular surface mesh and add it to the scene.
+         *
+         * Heuristics for performance:
+         *  - Skip the rebuild entirely while the user is dragging/zooming. Without
+         *    this, even modestly-sized structures (~5k atoms) drop to single-digit
+         *    fps because each frame triggers ~50ms of marching cubes. While we skip,
+         *    we surface the source atoms as points so the molecule is still visible
+         *    and the user has something to grab onto.
+         *  - Reuse the cached mesh if a sampled position hash matches the last
+         *    build — avoids rebuilding on color-only changes, hover events, or any
+         *    redraw where atoms didn't move.
+         */
+        private renderSurface;
         render(elements: Structure[], bonds: Bond[], options: RenderOptions): void;
         private updateScene;
         private renderBonds;
@@ -313,9 +377,10 @@ declare module "src/renderers/threejs" {
         private buildSheetRibbon;
         resize(width: number, height: number): void;
         setBackgroundColor(color: string): void;
-        getAtomAt(x: number, y: number, zoom: number, x_origin: number, y_origin: number): Atom | null;
+        getAtomAt(x: number, y: number, _zoom: number, _x_origin: number, _y_origin: number): Atom | null;
         clear(): void;
         dispose(): void;
+        private disposeSurfaceCache;
     }
 }
 declare module "src/coffeemol" {
@@ -412,9 +477,164 @@ declare module "src/coffeemol" {
         static create(canvas_target: string | HTMLCanvasElement, background_color?: string, rendererType?: RendererType): CanvasContext;
     }
 }
+declare module "tests/helpers" {
+    import { Structure, Chain, Residue, Atom } from "src/models";
+    import { RenderOptions } from "src/renderers/renderer";
+    export function makeDummyCC(): any;
+    export function makeCanvasMock(): {
+        canvas: any;
+        ctx: {
+            clearRect: import("vitest").Mock<(...args: any[]) => any>;
+            beginPath: import("vitest").Mock<(...args: any[]) => any>;
+            moveTo: import("vitest").Mock<(...args: any[]) => any>;
+            lineTo: import("vitest").Mock<(...args: any[]) => any>;
+            quadraticCurveTo: import("vitest").Mock<(...args: any[]) => any>;
+            stroke: import("vitest").Mock<(...args: any[]) => any>;
+            fill: import("vitest").Mock<(...args: any[]) => any>;
+            arc: import("vitest").Mock<(...args: any[]) => any>;
+            setLineDash: import("vitest").Mock<(...args: any[]) => any>;
+            save: import("vitest").Mock<(...args: any[]) => any>;
+            restore: import("vitest").Mock<(...args: any[]) => any>;
+            translate: import("vitest").Mock<(...args: any[]) => any>;
+            scale: import("vitest").Mock<(...args: any[]) => any>;
+            setTransform: import("vitest").Mock<(...args: any[]) => any>;
+            createRadialGradient: import("vitest").Mock<() => {
+                addColorStop: import("vitest").Mock<(...args: any[]) => any>;
+            }>;
+            createLinearGradient: import("vitest").Mock<() => {
+                addColorStop: import("vitest").Mock<(...args: any[]) => any>;
+            }>;
+            fillRect: import("vitest").Mock<(...args: any[]) => any>;
+            fillText: import("vitest").Mock<(...args: any[]) => any>;
+            strokeText: import("vitest").Mock<(...args: any[]) => any>;
+            closePath: import("vitest").Mock<(...args: any[]) => any>;
+            clip: import("vitest").Mock<(...args: any[]) => any>;
+            strokeStyle: string;
+            fillStyle: string;
+            lineWidth: number;
+            lineCap: string;
+            lineJoin: string;
+            shadowBlur: number;
+            shadowColor: string;
+            shadowOffsetX: number;
+            shadowOffsetY: number;
+            globalAlpha: number;
+            font: string;
+            textAlign: string;
+            textBaseline: string;
+        };
+        strokeStyles: string[];
+        fillStyles: string[];
+    };
+    export function makeContextMocks(options?: {
+        getBoundingClientRect?: () => object;
+    }): {
+        mockContext: {
+            clearRect: import("vitest").Mock<(...args: any[]) => any>;
+            save: import("vitest").Mock<(...args: any[]) => any>;
+            restore: import("vitest").Mock<(...args: any[]) => any>;
+            translate: import("vitest").Mock<(...args: any[]) => any>;
+            scale: import("vitest").Mock<(...args: any[]) => any>;
+            setTransform: import("vitest").Mock<(...args: any[]) => any>;
+            beginPath: import("vitest").Mock<(...args: any[]) => any>;
+            moveTo: import("vitest").Mock<(...args: any[]) => any>;
+            lineTo: import("vitest").Mock<(...args: any[]) => any>;
+            quadraticCurveTo: import("vitest").Mock<(...args: any[]) => any>;
+            stroke: import("vitest").Mock<(...args: any[]) => any>;
+            fill: import("vitest").Mock<(...args: any[]) => any>;
+            arc: import("vitest").Mock<(...args: any[]) => any>;
+            setLineDash: import("vitest").Mock<(...args: any[]) => any>;
+            createRadialGradient: import("vitest").Mock<() => {
+                addColorStop: import("vitest").Mock<(...args: any[]) => any>;
+            }>;
+            createLinearGradient: import("vitest").Mock<() => {
+                addColorStop: import("vitest").Mock<(...args: any[]) => any>;
+            }>;
+            fillRect: import("vitest").Mock<(...args: any[]) => any>;
+            fillText: import("vitest").Mock<(...args: any[]) => any>;
+            strokeText: import("vitest").Mock<(...args: any[]) => any>;
+            lineWidth: number;
+            strokeStyle: string;
+            fillStyle: string;
+            lineCap: string;
+            lineJoin: string;
+            shadowBlur: number;
+            shadowColor: string;
+            font: string;
+            textAlign: string;
+            textBaseline: string;
+            globalAlpha: number;
+        };
+        mockCanvas: {
+            getBoundingClientRect?: import("vitest").Mock<() => object> | undefined;
+            getContext: import("vitest").Mock<() => {
+                clearRect: import("vitest").Mock<(...args: any[]) => any>;
+                save: import("vitest").Mock<(...args: any[]) => any>;
+                restore: import("vitest").Mock<(...args: any[]) => any>;
+                translate: import("vitest").Mock<(...args: any[]) => any>;
+                scale: import("vitest").Mock<(...args: any[]) => any>;
+                setTransform: import("vitest").Mock<(...args: any[]) => any>;
+                beginPath: import("vitest").Mock<(...args: any[]) => any>;
+                moveTo: import("vitest").Mock<(...args: any[]) => any>;
+                lineTo: import("vitest").Mock<(...args: any[]) => any>;
+                quadraticCurveTo: import("vitest").Mock<(...args: any[]) => any>;
+                stroke: import("vitest").Mock<(...args: any[]) => any>;
+                fill: import("vitest").Mock<(...args: any[]) => any>;
+                arc: import("vitest").Mock<(...args: any[]) => any>;
+                setLineDash: import("vitest").Mock<(...args: any[]) => any>;
+                createRadialGradient: import("vitest").Mock<() => {
+                    addColorStop: import("vitest").Mock<(...args: any[]) => any>;
+                }>;
+                createLinearGradient: import("vitest").Mock<() => {
+                    addColorStop: import("vitest").Mock<(...args: any[]) => any>;
+                }>;
+                fillRect: import("vitest").Mock<(...args: any[]) => any>;
+                fillText: import("vitest").Mock<(...args: any[]) => any>;
+                strokeText: import("vitest").Mock<(...args: any[]) => any>;
+                lineWidth: number;
+                strokeStyle: string;
+                fillStyle: string;
+                lineCap: string;
+                lineJoin: string;
+                shadowBlur: number;
+                shadowColor: string;
+                font: string;
+                textAlign: string;
+                textBaseline: string;
+                globalAlpha: number;
+            }>;
+            addEventListener: import("vitest").Mock<(...args: any[]) => any>;
+            toDataURL: import("vitest").Mock<() => string>;
+            style: {};
+            width: number;
+            height: number;
+            clientWidth: number;
+            clientHeight: number;
+        };
+    };
+    export function stubCanvasGlobals(mockCanvas: any): void;
+    export function makeStructure(cc: any, atomDefs?: {
+        name: string;
+        x: number;
+        y: number;
+        z: number;
+        originalName: string;
+        tempFactor?: number;
+        isHetatm?: boolean;
+    }[]): {
+        s: Structure;
+        c: Chain;
+        r: Residue;
+        atoms: Atom[];
+    };
+    export function makeBaseRenderOptions(overrides?: Partial<RenderOptions>): RenderOptions;
+}
+declare module "tests/canvas2d.test" { }
 declare module "tests/coffeemol.test" { }
 declare module "tests/hetatm.test" { }
 declare module "tests/interaction.test" { }
 declare module "tests/models.test" { }
 declare module "tests/parser.test" { }
+declare module "tests/surface.test" { }
+declare module "tests/threejs.test" { }
 declare module "tests/utils.test" { }
