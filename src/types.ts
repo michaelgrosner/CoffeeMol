@@ -14,7 +14,8 @@ export type ColorMethod =
   | 'ss'
   | 'chain'
   | 'b-factor'
-  | 'hydrophobicity';
+  | 'hydrophobicity'
+  | 'formal-charge';
 
 export interface AtomInfo {
   drawMethod: DrawMethod;
@@ -126,9 +127,15 @@ export const atom_colors: Record<string, RGB> = {
   F: [144, 224, 80],
   P: [255, 128, 0],
   S: [255, 200, 50],
+  CL: [31, 240, 31],
+  BR: [166, 41, 41],
   K: [143, 64, 212],
   I: [148, 0, 148],
   V: [166, 0, 255],
+  MG: [138, 255, 0],
+  CA: [61, 255, 0],
+  FE: [224, 102, 51],
+  ZN: [125, 128, 176],
   _: [180, 180, 180],
 };
 
@@ -141,5 +148,11 @@ export const atom_radii: Record<string, number> = {
   F: 0.88,
   P: 1.12,
   S: 1.12,
+  CL: 1.03,
+  BR: 1.10,
   I: 1.35,
+  MG: 1.02,
+  CA: 1.33,
+  FE: 1.10,
+  ZN: 0.82,
 };

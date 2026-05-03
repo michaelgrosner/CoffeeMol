@@ -13,6 +13,7 @@ function atomRGB(a: Atom, fallback: ColorMethod = 'cpk'): RGB {
     case 'chain': return a.chainColor();
     case 'b-factor': return a.bFactorColor();
     case 'hydrophobicity': return a.hydrophobicityColor();
+    case 'formal-charge': return a.formalChargeColor();
     case 'cpk':
     default: return a.cpkColor();
   }
@@ -248,8 +249,8 @@ export class ThreeRenderer implements Renderer {
       const tmpColor = new THREE.Color();
       for (let i = 0; i < pointAtoms.length; i++) {
         const a = pointAtoms[i];
-        const relR = atom_radii[a.name] ?? 1.0;
-        const radius = baseRadius * relR;
+        const relR = atom_radii[a.element] ?? atom_radii[a.name] ?? 1.0;
+        const radius = baseRadius * relR * a.occupancy;
         dummy.position.set(a.x, -a.y, a.z);
         dummy.scale.set(radius, radius, radius);
         dummy.updateMatrix();

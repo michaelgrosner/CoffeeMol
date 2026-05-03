@@ -464,6 +464,20 @@ export class Atom extends MolElement {
     return this.parent.parent.color;
   }
 
+  formalChargeColor(): RGB {
+    // Red-to-White-to-Blue ramp: Negative (Red), Neutral (White), Positive (Blue)
+    const charge = Math.max(-2, Math.min(2, this.formalCharge));
+    if (charge === 0) return [255, 255, 255];
+    
+    if (charge < 0) {
+      const t = Math.abs(charge) / 2;
+      return [255, Math.round(255 * (1 - t)), Math.round(255 * (1 - t))];
+    } else {
+      const t = charge / 2;
+      return [Math.round(255 * (1 - t)), Math.round(255 * (1 - t)), 255];
+    }
+  }
+
   bFactorColor(): RGB {
     // Blue-to-Red color ramp for B-factor (standard)
     // Typical B-factors range from 0 to 100

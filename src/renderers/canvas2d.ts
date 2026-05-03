@@ -459,11 +459,12 @@ export class Canvas2DRenderer implements Renderer {
   }
 
   private drawAtomPoint(a: Atom, options: RenderOptions): void {
-    const relR = atom_radii[a.name] ?? 1.0;
+    const relR = atom_radii[a.element] ?? atom_radii[a.name] ?? 1.0;
     const zz = (ATOM_SIZE * relR) / options.zoom;
     const ctx = this.context;
 
-    const fill = this.depthShadedColorString(a, options, 'cpk');
+    const opacity = a.occupancy;
+    const fill = this.depthShadedColorString(a, options, 'cpk', 0, opacity);
 
     ctx.beginPath();
     ctx.arc(a.x, a.y, zz, 0, 2 * Math.PI, false);
@@ -483,12 +484,12 @@ export class Canvas2DRenderer implements Renderer {
       ctx.save();
       ctx.shadowBlur = glow / options.zoom;
       ctx.shadowColor = fill;
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.strokeStyle = `rgba(0,0,0,${0.4 * opacity})`;
       ctx.lineWidth = (0.8 * outlineWeight) / options.zoom;
       ctx.stroke();
       ctx.restore();
     } else {
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.strokeStyle = `rgba(0,0,0,${0.4 * opacity})`;
       ctx.lineWidth = (0.5 * outlineWeight) / options.zoom;
       ctx.stroke();
     }
@@ -496,15 +497,17 @@ export class Canvas2DRenderer implements Renderer {
     ctx.fillStyle = fill;
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.beginPath();
-    ctx.arc(a.x - zz * 0.35, a.y - zz * 0.35, zz * 0.3, 0, 2 * Math.PI, false);
-    ctx.fill();
+    if (opacity > 0.5) {
+      ctx.fillStyle = `rgba(255,255,255,${0.45 * opacity})`;
+      ctx.beginPath();
+      ctx.arc(a.x - zz * 0.35, a.y - zz * 0.35, zz * 0.3, 0, 2 * Math.PI, false);
+      ctx.fill();
+    }
   }
 
   private drawAtomHighlight(a: Atom, options: RenderOptions): void {
     const ctx = this.context;
-    const relR = atom_radii[a.name] ?? 1.0;
+    const relR = atom_radii[a.element] ?? atom_radii[a.name] ?? 1.0;
     const zz = (ATOM_SIZE * relR * 1.5) / options.zoom;
 
     ctx.beginPath();
@@ -528,6 +531,7 @@ export class Canvas2DRenderer implements Renderer {
       case 'chain': base = a.chainColor(); break;
       case 'b-factor': base = a.bFactorColor(); break;
       case 'hydrophobicity': base = a.hydrophobicityColor(); break;
+      case 'formal-charge': base = a.formalChargeColor(); break;
       case 'cpk':
       default: base = a.cpkColor(); break;
     }
