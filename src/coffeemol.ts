@@ -543,13 +543,22 @@ export class CanvasContext {
     this.noteInteraction();
     this.mouse_x_prev = e.clientX;
     this.mouse_y_prev = e.clientY;
+    const isPanning = e.shiftKey || e.button === 1;
+
     const moveHandler = (ee: MouseEvent) => {
       const dx = ee.clientX - this.mouse_x_prev;
       const dy = ee.clientY - this.mouse_y_prev;
-      for (const el of this.elements) {
-        el.rotateAboutY(dx * 0.01);
-        el.rotateAboutX(dy * 0.01);
+
+      if (isPanning) {
+        this.x_origin += dx;
+        this.y_origin += dy;
+      } else {
+        for (const el of this.elements) {
+          el.rotateAboutY(dx * 0.01);
+          el.rotateAboutX(dy * 0.01);
+        }
       }
+
       this.mouse_x_prev = ee.clientX;
       this.mouse_y_prev = ee.clientY;
       this.noteInteraction();
@@ -569,13 +578,22 @@ export class CanvasContext {
     this.noteInteraction();
     this.mouse_x_prev = e.touches[0].clientX;
     this.mouse_y_prev = e.touches[0].clientY;
+    const isPanning = e.shiftKey;
+
     const moveHandler = (ee: TouchEvent) => {
       const dx = ee.touches[0].clientX - this.mouse_x_prev;
       const dy = ee.touches[0].clientY - this.mouse_y_prev;
-      for (const el of this.elements) {
-        el.rotateAboutY(dx * 0.01);
-        el.rotateAboutX(dy * 0.01);
+
+      if (isPanning) {
+        this.x_origin += dx;
+        this.y_origin += dy;
+      } else {
+        for (const el of this.elements) {
+          el.rotateAboutY(dx * 0.01);
+          el.rotateAboutX(dy * 0.01);
+        }
       }
+
       this.mouse_x_prev = ee.touches[0].clientX;
       this.mouse_y_prev = ee.touches[0].clientY;
       this.noteInteraction();
@@ -613,9 +631,18 @@ export class CanvasContext {
 
   changeZoom(e: WheelEvent): void {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    this.zoom *= delta;
     this.noteInteraction();
+
+    if (e.shiftKey) {
+      // Pan via shift + scroll
+      this.x_origin -= e.deltaX;
+      this.y_origin -= e.deltaY;
+    } else {
+      // Zoom via scroll
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      this.zoom *= delta;
+    }
+
     this.drawAll();
   }
 

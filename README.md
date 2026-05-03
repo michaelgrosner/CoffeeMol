@@ -106,6 +106,7 @@ viewer.setScheme(CoffeeMol.colorSchemes.dracula);
 | Action | Control |
 |---|---|
 | **Rotate** | Click and drag |
+| **Pan** | **Shift** + click and drag (or **Shift** + scroll) |
 | **Zoom** | Scroll wheel / two-finger scroll |
 | **Pinch to zoom** | Touch (iOS/Android) |
 | **Re-center** | Double-click on new origin |

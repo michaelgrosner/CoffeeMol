@@ -284,9 +284,19 @@ export class ThreeRenderer implements Renderer {
   render(elements: Structure[], bonds: Bond[], options: RenderOptions): void {
     if (!this.renderer) return;
     this.updateScene(elements, options);
+
+    // Support panning by offsetting the camera position.
+    // In our orthographic setup, 1 world unit = 1 pixel at zoom 1.
+    // x_origin/y_origin are screen-space pixels from top-left.
+    // We divide by zoom so that panning 10px on screen always moves the 
+    // camera by the equivalent world distance, regardless of zoom level.
+    const dx = (options.x_origin - this.canvas.width / 2) / options.zoom;
+    const dy = (options.y_origin - this.canvas.height / 2) / options.zoom;
+    this.camera.position.set(-dx, dy, 1000);
+    this.camera.lookAt(-dx, dy, 0);
+
     this.camera.zoom = options.zoom;
     this.camera.updateProjectionMatrix();
-    this.camera.lookAt(0, 0, 0);
     this.renderer.render(this.scene, this.camera);
 
     // Composite the vignette over the molecule. Only meaningful on dark
