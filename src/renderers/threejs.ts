@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Structure, Atom, Bond, Chain, sortByZ, atomAtomDistance } from '../models';
+import { Structure, Atom, Bond, Chain, atomAtomDistance } from '../models';
 import { Renderer, RenderOptions } from './renderer';
 import { atom_radii, ATOM_SIZE, SecondaryStructureType, ColorMethod, RGB } from '../types';
 import { buildGaussianSurface, effectiveRadius, SurfaceAtom } from '../surface';
@@ -31,6 +31,7 @@ export class ThreeRenderer implements Renderer {
   private bondsGroup: THREE.Group = new THREE.Group();
   private ribbonsGroup: THREE.Group = new THREE.Group();
   private lightsGroup: THREE.Group = new THREE.Group();
+  private measurementsGroup: THREE.Group = new THREE.Group();
 
   private instancedAtomsList: THREE.InstancedMesh[] = [];
 
@@ -92,6 +93,7 @@ export class ThreeRenderer implements Renderer {
     this.scene.add(this.bondsGroup);
     this.scene.add(this.ribbonsGroup);
     this.scene.add(this.lightsGroup);
+    this.scene.add(this.measurementsGroup);
 
     this.setupLights();
     this.setupVignette();
@@ -314,6 +316,7 @@ export class ThreeRenderer implements Renderer {
     this.atomsGroup.clear();
     this.bondsGroup.clear();
     this.ribbonsGroup.clear();
+    this.measurementsGroup.clear();
     this.instancedAtomsList = [];
 
     const pointAtoms: Atom[] = [];
@@ -378,8 +381,12 @@ export class ThreeRenderer implements Renderer {
         dummy.scale.set(radius, radius, radius);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
-        const c = atomRGB(a, 'cpk');
-        tmpColor.setRGB(c[0] / 255, c[1] / 255, c[2] / 255);
+        if (a.isHighlighted) {
+          tmpColor.setRGB(1.0, 1.0, 0.0);
+        } else {
+          const c = atomRGB(a, 'cpk');
+          tmpColor.setRGB(c[0] / 255, c[1] / 255, c[2] / 255);
+        }
         mesh.setColorAt(i, tmpColor);
       }
       mesh.instanceMatrix.needsUpdate = true;
@@ -414,6 +421,67 @@ export class ThreeRenderer implements Renderer {
         this.buildRibbons(atoms, method, options, ribbonFallback);
       }
     }
+
+    // 4. Measurements overlay
+    this.renderMeasurements(options);
+  }
+
+  private renderMeasurements(options: RenderOptions): void {
+    if (!options.measureStartAtom) return;
+
+    const endAtom = options.measureEndAtom || options.highlightedAtom;
+    if (endAtom === options.measureStartAtom) return;
+
+    const s = options.measureStartAtom;
+    const startPos = new THREE.Vector3(s.x, -s.y, s.z);
+
+    let endPos: THREE.Vector3;
+    if (endAtom) {
+      endPos = new THREE.Vector3(endAtom.x, -endAtom.y, endAtom.z);
+    } else {
+      endPos = new THREE.Vector3(options.mouseX, -options.mouseY, s.z);
+    }
+
+    const points = [startPos, endPos];
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const dashSize = 5 / options.zoom;
+    const lineMat = new THREE.LineDashedMaterial({
+      color: 0xff3333,
+      dashSize,
+      gapSize: dashSize,
+      linewidth: 2,
+    });
+    const line = new THREE.Line(lineGeo, lineMat);
+    line.computeLineDistances();
+    this.measurementsGroup.add(line);
+
+    if (!endAtom) return;
+
+    const dist = atomAtomDistance(s, endAtom);
+    const label = `${dist.toFixed(2)} Å`;
+    const midPos = startPos.clone().lerp(endPos, 0.5);
+
+    const texCanvas = document.createElement('canvas');
+    texCanvas.width = 256;
+    texCanvas.height = 64;
+    const ctx2d = texCanvas.getContext('2d')!;
+    ctx2d.clearRect(0, 0, 256, 64);
+    ctx2d.font = 'bold 36px sans-serif';
+    ctx2d.textAlign = 'center';
+    ctx2d.textBaseline = 'middle';
+    ctx2d.strokeStyle = 'white';
+    ctx2d.lineWidth = 6;
+    ctx2d.strokeText(label, 128, 32);
+    ctx2d.fillStyle = '#ff3333';
+    ctx2d.fillText(label, 128, 32);
+
+    const texture = new THREE.CanvasTexture(texCanvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.copy(midPos);
+    const scale = 40 / options.zoom;
+    sprite.scale.set(scale * 4, scale, 1);
+    this.measurementsGroup.add(sprite);
   }
 
   private renderBonds(allBonds: Bond[], options: RenderOptions): void {
@@ -562,10 +630,10 @@ export class ThreeRenderer implements Renderer {
       const color = new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
 
       const isCartoon = method === 'cartoon';
+      const isSegHighlighted = seg.atoms.some(a => a.isHighlighted || a.parent.isHighlighted);
       const mat = isCartoon
-        // Toon material with a 4-step ramp so shadows aren't crushed to black.
-        ? new THREE.MeshToonMaterial({ color, gradientMap: this.toonGradient })
-        : new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.0 });
+        ? new THREE.MeshToonMaterial({ color, gradientMap: this.toonGradient, emissive: isSegHighlighted ? new THREE.Color(1, 1, 0) : undefined, emissiveIntensity: isSegHighlighted ? 0.35 : 0 })
+        : new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.0, emissive: isSegHighlighted ? new THREE.Color(1, 1, 0) : undefined, emissiveIntensity: isSegHighlighted ? 0.35 : 0 });
 
       if (seg.ss === 'helix') {
         this.buildHelixRibbon(seg.atoms, curve, method, mat, isCartoon);
@@ -743,6 +811,7 @@ export class ThreeRenderer implements Renderer {
     this.atomsGroup.clear();
     this.bondsGroup.clear();
     this.ribbonsGroup.clear();
+    this.measurementsGroup.clear();
     this.instancedAtomsList = [];
     this.disposeSurfaceCache();
   }

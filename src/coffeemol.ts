@@ -29,7 +29,7 @@ import { ThreeRenderer } from './renderers/threejs';
 
 export type RendererType = '2d' | '3d';
 
-export class CanvasContext {
+export class Viewer {
   static colorSchemes = colorSchemes;
   canvas_target: string | HTMLCanvasElement;
   background_color: string;
@@ -38,12 +38,11 @@ export class CanvasContext {
   canvas!: HTMLCanvasElement;
   renderer!: Renderer;
   rendererType: RendererType;
-  
+
   zoom: number;
   zoom_prev: number;
   x_origin: number;
   y_origin: number;
-  z_extent: number;
   mouse_x_prev: number;
   mouse_y_prev: number;
   delayID: ReturnType<typeof setInterval> | null;
@@ -51,9 +50,6 @@ export class CanvasContext {
   mouseX: number;
   mouseY: number;
   structures_left_to_load: number | null;
-  x_axis: [number, number, number];
-  y_axis: [number, number, number];
-  z_axis: [number, number, number];
 
   isMeasuring: boolean;
   measureStartAtom: Atom | null;
@@ -80,7 +76,6 @@ export class CanvasContext {
     this.zoom_prev = 1;
     this.x_origin = 0;
     this.y_origin = 0;
-    this.z_extent = 1;
     this.mouse_x_prev = 0;
     this.mouse_y_prev = 0;
     this.delayID = null;
@@ -88,9 +83,6 @@ export class CanvasContext {
     this.mouseX = 0;
     this.mouseY = 0;
     this.structures_left_to_load = null;
-    this.x_axis = [1, 0, 0];
-    this.y_axis = [0, 1, 0];
-    this.z_axis = [0, 0, 1];
 
     this.isMeasuring = false;
     this.measureStartAtom = null;
@@ -116,7 +108,6 @@ export class CanvasContext {
       'iOSChangeZoom',
       'changeZoom',
       'restoreToOriginal',
-      'computeZExtent',
       'findBonds',
       'translateOrigin',
       'avgCenterOfAllElements',
@@ -216,7 +207,6 @@ export class CanvasContext {
     this.findBonds();
     this.assignSelectors();
     this.restoreToOriginal();
-    this.computeZExtent();
     this.writeContextInfo();
   }
 
@@ -467,7 +457,7 @@ export class CanvasContext {
     }
   }
 
-  autoResize(): CanvasContext {
+  autoResize(): Viewer {
     window.addEventListener('resize', () => this.resize());
     return this;
   }
@@ -652,18 +642,6 @@ export class CanvasContext {
     this.x_origin = this.canvas.width / 2;
     this.y_origin = this.canvas.height / 2;
     this.drawAll();
-  }
-
-  computeZExtent(): void {
-    let min_z = Infinity,
-      max_z = -Infinity;
-    for (const el of this.elements) {
-      for (const a of el.atoms) {
-        if (a.z < min_z) min_z = a.z;
-        if (a.z > max_z) max_z = a.z;
-      }
-    }
-    this.z_extent = Math.max(Math.abs(min_z), Math.abs(max_z));
   }
 
   findBonds(): void {
@@ -892,14 +870,17 @@ export class CanvasContext {
     canvas_target: string | HTMLCanvasElement,
     background_color?: string,
     rendererType: RendererType = '2d'
-  ): CanvasContext {
+  ): Viewer {
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const defaultBg = isDark ? '#111111' : '#ffffff';
-    const cc = new CanvasContext(canvas_target, background_color || defaultBg, rendererType);
-    return cc;
+    return new Viewer(canvas_target, background_color || defaultBg, rendererType);
   }
 }
 
+// Backward-compatible alias — existing TypeScript consumers that import CanvasContext
+// continue to work without changes.
+export { Viewer as CanvasContext };
+
 if (typeof window !== 'undefined') {
-  (window as any).CoffeeMol = CanvasContext;
+  (window as any).CoffeeMol = Viewer;
 }
